@@ -24,8 +24,6 @@ import org.sonar.api.SonarQubeSide;
 import org.sonar.api.SonarRuntime;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonar.api.utils.Version;
-import org.sonarsource.dotnet.shared.plugins.DotNetRulesDefinition;
-import org.sonarsource.dotnet.shared.plugins.RoslynRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,29 +31,32 @@ class CSharpRulesDefinitionTest {
   private static final RulesDefinition.Context CONTEXT = new RulesDefinition.Context();
   private static final SonarRuntime SONAR_RUNTIME = TestSonarRuntime.forSonarQube(Version.create(10, 10), SonarQubeSide.SCANNER,
     SonarEdition.COMMUNITY);
-  private static final RoslynRules ROSLYN_RULES = new RoslynRules(CSharpPlugin.METADATA);
+  private static final GpRoslynRules ROSLYN_RULES = new GpRoslynRules(CSharpPlugin.METADATA);
 
   private static RulesDefinition.Repository ruleRepo;
 
   @BeforeAll
   static void setupContext() {
-    DotNetRulesDefinition definition = new DotNetRulesDefinition(CSharpPlugin.METADATA, SONAR_RUNTIME, ROSLYN_RULES);
+    GpCSharpRulesDefinition definition = new GpCSharpRulesDefinition(CSharpPlugin.METADATA, SONAR_RUNTIME, ROSLYN_RULES);
     definition.define(CONTEXT);
-    ruleRepo = CONTEXT.repository("csharpsquid");
+    ruleRepo = CONTEXT.repository("gp-csharpsquid");
   }
 
   @Test
   void rules_areDefined() {
     assertThat(CONTEXT.repositories()).hasSize(1);
-    RulesDefinition.Rule s100 = ruleRepo.rule("S100");
-    assertThat(s100).isNotNull();
-    assertThat(s100.name()).isEqualTo("Methods and properties should be named in PascalCase");
+    assertThat(ruleRepo.name()).isEqualTo("GP C#");
+    RulesDefinition.Rule gp0001 = ruleRepo.rule("GP0001");
+    assertThat(gp0001).isNotNull();
+    assertThat(gp0001.name()).isEqualTo("The word 'abrakadabra' should not appear in C# source files");
   }
 
   @Test
-  void symbolicExecutionRules_areNotDefined() {
+  void builtInRules_areNotDefined() {
     assertThat(CONTEXT.repositories()).hasSize(1);
+    assertThat(ruleRepo.rule("S100")).isNull();
     assertThat(ruleRepo.rule("S2259")).isNull();
+    assertThat(ruleRepo.rules()).hasSize(1);
   }
 
   @Test

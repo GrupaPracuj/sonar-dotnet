@@ -120,5 +120,5 @@ public abstract class TestMethodDeclarationsAnalyzerBase<TSyntaxKind>() : Utilit
             : null;
 
     private static bool IsTestMethod(IMethodSymbol methodSymbol) =>
-        methodSymbol is { IsImplicitlyDeclared: false, IsTestMethod: true };
+        methodSymbol is not null && !methodSymbol.IsImplicitlyDeclared && methodSymbol.IsTestMethod();
 }

@@ -22,7 +22,7 @@ public class INamedTypeSymbolExtensionsTest
 {
     [TestMethod]
     public void GetAllNamedTypesForNamedType_WhenSymbolIsNull_ReturnsEmpty() =>
-        ((INamedTypeSymbol)null).AllNamedTypes.Should().BeEmpty();
+        ((INamedTypeSymbol)null).GetAllNamedTypes().Should().BeEmpty();
 
     [TestMethod]
     [DataRow(TypeKind.Array, "array")]

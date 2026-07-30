@@ -38,7 +38,8 @@ public sealed class ControllersReuseClient : ReuseClientBase
             }
             compilationStartContext.RegisterSymbolStartAction(symbolStartContext =>
             {
-                if (symbolStartContext.Symbol is INamedTypeSymbol { IsControllerType: true })
+                var symbol = (INamedTypeSymbol)symbolStartContext.Symbol;
+                if (symbol.IsControllerType())
                 {
                     symbolStartContext.RegisterSyntaxNodeAction(nodeContext =>
                     {

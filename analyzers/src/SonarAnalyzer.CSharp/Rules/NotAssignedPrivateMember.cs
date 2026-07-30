@@ -80,7 +80,8 @@ public sealed class NotAssignedPrivateMember : SonarDiagnosticAnalyzer
     }
 
     private static bool TypeDefinitionShouldBeAnalyzed(ITypeSymbol namedType) =>
-        namedType is { IsClassOrStruct: true, ContainingType: null }
+        namedType.IsClassOrStruct()
+        && namedType.ContainingType is null
         && !namedType.HasAnyAttribute(ExcludedAttributes);
 
     private static bool IsInitializedOrFixed(VariableDeclaratorSyntax declarator) =>

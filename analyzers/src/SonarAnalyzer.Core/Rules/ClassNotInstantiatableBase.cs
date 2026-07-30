@@ -101,7 +101,8 @@ namespace SonarAnalyzer.Core.Rules
             && members.All(member => member.IsStatic);
 
         private static bool IsNonStaticClassWithNoAttributes(INamedTypeSymbol namedType) =>
-            namedType is { IsClass: true, IsStatic: false }
+            namedType.IsClass()
+            && !namedType.IsStatic
             && !namedType.GetAttributes().Any();
 
         private static bool HasOnlyCandidateConstructors(ICollection<IMethodSymbol> constructors) =>

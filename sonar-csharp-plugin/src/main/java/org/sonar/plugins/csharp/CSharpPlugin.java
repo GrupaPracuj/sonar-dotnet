@@ -17,7 +17,6 @@
 package org.sonar.plugins.csharp;
 
 import org.sonar.api.Plugin;
-import org.sonarsource.csharp.core.CSharpCoreExtensions;
 import org.sonarsource.csharp.core.CSharpCorePluginMetadata;
 import org.sonarsource.dotnet.shared.plugins.PluginMetadata;
 
@@ -28,14 +27,22 @@ public class CSharpPlugin implements Plugin {
 
   @Override
   public void define(Context context) {
-    CSharpCoreExtensions.register(context, METADATA);
+    context.addExtensions(
+      GpCSharpRulesDefinition.class,
+      METADATA,
+      GpRoslynRules.class);
   }
 
   private static class CSharpPluginMetadata extends CSharpCorePluginMetadata {
 
     @Override
     public String pluginKey() {
-      return "csharp";
+      return "GP-csharp";
+    }
+
+    @Override
+    public String repositoryKey() {
+      return "gp-csharpsquid";
     }
 
     @Override

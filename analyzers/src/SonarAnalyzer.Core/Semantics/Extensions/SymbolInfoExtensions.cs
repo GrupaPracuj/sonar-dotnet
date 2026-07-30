@@ -19,14 +19,11 @@ namespace SonarAnalyzer.Core.Semantics.Extensions;
 
 public static class SymbolInfoExtensions
 {
-    extension(SymbolInfo symbolInfo)
-    {
-        /// <summary>
-        /// Returns the <see cref="SymbolInfo.Symbol"/> or if no symbol could be found the <see cref="SymbolInfo.CandidateSymbols"/>.
-        /// </summary>
-        public IEnumerable<ISymbol> AllSymbols =>
-            symbolInfo.Symbol is null
-                ? symbolInfo.CandidateSymbols
-                : new[] { symbolInfo.Symbol };
-    }
+    /// <summary>
+    /// Returns the <see cref="SymbolInfo.Symbol"/> or if no symbol could be found the <see cref="SymbolInfo.CandidateSymbols"/>.
+    /// </summary>
+    public static IEnumerable<ISymbol> AllSymbols(this SymbolInfo symbolInfo) =>
+        symbolInfo.Symbol is null
+            ? symbolInfo.CandidateSymbols
+            : new[] { symbolInfo.Symbol };
 }

@@ -34,18 +34,18 @@ class CSharpPluginTest {
 
     Plugin.Context context = new Plugin.Context(sonarRuntime);
     new CSharpPlugin().define(context);
-    assertThat(context.getExtensions()).hasSize(64);
+    assertThat(context.getExtensions()).hasSize(3);
   }
 
   @Test
   void pluginProperties() {
     assertThat(CSharpPlugin.METADATA.languageKey()).isEqualTo("cs");
     assertThat(CSharpPlugin.METADATA.languageName()).isEqualTo("C#");
-    assertThat(CSharpPlugin.METADATA.repositoryKey()).isEqualTo("csharpsquid");
+    assertThat(CSharpPlugin.METADATA.repositoryKey()).isEqualTo("gp-csharpsquid");
     assertThat(CSharpPlugin.METADATA.fileSuffixesKey()).isEqualTo("sonar.cs.file.suffixes");
     assertThat(CSharpPlugin.METADATA.fileSuffixesDefaultValue()).isEqualTo(".cs,.razor");
     assertThat(CSharpPlugin.METADATA.resourcesDirectory()).isEqualTo("/org/sonar/plugins/csharp");
-    assertThat(CSharpPlugin.METADATA.pluginKey()).isEqualTo("csharp");
+    assertThat(CSharpPlugin.METADATA.pluginKey()).isEqualTo("GP-csharp");
     assertThat(CSharpPlugin.METADATA.analyzerProjectName()).isEqualTo("SonarAnalyzer.CSharp");
   }
 }

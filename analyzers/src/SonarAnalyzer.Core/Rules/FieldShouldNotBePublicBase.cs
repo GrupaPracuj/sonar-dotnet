@@ -31,7 +31,8 @@ namespace SonarAnalyzer.Core.Rules
         protected FieldShouldNotBePublicBase() : base(DiagnosticId) { }
 
         protected static bool FieldIsRelevant(IFieldSymbol fieldSymbol) =>
-            fieldSymbol is { IsStatic: false, IsConst: false, EffectiveAccessibility: Accessibility.Public, ContainingType.IsClass: true };
+            fieldSymbol is { IsStatic: false, IsConst: false, EffectiveAccessibility: Accessibility.Public }
+            && fieldSymbol.ContainingType.IsClass();
 
         protected sealed override void Initialize(SonarAnalysisContext context) =>
             context.RegisterNodeAction(

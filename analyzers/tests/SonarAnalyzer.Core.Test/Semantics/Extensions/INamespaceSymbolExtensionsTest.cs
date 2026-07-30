@@ -107,7 +107,7 @@ public class INamespaceSymbolExtensionsTest
 
     [TestMethod]
     public void GetAllNamedTypesForNamespace_WhenSymbolIsNull_ReturnsEmpty() =>
-        ((INamespaceSymbol)null).AllNamedTypes.Should().BeEmpty();
+        ((INamespaceSymbol)null).GetAllNamedTypes().Should().BeEmpty();
 
     [TestMethod]
     public void Symbol_GetSelfAndBaseTypes()
@@ -117,12 +117,12 @@ public class INamespaceSymbolExtensionsTest
             public class Derived : Base { }
             """);
         var objectType = snippet.TypeByMetadataName("System.Object");
-        var baseTypes = objectType.SelfAndBaseTypes.ToList();
+        var baseTypes = objectType.GetSelfAndBaseTypes().ToList();
         baseTypes.Should().ContainSingle();
         baseTypes.Should().HaveElementAt(0, objectType);
 
         var derivedType = snippet.DeclaredSymbol<INamedTypeSymbol>("Derived");
-        baseTypes = derivedType.SelfAndBaseTypes.ToList();
+        baseTypes = derivedType.GetSelfAndBaseTypes().ToList();
         baseTypes.Should().HaveCount(3);
         baseTypes.Should().HaveElementAt(0, derivedType);
         baseTypes.Should().HaveElementAt(1, snippet.DeclaredSymbol<INamedTypeSymbol>("Base"));
@@ -142,7 +142,7 @@ public class INamespaceSymbolExtensionsTest
             }
             """);
         var typeSymbol = snippet.DeclaredSymbol<INamedTypeSymbol>("Outer");
-        typeSymbol.AllNamedTypes.Should().HaveCount(3);
+        typeSymbol.GetAllNamedTypes().Should().HaveCount(3);
     }
 
     [TestMethod]
@@ -164,6 +164,6 @@ public class INamespaceSymbolExtensionsTest
             """);
         var nsSymbol = snippet.NamespaceSymbol("NS");
 
-        nsSymbol.AllNamedTypes.Should().HaveCount(5);
+        nsSymbol.GetAllNamedTypes().Should().HaveCount(5);
     }
 }

@@ -54,7 +54,8 @@ public sealed class AvoidUnderPosting : SonarDiagnosticAnalyzer
 
                 compilationStart.RegisterSymbolStartAction(symbolStart =>
                     {
-                        if (symbolStart.Symbol is INamedTypeSymbol { IsControllerType: true })
+                        var type = (INamedTypeSymbol)symbolStart.Symbol;
+                        if (type.IsControllerType())
                         {
                             symbolStart.RegisterSyntaxNodeAction(nodeContext => ProcessControllerMethods(nodeContext, examinedTypes), SyntaxKind.MethodDeclaration);
                         }
@@ -64,7 +65,8 @@ public sealed class AvoidUnderPosting : SonarDiagnosticAnalyzer
 
     private static void ProcessControllerMethods(SonarSyntaxNodeReportingContext context, ConcurrentDictionary<ITypeSymbol, bool> examinedTypes)
     {
-        if (context.Model.GetDeclaredSymbol(context.Node) is IMethodSymbol { IsControllerActionMethod: true } method)
+        if (context.Model.GetDeclaredSymbol(context.Node) is IMethodSymbol method
+            && method.IsControllerActionMethod())
         {
             var modelParameterTypes = method.Parameters
                 .Where(x => !HasValidateNeverAttribute(x))
@@ -111,14 +113,14 @@ public sealed class AvoidUnderPosting : SonarDiagnosticAnalyzer
         !type.IsTupleType()                                             // Tuples are not supported (unless a custom Model Binder is used)
         && (type.Constructors.Any(x => x.Parameters.Length == 0)        // The type must have a parameterless constructor, unless
             || type.IsValueType                                         // - it's a value type
-            || type.IsRecord                                            // - it's a record type
-            || type.IsInterface                                         // - it's an interface (although the type that implements will be actually used)
+            || type.IsRecord()                                          // - it's a record type
+            || type.IsInterface()                                       // - it's an interface (although the type that implements will be actually used)
             || type.Is(KnownType.System_String));                       // - it has a custom Model Binder (e.g. System.String has one)
 
     private static bool CanBeNull(ITypeSymbol type) =>
         type is ITypeParameterSymbol { HasValueTypeConstraint: false }
         || type.IsReferenceType
-        || type.IsNullableValueType;
+        || type.IsNullableValueType();
 
     private static void GetAllDeclaredProperties(ITypeSymbol type, ConcurrentDictionary<ITypeSymbol, bool> examinedTypes, List<IPropertySymbol> declaredProperties)
     {

@@ -43,13 +43,14 @@ namespace SonarAnalyzer.Core.Rules
                 && namedTypeSymbol.ConstructedFrom.DerivesFromAny(TaskTypes);
 
             ITypeSymbol GetReturnType() =>
-                methodSymbol is null
-                    ? symbol.SymbolType
-                    : methodSymbol.ReturnType;
+                methodSymbol != null
+                    ? methodSymbol.ReturnType
+                    : symbol.GetSymbolType();
         }
 
         private static bool IsSafeTaskReturnType(IMethodSymbol methodSymbol) =>
             // IMethodSymbol also handles lambdas
-            methodSymbol is { IsAsync: true };
+            methodSymbol != null
+            && methodSymbol.IsAsync;
     }
 }

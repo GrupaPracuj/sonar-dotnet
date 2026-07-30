@@ -62,8 +62,9 @@ public sealed class CallModelStateIsValid : SonarDiagnosticAnalyzer
     private static void ProcessCodeBlock(SonarCodeBlockStartAnalysisContext<SyntaxKind> codeBlockContext)
     {
         if (codeBlockContext.CodeBlock is MethodDeclarationSyntax methodDeclaration
-            && codeBlockContext.OwningSymbol is IMethodSymbol { IsControllerActionMethod: true } methodSymbol
+            && codeBlockContext.OwningSymbol is IMethodSymbol methodSymbol
             && methodSymbol.Parameters.Any(RequiresValidation)
+            && methodSymbol.IsControllerActionMethod()
             && !HasActionFilterAttribute(methodSymbol))
         {
             var isModelValidated = false;
@@ -113,7 +114,7 @@ public sealed class CallModelStateIsValid : SonarDiagnosticAnalyzer
         type.TypeKind is not TypeKind.Dynamic
         && visited.Add(type)
         && (type.Implements(KnownType.System_ComponentModel_DataAnnotations_IValidatableObject)
-            || type.SelfAndBaseTypes.Any(HasValidationSurface)
+            || type.GetSelfAndBaseTypes().Any(HasValidationSurface)
             || ElementTypesToValidate(type).Any(x => RequiresValidation(x, visited))
             || (type.DeclaringSyntaxReferences.Length > 0 && MemberTypes(type).Any(x => RequiresValidation(x, visited))));
 
@@ -136,7 +137,7 @@ public sealed class CallModelStateIsValid : SonarDiagnosticAnalyzer
     // The types of the instance members (properties and fields) declared on the type or its base types.
     // ASP.NET validation recurses into these nested complex members.
     private static IEnumerable<ITypeSymbol> MemberTypes(ITypeSymbol type) =>
-        type.SelfAndBaseTypes
+        type.GetSelfAndBaseTypes()
             .SelectMany(x => x.GetMembers())
             .Select(x => x switch
             {

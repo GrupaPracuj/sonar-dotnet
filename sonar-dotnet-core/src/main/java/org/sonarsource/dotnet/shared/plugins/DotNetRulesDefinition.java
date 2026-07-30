@@ -22,7 +22,6 @@ import org.sonar.api.server.rule.RulesDefinition;
 import org.sonarsource.analyzer.commons.RuleMetadataLoader;
 
 public class DotNetRulesDefinition implements RulesDefinition {
-  private static final String REPOSITORY_NAME = "SonarAnalyzer";
 
   private final PluginMetadata metadata;
   private final SonarRuntime sonarRuntime;
@@ -34,9 +33,13 @@ public class DotNetRulesDefinition implements RulesDefinition {
     this.roslynRules = roslynRules;
   }
 
+  protected String repositoryName() {
+    return "SonarAnalyzer";
+  }
+
   @Override
   public void define(Context context) {
-    NewRepository repository = context.createRepository(metadata.repositoryKey(), metadata.languageKey()).setName(REPOSITORY_NAME);
+    NewRepository repository = context.createRepository(metadata.repositoryKey(), metadata.languageKey()).setName(repositoryName());
     // Path to SonarWay JSON sets the rule.setActivatedByDefault(true) that is needed by SonarLint in standalone mode
     RuleMetadataLoader ruleMetadataLoader = new RuleMetadataLoader(metadata.resourcesDirectory(), metadata.resourcesDirectory() + "/Sonar_way_profile.json", sonarRuntime);
     ruleMetadataLoader.addRulesByRuleKey(repository, roslynRules.rules().stream().map(RoslynRules.Rule::getId).toList());

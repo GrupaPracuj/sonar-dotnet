@@ -1,0 +1,36 @@
+name: GP C# Linux validation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  validate-gp-csharp-on-linux:
+    name: Validate GP C# rule on Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup .NET SDK from global.json
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build SonarAnalyzer.CSharp (Release)
+        run: dotnet build analyzers/src/SonarAnalyzer.CSharp/SonarAnalyzer.CSharp.csproj -c Release
+
+      - name: Refresh packaged analyzer binary
+        run: cp analyzers/src/SonarAnalyzer.CSharp/bin/Release/netstandard2.0/SonarAnalyzer.CSharp.dll analyzers/packaging/binaries/SonarAnalyzer.CSharp/SonarAnalyzer.CSharp.dll
+
+      - name: Run GP C# plugin tests
+        run: mvn -pl sonar-csharp-plugin -am test -Dlicense.skip=true -DskipITs
+
+      - name: Build GP C# plugin JAR
+        run: mvn -pl sonar-csharp-plugin -am -DskipTests -Dlicense.skip=true package

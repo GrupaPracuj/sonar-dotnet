@@ -19,12 +19,9 @@ namespace SonarAnalyzer.Core.Semantics.Extensions;
 
 internal static class KnownAssemblyExtensions
 {
-    extension(Func<AssemblyIdentity, bool> func)
-    {
-        internal Func<AssemblyIdentity, bool> And(Func<AssemblyIdentity, bool> predicate) =>
-            x => func(x) && predicate(x);
+    internal static Func<AssemblyIdentity, bool> And(this Func<AssemblyIdentity, bool> @this, Func<AssemblyIdentity, bool> predicate) =>
+        x => @this(x) && predicate(x);
 
-        internal Func<AssemblyIdentity, bool> Or(Func<AssemblyIdentity, bool> predicate) =>
-            x => func(x) || predicate(x);
-    }
+    internal static Func<AssemblyIdentity, bool> Or(this Func<AssemblyIdentity, bool> @this, Func<AssemblyIdentity, bool> predicate) =>
+        x => @this(x) || predicate(x);
 }

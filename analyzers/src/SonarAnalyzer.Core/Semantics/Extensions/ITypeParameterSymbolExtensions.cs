@@ -19,13 +19,10 @@ namespace SonarAnalyzer.Core.Semantics.Extensions;
 
 internal static class ITypeParameterSymbolExtensions
 {
-    extension(ITypeParameterSymbol typeParameter)
-    {
-        public bool HasAnyConstraint =>
-            typeParameter.HasConstructorConstraint
-            || typeParameter.HasReferenceTypeConstraint
-            || typeParameter.HasValueTypeConstraint
-            || !typeParameter.ConstraintTypes.IsEmpty
-            || typeParameter.HasUnmanagedTypeConstraint();
-    }
+    public static bool HasAnyConstraint(this ITypeParameterSymbol typeParameter) =>
+        typeParameter.HasConstructorConstraint
+        || typeParameter.HasReferenceTypeConstraint
+        || typeParameter.HasValueTypeConstraint
+        || !typeParameter.ConstraintTypes.IsEmpty
+        || typeParameter.HasUnmanagedTypeConstraint();
 }

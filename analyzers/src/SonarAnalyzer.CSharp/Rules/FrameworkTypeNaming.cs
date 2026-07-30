@@ -39,7 +39,7 @@ namespace SonarAnalyzer.CSharp.Rules
                         return;
                     }
 
-                    var baseTypes = symbol.BaseType.SelfAndBaseTypes.ToList();
+                    var baseTypes = symbol.BaseType.GetSelfAndBaseTypes().ToList();
                     if (baseTypes.Count < SelfAndBaseTypesCount || !baseTypes.Last().Is(KnownType.System_Object))
                     {
                         return;

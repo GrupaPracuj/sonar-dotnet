@@ -63,29 +63,33 @@ public sealed class FieldShouldBeReadonly : SonarDiagnosticAnalyzer
         context.RegisterSymbolAction(
             c =>
             {
-                // Partial classes are not processed.
-                // See https://github.com/dotnet/roslyn/issues/3748
-                if (c.Symbol is INamedTypeSymbol { IsClassOrStruct: true, DeclaringSyntaxReferences.Length: <= 1 } declaredSymbol
+                var declaredSymbol = (INamedTypeSymbol)c.Symbol;
+                if (!declaredSymbol.IsClassOrStruct()
                     // Serializable classes are ignored because the serialized fields
                     // cannot be readonly. [Nonserialized] fields could be readonly,
                     // but all fields with attribute are ignored in the ReadonlyFieldCollector.
-                    && !declaredSymbol.HasAttribute(KnownType.System_SerializableAttribute))
+                    || declaredSymbol.HasAttribute(KnownType.System_SerializableAttribute)
+                    // Partial classes are not processed.
+                    // See https://github.com/dotnet/roslyn/issues/3748
+                    || declaredSymbol.DeclaringSyntaxReferences.Length > 1)
                 {
-                    var partialDeclarations = declaredSymbol.DeclaringSyntaxReferences
-                        .Select(reference => reference.GetSyntax())
-                        .OfType<TypeDeclarationSyntax>()
-                        .Select(x => new TypeDeclarationTuple(x, c.Compilation.GetSemanticModel(x.SyntaxTree)))
-                        .Where(x => x.Model is not null);
+                    return;
+                }
 
-                    var fieldCollector = new ReadonlyFieldCollector(partialDeclarations);
+                var partialDeclarations = declaredSymbol.DeclaringSyntaxReferences
+                    .Select(reference => reference.GetSyntax())
+                    .OfType<TypeDeclarationSyntax>()
+                    .Select(x => new TypeDeclarationTuple(x, c.Compilation.GetSemanticModel(x.SyntaxTree)))
+                    .Where(x => x.Model is not null);
 
-                    if (!fieldCollector.HasAssignmentToThis)
+                var fieldCollector = new ReadonlyFieldCollector(partialDeclarations);
+
+                if (!fieldCollector.HasAssignmentToThis)
+                {
+                    foreach (var field in fieldCollector.NonCompliantFields)
                     {
-                        foreach (var field in fieldCollector.NonCompliantFields)
-                        {
-                            var identifier = field.Node.Identifier;
-                            c.ReportIssue(Rule, identifier, identifier.ValueText);
-                        }
+                        var identifier = field.Node.Identifier;
+                        c.ReportIssue(Rule, identifier, identifier.ValueText);
                     }
                 }
             },
@@ -127,7 +131,7 @@ public sealed class FieldShouldBeReadonly : SonarDiagnosticAnalyzer
 
             static bool ShouldBeExcluded(FieldTuple fieldTuple) =>
                 fieldTuple.Symbol.GetAttributes().Any()
-                || fieldTuple.Symbol.Type is { IsStruct: true, SpecialType: SpecialType.None };
+                || (fieldTuple.Symbol.Type.IsStruct() && fieldTuple.Symbol.Type.SpecialType == SpecialType.None);
         }
 
         private sealed class PartialTypeDeclarationProcessor

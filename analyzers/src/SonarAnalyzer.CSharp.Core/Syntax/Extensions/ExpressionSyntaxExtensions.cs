@@ -42,19 +42,6 @@ public static class ExpressionSyntaxExtensions
         public ExpressionSyntax WithoutEnclosingParentheses =>
             (ExpressionSyntax)expression.RemoveParentheses();
 
-        public ExpressionSyntax WithoutNullForgiving
-        {
-            get
-            {
-                var current = expression;
-                while (current is PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKindEx.SuppressNullableWarningExpression, Operand: { } operand })
-                {
-                    current = operand;
-                }
-                return current;
-            }
-        }
-
         public bool CanBeNull(SemanticModel semanticModel) =>
             semanticModel.GetTypeInfo(expression).Type is { } expressionType
             && (expressionType.IsReferenceType || expressionType.Is(KnownType.System_Nullable_T));
@@ -124,14 +111,13 @@ public static class ExpressionSyntaxExtensions
         /// <summary>
         /// Returns the expression, representing the left side of the dot. This is useful for finding the expression of an invoked expression. <br/>
         /// For the expression of the invocation <c>M()</c> in the expression <c>this.A.B.M()</c> the member access <c>this.A.B</c> is returned and <br/>
-        /// for <c>this.A?.B?.M()</c> the member binding <c>.B</c> is returned. <br/>
-        /// A null-forgiving operator is stripped, both from the input and from the result.
+        /// for <c>this.A?.B?.M()</c> the member binding <c>.B</c> is returned.
         /// </summary>
         public ExpressionSyntax LeftOfDot =>
-            expression.WithoutNullForgiving switch
+            expression switch
             {
-                MemberAccessExpressionSyntax memberAccessExpression => memberAccessExpression.Expression.WithoutNullForgiving,
-                MemberBindingExpressionSyntax memberBindingExpression => memberBindingExpression.GetParentConditionalAccessExpression()?.Expression.WithoutNullForgiving,
+                MemberAccessExpressionSyntax memberAccessExpression => memberAccessExpression.Expression,
+                MemberBindingExpressionSyntax memberBindingExpression => memberBindingExpression.GetParentConditionalAccessExpression()?.Expression,
                 _ => null,
             };
 

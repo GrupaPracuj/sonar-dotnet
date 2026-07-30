@@ -113,7 +113,7 @@ public class TelemetryJsonSensorTest {
     var telemetryJsonCollector = new TelemetryJsonCollector();
     var telemetryJsonSensor = new TelemetryJsonSensor(telemetryJsonCollector, pluginMetadata, configuration);
     telemetryJsonSensor.execute(testContext);
-    assertThat(logTester.logs()).singleElement().isEqualTo(
-      "Cannot open telemetry file " + file + ", java.io.FileNotFoundException: " + file + " (The system cannot find the file specified)");
+    assertThat(logTester.logs()).singleElement().asString().startsWith(
+      "Cannot open telemetry file " + file + ", java.io.FileNotFoundException: " + file);
   }
 }

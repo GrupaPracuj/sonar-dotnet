@@ -52,15 +52,15 @@ public sealed class TestClassShouldHaveTestMethod : SonarDiagnosticAnalyzer
             SyntaxKindEx.RecordDeclaration);
 
     private static bool HasAnyTestMethod(INamespaceOrTypeSymbol symbol) =>
-        symbol.GetMembers().OfType<IMethodSymbol>().Any(m => m.IsTestMethod);
+        symbol.GetMembers().OfType<IMethodSymbol>().Any(m => m.IsTestMethod());
 
     private static bool IsViolatingRule(INamedTypeSymbol symbol) =>
-        symbol.IsTestClass
+        symbol.IsTestClass()
         && !HasAnyTestMethod(symbol);
 
     private static bool IsExceptionToTheRule(ITypeSymbol symbol) =>
         symbol.IsAbstract
-        || symbol.SelfAndBaseTypes.Any(HasAnyTestMethod)
+        || symbol.GetSelfAndBaseTypes().Any(HasAnyTestMethod)
         || HasSetupOrCleanupAttributes(symbol);
 
     private static bool HasSetupOrCleanupAttributes(INamespaceOrTypeSymbol symbol) =>

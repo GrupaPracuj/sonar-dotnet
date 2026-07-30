@@ -65,7 +65,7 @@ namespace SonarAnalyzer.CSharp.Rules
                     }
 
                     var thisTypeRootNamespace = GetRootNamespace(objectTypeInfo.Symbol);
-                    var baseTypesCount = objectTypeInfo.Symbol.BaseType.SelfAndBaseTypes
+                    var baseTypesCount = objectTypeInfo.Symbol.BaseType.GetSelfAndBaseTypes()
                         .TakeWhile(s => GetRootNamespace(s) == thisTypeRootNamespace)
                         .Select(nts => nts.OriginalDefinition.ToDisplayString())
                         .TakeWhile(className => filters.All(regex => !regex.SafeIsMatch(className)))

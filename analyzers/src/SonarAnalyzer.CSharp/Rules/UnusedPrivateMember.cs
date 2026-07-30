@@ -94,8 +94,9 @@ public sealed class UnusedPrivateMember : SonarDiagnosticAnalyzer
                                       BidirectionalDictionary<ISymbol, SyntaxNode> fieldLikeSymbols,
                                       SonarSymbolReportingContext context)
     {
-        // We skip top level statements since they cannot have fields. Other declared types are analyzed separately.
-        if (namedType is { ContainingType: not null } or { IsTopLevelProgram: true }
+        if (namedType.ContainingType is not null
+            // We skip top level statements since they cannot have fields. Other declared types are analyzed separately.
+            || namedType.IsTopLevelProgram()
             || namedType.DerivesFromAny(IgnoredTypes)
             // Collect symbols of private members that could potentially be removed
             || RetrieveRemovableSymbols(namedType, compilation, context) is not { } removableSymbolsCollector)
@@ -506,15 +507,17 @@ public sealed class UnusedPrivateMember : SonarDiagnosticAnalyzer
 
         private static bool IsRemovableMethod(IMethodSymbol methodSymbol) =>
             IsRemovableMember(methodSymbol)
-            && methodSymbol is { MethodKind: MethodKind.Ordinary or MethodKind.Constructor or MethodKindEx.LocalFunction, IsMefConstructor: false }
+            && (methodSymbol.MethodKind is MethodKind.Ordinary or MethodKind.Constructor or MethodKindEx.LocalFunction)
             && !methodSymbol.IsMainMethod()
             && !methodSymbol.IsEventHandler() // Event handlers could be added in XAML and no method reference will be generated in the .g.cs file.
             && !methodSymbol.IsSerializationConstructor()
-            && !methodSymbol.IsRecordPrintMembers();
+            && !methodSymbol.IsRecordPrintMembers()
+            && !methodSymbol.IsMefConstructor();
 
         private static bool IsRemovable(ISymbol symbol) =>
-            symbol is { IsImplicitlyDeclared: false, IsVirtual: false, OverriddenMember: null, IsSerializableMember: false, ContainingType.IsInterface: false }
+            symbol is { IsImplicitlyDeclared: false, IsVirtual: false, OverriddenMember: null, IsSerializableMember: false }
             && !HasAttributes(symbol)
+            && !symbol.ContainingType.IsInterface()
             && !(symbol.Kind is SymbolKind.Field && symbol.ContainingType.HasAttribute(KnownType.System_Runtime_InteropServices_StructLayoutAttribute))
             && symbol.InterfaceMembers().IsEmpty;
 
@@ -534,9 +537,10 @@ public sealed class UnusedPrivateMember : SonarDiagnosticAnalyzer
 
         private static bool IsRemovableType(ISymbol typeSymbol) =>
             typeSymbol.EffectiveAccessibility is var accessibility
-            && typeSymbol is { ContainingType: not null } and not INamedTypeSymbol { IsMefExportedType: true }
+            && typeSymbol.ContainingType is not null
             && (accessibility is Accessibility.Private or Accessibility.Internal)
-            && IsRemovable(typeSymbol);
+            && IsRemovable(typeSymbol)
+            && !(typeSymbol is INamedTypeSymbol namedType && namedType.IsMefExportedType());
 
         private void VisitBaseTypeDeclaration(SyntaxNode node)
         {

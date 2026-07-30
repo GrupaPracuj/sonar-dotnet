@@ -80,7 +80,8 @@ public sealed class SwaggerActionReturnType : SonarDiagnosticAnalyzer
     {
         var responseInvocations = FindSuccessResponses(methodDeclaration, nodeContext.Model);
         return responseInvocations.Length == 0
-               || nodeContext.Model.GetDeclaredSymbol(methodDeclaration, nodeContext.Cancel) is not { IsControllerActionMethod: true } method
+               || nodeContext.Model.GetDeclaredSymbol(methodDeclaration, nodeContext.Cancel) is not { } method
+               || !method.IsControllerActionMethod()
                || !method.ReturnType.DerivesOrImplementsAny(ControllerActionReturnTypes)
                || method.AttributesWithInherited.Any(x => x.AttributeClass.DerivesFrom(KnownType.Microsoft_AspNetCore_Mvc_ApiConventionMethodAttribute)
                                                                || HasApiExplorerSettingsWithIgnoreApiTrue(x)
@@ -107,7 +108,7 @@ public sealed class SwaggerActionReturnType : SonarDiagnosticAnalyzer
                 .OfType<ObjectCreationExpressionSyntax>()
                 .Where(x => x.GetName() == "ObjectResult"
                             && x.ArgumentList?.Arguments.Count > 0
-                            && model.GetSymbolInfo(x.Type).Symbol.SymbolType.Is(KnownType.Microsoft_AspNetCore_Mvc_ObjectResult));
+                            && model.GetSymbolInfo(x.Type).Symbol.GetSymbolType().Is(KnownType.Microsoft_AspNetCore_Mvc_ObjectResult));
 
         IEnumerable<SyntaxNode> ResultMethodsInvocations() =>
             node.DescendantNodes()

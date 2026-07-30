@@ -57,7 +57,8 @@ public sealed class ApiControllersShouldNotDeriveDirectlyFromController : SonarD
 
     private static void CheckController(SonarSymbolStartAnalysisContext context)
     {
-        if (context.Symbol is INamedTypeSymbol { IsPubliclyAccessible: true, IsControllerType: true } controllerSymbol
+        if (context.Symbol is INamedTypeSymbol { IsPubliclyAccessible: true } controllerSymbol
+            && controllerSymbol.IsControllerType()
             && controllerSymbol.AnyAttributeDerivesFrom(KnownType.Microsoft_AspNetCore_Mvc_ApiControllerAttribute)
             && controllerSymbol.BaseType.Is(KnownType.Microsoft_AspNetCore_Mvc_Controller))
         {

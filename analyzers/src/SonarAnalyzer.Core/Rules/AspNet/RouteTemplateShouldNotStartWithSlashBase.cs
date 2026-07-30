@@ -41,12 +41,13 @@ public abstract class RouteTemplateShouldNotStartWithSlashBase<TSyntaxKind>() : 
 
             compilationStartContext.RegisterSymbolStartAction(symbolStartContext =>
             {
-                if (symbolStartContext.Symbol is INamedTypeSymbol { IsControllerType: true } symbol)
+                var symbol = (INamedTypeSymbol)symbolStartContext.Symbol;
+                if (symbol.IsControllerType())
                 {
                     var controllerActionInfo = new ConcurrentStack<ActionParametersInfo>();
                     symbolStartContext.RegisterSyntaxNodeAction(nodeContext =>
                     {
-                        if (nodeContext.Model.GetDeclaredSymbol(nodeContext.Node) is IMethodSymbol { IsControllerActionMethod: true } methodSymbol)
+                        if (nodeContext.Model.GetDeclaredSymbol(nodeContext.Node) is IMethodSymbol methodSymbol && methodSymbol.IsControllerActionMethod())
                         {
                             controllerActionInfo.Push(new ActionParametersInfo(RouteAttributeTemplateArguments(methodSymbol.GetAttributes())));
                         }

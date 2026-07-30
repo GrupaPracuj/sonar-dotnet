@@ -46,7 +46,7 @@ public sealed class ComparableInterfaceImplementation : SonarDiagnosticAnalyzer
                 var classDeclaration = (TypeDeclarationSyntax)c.Node;
                 if (c.Model.GetDeclaredSymbol(classDeclaration) is { } classSymbol
                     and not { ContainingType: not null, EffectiveAccessibility: Accessibility.Private or Accessibility.ProtectedAndInternal }
-                    && !classSymbol.BaseType.SelfAndBaseTypes.Any(t => t.ImplementsAny(ComparableInterfaces))
+                    && !classSymbol.BaseType.GetSelfAndBaseTypes().Any(t => t.ImplementsAny(ComparableInterfaces))
                     && ImplementedComparableInterfaces(classSymbol) is var implementedComparableInterfaces
                     && implementedComparableInterfaces.Any()
                     && MembersToOverride(classSymbol.GetMembers().OfType<IMethodSymbol>()).ToList() is { } membersToOverride
@@ -79,7 +79,7 @@ public sealed class ComparableInterfaceImplementation : SonarDiagnosticAnalyzer
 
         var overridenOperators = methods
             .Where(x => x.MethodKind == MethodKind.UserDefinedOperator)
-            .Select(x => x.ComparisonKind);
+            .Select(x => x.ComparisonKind());
 
         foreach (var comparisonKind in ComparisonKinds.Except(overridenOperators))
         {

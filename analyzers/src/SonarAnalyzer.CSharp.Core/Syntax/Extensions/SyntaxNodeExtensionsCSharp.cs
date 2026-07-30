@@ -247,11 +247,6 @@ public static class SyntaxNodeExtensionsCSharp
         return node;
     }
 
-    public static SyntaxNode WalkUpNullForgiving(this SyntaxNode node) =>
-        node is PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKindEx.SuppressNullableWarningExpression } suppression
-            ? suppression.Parent
-            : node;
-
     public static SyntaxToken? GetIdentifier(this SyntaxNode node) =>
         node switch
         {

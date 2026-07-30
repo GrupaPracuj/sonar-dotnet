@@ -6,14 +6,14 @@
   <parent>
     <groupId>org.sonarsource.dotnet</groupId>
     <artifactId>sonar-dotnet</artifactId>
-    <version>10.32-SNAPSHOT</version>
+    <version>10.31-SNAPSHOT</version>
   </parent>
 
   <artifactId>sonar-csharp-plugin</artifactId>
   <packaging>sonar-plugin</packaging>
 
-  <name>SonarC#</name>
-  <description>Code Analyzer for C#</description>
+  <name>GP C#</name>
+  <description>GP C# companion analyzer plugin</description>
   <url>http://redirect.sonarsource.com/plugins/csharp.html</url>
   <inceptionYear>2014</inceptionYear>
 
@@ -107,6 +107,7 @@
   </dependencies>
 
   <build>
+    <finalName>gp-sonar-csharp-plugin-1.0-SNAPSHOT</finalName>
     <resources>
       <resource>
         <directory>../</directory>
@@ -127,7 +128,7 @@
         <includes>
           <include>org/sonar/plugins/csharp/*.json</include>
           <include>org/sonar/plugins/csharp/*.html</include>
-          <include>static/SonarAnalyzer-csharp-${project.version}.zip</include>
+          <include>static/SonarAnalyzer-GP-csharp-${project.version}.zip</include>
         </includes>
       </resource>
     </resources>
@@ -137,7 +138,8 @@
         <groupId>org.sonarsource.sonar-packaging-maven-plugin</groupId>
         <artifactId>sonar-packaging-maven-plugin</artifactId>
         <configuration>
-          <pluginName>C# Code Quality and Security</pluginName>
+          <pluginKey>GP-csharp</pluginKey>
+          <pluginName>GP C#</pluginName>
           <pluginClass>org.sonar.plugins.csharp.CSharpPlugin</pluginClass>
           <skipDependenciesPackaging>true</skipDependenciesPackaging>
           <sonarLintSupported>false</sonarLintSupported>
@@ -225,7 +227,7 @@
                     <include name="*.txt"/>
                   </fileset>
                 </copy>
-                <zip destfile="${sonarAnalyzer.workDirectory}/static/SonarAnalyzer-csharp-${project.version}.zip"
+                <zip destfile="${sonarAnalyzer.workDirectory}/static/SonarAnalyzer-GP-csharp-${project.version}.zip"
                      basedir="${sonarAnalyzer.workDirectory}/SonarAnalyzer.CSharp"/>
                 <copy todir="${sonarAnalyzer.workDirectory}/org/sonar/plugins/csharp">
                   <fileset dir="${rspec.directory}/cs">

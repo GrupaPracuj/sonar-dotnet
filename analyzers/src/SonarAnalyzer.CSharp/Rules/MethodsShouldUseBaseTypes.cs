@@ -37,7 +37,7 @@ namespace SonarAnalyzer.CSharp.Rules
                 || methodSymbol.Parameters.Length == 0
                 || methodSymbol.IsOverride
                 || methodSymbol.IsVirtual
-                || methodSymbol.IsControllerActionMethod
+                || methodSymbol.IsControllerActionMethod()
                 || methodSymbol.InterfaceMembers().Any()
                 || methodSymbol.IsEventHandler())
             {
@@ -232,7 +232,7 @@ namespace SonarAnalyzer.CSharp.Rules
 
                 var mostGeneralType = FindMostGeneralType();
 
-                return Equals(mostGeneralType, parameterSymbol.Type) || IsIgnoredBaseType(mostGeneralType.SymbolType)
+                return Equals(mostGeneralType, parameterSymbol.Type) || IsIgnoredBaseType(mostGeneralType.GetSymbolType())
                     ? null
                     : Diagnostic.Create(Rule, parameterSymbol.Locations.First(), mostGeneralType.ToDisplayString(), parameterSymbol.Type.ToDisplayString());
             }
