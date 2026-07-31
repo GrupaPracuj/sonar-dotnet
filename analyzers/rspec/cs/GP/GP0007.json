@@ -1,0 +1,25 @@
+{
+  "title": "Shared dictionaries should be consumed through Juno.Dictionaries",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "HIGH"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "architecture",
+    "dictionary"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0007",
+  "sqKey": "GP0007",
+  "scope": "All",
+  "quickfix": "unknown"
+}

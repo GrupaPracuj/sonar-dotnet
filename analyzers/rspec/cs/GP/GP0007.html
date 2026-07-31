@@ -1,0 +1,9 @@
+<p>
+  Shared dictionaries should be consumed through <code>Juno.Dictionaries</code> instead of direct HTTP calls to Skidblandir.
+</p>
+<p>
+  Direct calls to Skidblandir endpoints couple application code to transport details and bypass standardized caching/retry behavior.
+</p>
+<p>
+  Use Juno dictionary abstractions in application code and keep Skidblandir API communication behind that integration layer.
+</p>

@@ -16,22 +16,6 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         "RunInTransaction"
     };
 
-    private static readonly HashSet<string> JunoHttpTargetTypes = new(StringComparer.Ordinal)
-    {
-        "GP.Juno.HttpApiClient.HttpSending.HttpSender",
-        "GP.Juno.HttpClient.IHttpClient",
-        "GP.Juno.HttpClient.HttpRequestProperties",
-        "GP.Juno.Abstractions.HttpApiClient.HttpSending.HttpSender",
-        "GP.Juno.Abstractions.HttpClient.IHttpClient",
-        "GP.Juno.Abstractions.HttpClient.HttpRequestProperties"
-    };
-
-    private static readonly HashSet<string> FrameworkHttpTargetTypes = new(StringComparer.Ordinal)
-    {
-        "System.Net.Http.HttpClient",
-        "System.Net.Http.HttpMessageInvoker"
-    };
-
     private static readonly HashSet<string> JunoServiceBusTargetTypes = new(StringComparer.Ordinal)
     {
         "GP.Juno.EventStream.EventStream",
@@ -215,7 +199,7 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
             return false;
         }
 
-        return IsJunoServiceBusCall(method) || IsJunoHttpCall(method) || IsFrameworkHttpCall(method);
+        return IsJunoServiceBusCall(method) || GpHttpCallHelper.IsHttpCall(method);
     }
 
     private static bool IsJunoServiceBusCall(IMethodSymbol method)
@@ -242,43 +226,6 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         return namespaceName.Equals("GP.Juno.Abstractions.EventStream", StringComparison.Ordinal)
                && type?.Name == "IPublisher";
     }
-
-    private static bool IsJunoHttpCall(IMethodSymbol method)
-    {
-        if (IsJunoHttpTargetType(method.ContainingType))
-        {
-            return true;
-        }
-
-        return method.IsExtensionMethod
-               && method.Parameters.Length > 0
-               && IsJunoHttpTargetType(method.Parameters[0].Type);
-    }
-
-    private static bool IsJunoHttpTargetType(ITypeSymbol type)
-    {
-        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
-        return JunoHttpTargetTypes.Contains(typeDisplayName);
-    }
-
-    private static bool IsFrameworkHttpCall(IMethodSymbol method)
-    {
-        if (IsFrameworkHttpTargetType(method.ContainingType))
-        {
-            return true;
-        }
-
-        return method.IsExtensionMethod
-               && method.Parameters.Length > 0
-               && IsFrameworkHttpTargetType(method.Parameters[0].Type);
-    }
-
-    private static bool IsFrameworkHttpTargetType(ITypeSymbol type)
-    {
-        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
-        return FrameworkHttpTargetTypes.Contains(typeDisplayName);
-    }
-
 
     private static bool IsTransactionOwnerInvocation(InvocationExpressionSyntax invocation, string transactionVariableName) =>
         transactionVariableName is not null
