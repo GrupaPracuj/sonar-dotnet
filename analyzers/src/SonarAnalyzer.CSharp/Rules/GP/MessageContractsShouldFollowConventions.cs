@@ -13,9 +13,26 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     private const string CommandSuffixMessage = "Rename command '{0}' to remove the 'Command' suffix.";
     private const string ImmutableMessageFormat = "Message contract '{0}' should be immutable and must not contain business behavior.";
 
+    private const string JunoNamespacePrefix = "GP.Juno";
+    private const string MassTransitNamespacePrefix = "MassTransit";
+
     private static readonly DiagnosticDescriptor EventSuffixRule = DescriptorFactory.Create(EventSuffixRuleId, EventSuffixMessage);
     private static readonly DiagnosticDescriptor CommandSuffixRule = DescriptorFactory.Create(CommandSuffixRuleId, CommandSuffixMessage);
     private static readonly DiagnosticDescriptor ImmutableMessageRule = DescriptorFactory.Create(ImmutableMessageRuleId, ImmutableMessageFormat);
+
+    private static readonly HashSet<string> FluentMessageMethods = new(StringComparer.Ordinal)
+    {
+        "Publishes",
+        "Sends",
+        "Publish",
+        "Send"
+    };
+
+    private static readonly HashSet<string> MessagePostfixes = new(StringComparer.Ordinal)
+    {
+        "Event",
+        "Command"
+    };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(EventSuffixRule, CommandSuffixRule, ImmutableMessageRule);
 
@@ -29,39 +46,89 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context, ConcurrentDictionary<string, bool> validatedTypes)
     {
         if (context.Node is not InvocationExpressionSyntax invocation
-            || invocation.Expression is not MemberAccessExpressionSyntax memberAccess
-            || memberAccess.Name is not GenericNameSyntax genericName
-            || genericName.TypeArgumentList.Arguments.Count != 1)
+            || !TryGetMessageInvocation(context.Model, invocation, out var messageType, out var reportNode))
         {
             return;
         }
 
-        var methodName = genericName.Identifier.ValueText;
-        if (methodName is not ("Publishes" or "Sends"))
+        var matchedPostfix = MessagePostfixes.FirstOrDefault(x => messageType.Name.EndsWith(x, StringComparison.Ordinal));
+        if (matchedPostfix == "Event")
         {
-            return;
+            context.ReportIssue(EventSuffixRule, reportNode, messageType.Name);
         }
-
-        var typeSyntax = genericName.TypeArgumentList.Arguments[0];
-        if (context.Model.GetTypeInfo(typeSyntax).Type is not INamedTypeSymbol messageType)
+        else if (matchedPostfix == "Command")
         {
-            return;
-        }
-
-        if (methodName == "Publishes" && messageType.Name.EndsWith("Event", StringComparison.Ordinal))
-        {
-            context.ReportIssue(EventSuffixRule, typeSyntax, messageType.Name);
-        }
-
-        if (methodName == "Sends" && messageType.Name.EndsWith("Command", StringComparison.Ordinal))
-        {
-            context.ReportIssue(CommandSuffixRule, typeSyntax, messageType.Name);
+            context.ReportIssue(CommandSuffixRule, reportNode, messageType.Name);
         }
 
         if (validatedTypes.TryAdd(messageType.ToDisplayString(), true))
         {
             ValidateMessageShape(context, messageType);
         }
+    }
+
+    private static bool TryGetMessageInvocation(SemanticModel model, InvocationExpressionSyntax invocation, out INamedTypeSymbol messageType, out SyntaxNode reportNode)
+    {
+        messageType = null;
+        reportNode = invocation;
+
+        if (invocation.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName }
+            && genericName.TypeArgumentList.Arguments.Count == 1
+            && FluentMessageMethods.Contains(genericName.Identifier.ValueText)
+            && model.GetTypeInfo(genericName.TypeArgumentList.Arguments[0]).Type is INamedTypeSymbol fluentType)
+        {
+            messageType = fluentType;
+            reportNode = genericName.TypeArgumentList.Arguments[0];
+            return true;
+        }
+
+        if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !FluentMessageMethods.Contains(method.Name)
+            || !IsJunoOrMassTransitMethod(method))
+        {
+            return false;
+        }
+
+        return TryGetMessageType(model, invocation, method, out messageType, out reportNode);
+    }
+
+    private static bool IsJunoOrMassTransitMethod(IMethodSymbol method)
+    {
+        var methodNamespace = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        if (IsKnownTransportNamespace(methodNamespace))
+        {
+            return true;
+        }
+
+        var typeNamespace = method.ContainingType?.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        return IsKnownTransportNamespace(typeNamespace);
+    }
+
+    private static bool IsKnownTransportNamespace(string namespaceName) =>
+        namespaceName.StartsWith(JunoNamespacePrefix, StringComparison.Ordinal)
+        || namespaceName.StartsWith(MassTransitNamespacePrefix, StringComparison.Ordinal);
+
+    private static bool TryGetMessageType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method, out INamedTypeSymbol messageType, out SyntaxNode reportNode)
+    {
+        if (method.TypeArguments.FirstOrDefault() is INamedTypeSymbol typeArgument)
+        {
+            messageType = typeArgument;
+            reportNode = invocation;
+            return true;
+        }
+
+        if (invocation.ArgumentList.Arguments.FirstOrDefault() is { Expression: var firstArgumentExpression }
+            && model.GetTypeInfo(firstArgumentExpression).Type is INamedTypeSymbol argumentType
+            && argumentType.SpecialType != SpecialType.System_Object)
+        {
+            messageType = argumentType;
+            reportNode = firstArgumentExpression;
+            return true;
+        }
+
+        messageType = null;
+        reportNode = invocation;
+        return false;
     }
 
     private static void ValidateMessageShape(SonarSyntaxNodeReportingContext context, INamedTypeSymbol messageType)

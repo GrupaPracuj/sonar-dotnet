@@ -79,6 +79,61 @@ public class MessageContractsShouldFollowConventionsTest
             .Verify();
 
     [TestMethod]
+    public void MessageContractsShouldFollowConventions_JunoPublishEventSuffix() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace GP.Juno.Abstractions.EventStream
+            {
+                public interface IPublisher
+                {
+                    Task Publish<T>(T @event, CancellationToken cancellationToken = default(CancellationToken)) where T : class;
+                }
+            }
+
+            public class PaymentReceivedEvent { }
+
+            public class Service
+            {
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public Service(GP.Juno.Abstractions.EventStream.IPublisher publisher) => _publisher = publisher;
+
+                public Task Send() => _publisher.Publish(new PaymentReceivedEvent()); // Noncompliant {{Rename event 'PaymentReceivedEvent' to remove the 'Event' suffix.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_MassTransitSendCommandSuffix() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace MassTransit
+            {
+                public interface ISendEndpoint
+                {
+                    Task Send<T>(T message) where T : class;
+                }
+            }
+
+            public class AcceptOrderCommand { }
+
+            public class Service
+            {
+                private readonly MassTransit.ISendEndpoint _endpoint;
+
+                public Service(MassTransit.ISendEndpoint endpoint) => _endpoint = endpoint;
+
+                public Task Send() => _endpoint.Send(new AcceptOrderCommand()); // Noncompliant {{Rename command 'AcceptOrderCommand' to remove the 'Command' suffix.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void MessageContractsShouldFollowConventions_Compliant() =>
         builder.AddSnippet(
             """
