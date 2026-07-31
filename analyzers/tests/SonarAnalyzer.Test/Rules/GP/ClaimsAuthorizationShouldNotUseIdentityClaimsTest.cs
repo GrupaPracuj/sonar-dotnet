@@ -1,21 +1,4 @@
-﻿/*
- * SonarAnalyzer for .NET
- * Copyright (C) SonarSource Sàrl
- * mailto:info AT sonarsource DOT com
- *
- * You can redistribute and/or modify this program under the terms of
- * the Sonar Source-Available License Version 1, as published by SonarSource Sàrl.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the Sonar Source-Available License for more details.
- *
- * You should have received a copy of the Sonar Source-Available License
- * along with this program; if not, see https://sonarsource.com/license/ssal/
- */
-
-using CS = SonarAnalyzer.CSharp.Rules;
+﻿using CS = SonarAnalyzer.CSharp.Rules;
 
 namespace SonarAnalyzer.Test.Rules.GP;
 
@@ -81,6 +64,86 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
             [Authorize(Policy = "sub")] // Noncompliant {{Do not base access control on identity claim 'sub'.}}
             public class Endpoint { }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoOrCalledByApi_HasClaimPredicate() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
+
+            public class ClaimsPrincipal
+            {
+                public bool HasClaim(Func<Claim, bool> predicate) => true;
+            }
+
+            public class Claim
+            {
+                public string Type { get; set; }
+            }
+
+            public interface IServiceCollection { }
+
+            namespace GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection
+            {
+                public static class AlternativePermissionExtensions
+                {
+                    public static IServiceCollection OrCalledByApi<TResource>(this IServiceCollection services, Func<ClaimsPrincipal, bool> userPredicate = null) => services;
+                }
+            }
+
+            public class Startup
+            {
+                public void ConfigureServices(IServiceCollection services)
+                {
+                    services.OrCalledByApi<string>(user => user.HasClaim(c => c.Type == "sub")); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoAddUserActivitiesAlternative_FindFirstClaimTypes() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
+
+            public static class ClaimTypes
+            {
+                public const string NameIdentifier = "sub";
+            }
+
+            public class Claim
+            {
+                public string Type { get; set; }
+            }
+
+            public class ClaimsPrincipal
+            {
+                public Claim FindFirst(string type) => null;
+                public Claim FindFirst(object type) => null;
+            }
+
+            public interface IServiceCollection { }
+
+            namespace GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection
+            {
+                public static class AlternativePermissionExtensions
+                {
+                    public static IServiceCollection AddUserActivitiesAlternative(this IServiceCollection services, Func<ClaimsPrincipal, bool> alternativePermission) => services;
+                }
+            }
+
+            public class Startup
+            {
+                public void ConfigureServices(IServiceCollection services)
+                {
+                    services.AddUserActivitiesAlternative(user => user.FindFirst(ClaimTypes.NameIdentifier) != null); // Noncompliant {{Do not base access control on identity claim 'NameIdentifier'.}}
+                }
+            }
             """)
             .Verify();
 
