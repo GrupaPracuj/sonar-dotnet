@@ -1,0 +1,25 @@
+{
+  "title": "Route segments should use kebab-case",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0012",
+  "sqKey": "GP0012",
+  "scope": "All",
+  "quickfix": "unknown"
+}

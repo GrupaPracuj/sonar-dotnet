@@ -1,0 +1,9 @@
+<p>
+  Route paths should use nouns to identify resources, e.g. <code>/orders</code>, not verbs describing an action, e.g.
+  <code>/getOrders</code> or <code>/create-order</code>.
+</p>
+<p>
+  The action is already expressed by the HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>,
+  <code>PATCH</code>, <code>DELETE</code>). Repeating it in the path is redundant and, when the two disagree
+  (e.g. a <code>[HttpPost("get-order")]</code>), actively misleading.
+</p>

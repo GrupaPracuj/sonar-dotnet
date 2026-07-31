@@ -1,0 +1,25 @@
+{
+  "title": "Routes should not end with a trailing slash",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0014",
+  "sqKey": "GP0014",
+  "scope": "All",
+  "quickfix": "unknown"
+}
