@@ -1,0 +1,9 @@
+<p>
+  For GET endpoints that return a collection, return <code>200 OK</code> with an empty collection instead of <code>204 No Content</code>.
+</p>
+<p>
+  Returning <code>204</code> for collection reads makes response handling inconsistent and forces clients to branch on transport status instead of domain payload.
+</p>
+<p>
+  Keep list endpoints stable: if the request is successful and no items match, respond with <code>200</code> and an empty list.
+</p>

@@ -1,0 +1,25 @@
+{
+  "title": "GET collection endpoints should not return 204 No Content",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0009",
+  "sqKey": "GP0009",
+  "scope": "All",
+  "quickfix": "unknown"
+}

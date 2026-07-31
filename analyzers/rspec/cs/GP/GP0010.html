@@ -1,0 +1,9 @@
+<p>
+  For GET endpoints that return a collection, return <code>200 OK</code> with an empty collection instead of <code>404 Not Found</code>.
+</p>
+<p>
+  <code>404</code> should describe a missing resource/route, not an empty result set for a valid collection endpoint.
+</p>
+<p>
+  If the collection query is valid and no items match, keep response semantics stable by returning <code>200</code> and an empty list.
+</p>
