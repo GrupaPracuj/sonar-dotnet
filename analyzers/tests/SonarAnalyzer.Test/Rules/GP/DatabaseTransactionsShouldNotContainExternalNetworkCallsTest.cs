@@ -8,7 +8,7 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.DatabaseTransactionsShouldNotContainExternalNetworkCalls>();
 
     [TestMethod]
-    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantPublishInsideTransaction() =>
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantPublishInsideTransactionForUnknownType() =>
         builder.AddSnippet(
             """
             using System.Threading.Tasks;
@@ -45,13 +45,13 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
                     using (var transaction = await _transactional.StartTransaction())
                     {
                         await transaction.Execute(order);
-                        await _eventStream.Publish(order); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        await _eventStream.Publish(order);
                         transaction.Commit();
                     }
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantOnlySqlStepsInsideTransaction() =>
@@ -570,7 +570,7 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
             .Verify();
 
     [TestMethod]
-    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantInsideTransactionScope() =>
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantInsideTransactionScopeForUnknownType() =>
         builder.AddSnippet(
             """
             using System;
@@ -598,13 +598,13 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
                 {
                     using (var scope = new System.Transactions.TransactionScope())
                     {
-                        await _eventStream.Publish(new object()); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        await _eventStream.Publish(new object());
                         scope.Complete();
                     }
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantCallAfterTransactionScopeComplete() =>
@@ -689,4 +689,149 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantForFrameworkHttpClient() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace System.Net.Http
+            {
+                public class HttpClient
+                {
+                    public Task<object> GetAsync(string url) => Task.FromResult((object)null);
+                }
+            }
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                Task Execute(object command);
+                void Commit();
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+                public Service(ITransactional transactional)
+                {
+                    _transactional = transactional;
+                }
+
+                public async Task Save(object order)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        await transaction.Execute(order);
+                        await _httpClient.GetAsync("/orders"); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        transaction.Commit();
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantForCustomHttpClientType() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace MyCompany.Http
+            {
+                public class HttpClient
+                {
+                    public Task<object> GetAsync(string url) => Task.FromResult((object)null);
+                }
+            }
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                Task Execute(object command);
+                void Commit();
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly MyCompany.Http.HttpClient _httpClient = new MyCompany.Http.HttpClient();
+
+                public Service(ITransactional transactional)
+                {
+                    _transactional = transactional;
+                }
+
+                public async Task Save(object order)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        await transaction.Execute(order);
+                        await _httpClient.GetAsync("/orders");
+                        transaction.Commit();
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantForAnyJunoServiceBusMethod() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace GP.Juno.EventStream
+            {
+                public interface EventStream
+                {
+                    Task Ping();
+                }
+            }
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                Task Execute(object command);
+                void Commit();
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly GP.Juno.EventStream.EventStream _eventStream;
+
+                public Service(ITransactional transactional, GP.Juno.EventStream.EventStream eventStream)
+                {
+                    _transactional = transactional;
+                    _eventStream = eventStream;
+                }
+
+                public async Task Save(object order)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        await transaction.Execute(order);
+                        await _eventStream.Ping(); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        transaction.Commit();
+                    }
+                }
+            }
+            """)
+            .Verify();
 }

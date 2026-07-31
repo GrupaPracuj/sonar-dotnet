@@ -16,50 +16,26 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         "RunInTransaction"
     };
 
-    private static readonly HashSet<string> NetworkMethodNames = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> JunoHttpTargetTypes = new(StringComparer.Ordinal)
     {
-        "Publish",
-        "Send",
-        "Produce",
-        "GetAsync",
-        "PostAsync",
-        "PutAsync",
-        "DeleteAsync",
-        "SendAsync",
-        "GetFromJsonAsync",
-        "PostAsJsonAsync"
+        "GP.Juno.HttpApiClient.HttpSending.HttpSender",
+        "GP.Juno.HttpClient.IHttpClient",
+        "GP.Juno.HttpClient.HttpRequestProperties",
+        "GP.Juno.Abstractions.HttpApiClient.HttpSending.HttpSender",
+        "GP.Juno.Abstractions.HttpClient.IHttpClient",
+        "GP.Juno.Abstractions.HttpClient.HttpRequestProperties"
     };
 
-    private static readonly HashSet<string> JunoHttpMethodNames = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> FrameworkHttpTargetTypes = new(StringComparer.Ordinal)
     {
-        "Get",
-        "Post",
-        "Put",
-        "Patch",
-        "Delete",
-        "Head",
-        "Options",
-        "PostJson",
-        "PutJson",
-        "PatchJson",
-        "DeleteJson",
-        "GetJson",
-        "GetBytes",
-        "PostFormUrlEncoded",
-        "PostFormMultipart",
-        "PutFormUrlEncoded"
+        "System.Net.Http.HttpClient",
+        "System.Net.Http.HttpMessageInvoker"
     };
 
-    private static readonly string[] NetworkReceiverHints =
+    private static readonly HashSet<string> JunoServiceBusTargetTypes = new(StringComparer.Ordinal)
     {
-        "http",
-        "api",
-        "rest",
-        "queue",
-        "bus",
-        "event",
-        "stream",
-        "broker"
+        "GP.Juno.EventStream.EventStream",
+        "GP.Juno.EventStream.JunoServiceBus"
     };
 
     private const string MessageFormat = "Do not call external network resources inside a database transaction before commit.";
@@ -239,100 +215,70 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
             return false;
         }
 
-        if (IsJunoEventStreamCall(method) || IsJunoHttpCall(method))
+        return IsJunoServiceBusCall(method) || IsJunoHttpCall(method) || IsFrameworkHttpCall(method);
+    }
+
+    private static bool IsJunoServiceBusCall(IMethodSymbol method)
+    {
+        if (IsJunoServiceBusTargetType(method.ContainingType))
         {
             return true;
         }
 
-        if (!NetworkMethodNames.Contains(method.Name))
-        {
-            return false;
-        }
-
-        if (IsLikelyHttpMethod(method.Name))
-        {
-            return IsLikelyHttpCall(context, invocation, method);
-        }
-
-        if (method.Name is "Publish" or "Send" or "Produce")
-        {
-            return IsLikelyMessagingCall(context, invocation, method);
-        }
-
-        return false;
+        return method.IsExtensionMethod
+               && method.Parameters.Length > 0
+               && IsJunoServiceBusTargetType(method.Parameters[0].Type);
     }
 
-    private static bool IsJunoEventStreamCall(IMethodSymbol method)
+    private static bool IsJunoServiceBusTargetType(ITypeSymbol type)
     {
-        if (method.Name is not ("Publish" or "Send"))
+        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
+        if (JunoServiceBusTargetTypes.Contains(typeDisplayName))
         {
-            return false;
+            return true;
         }
 
-        var namespaceName = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-        return namespaceName.IndexOf("GP.Juno.EventStream", StringComparison.OrdinalIgnoreCase) >= 0
-               || namespaceName.IndexOf("GP.Juno.Abstractions.EventStream", StringComparison.OrdinalIgnoreCase) >= 0;
+        var namespaceName = type?.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        return namespaceName.Equals("GP.Juno.Abstractions.EventStream", StringComparison.Ordinal)
+               && type?.Name == "IPublisher";
     }
 
     private static bool IsJunoHttpCall(IMethodSymbol method)
     {
-        if (!JunoHttpMethodNames.Contains(method.Name) && method.Name != "Send")
-        {
-            return false;
-        }
-
-        var containingTypeName = method.ContainingType?.Name ?? string.Empty;
-        var containingTypeDisplayName = method.ContainingType?.ToDisplayString() ?? string.Empty;
-        var namespaceName = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-
-        return containingTypeName is "HttpSender" or "IHttpClient" or "HttpRequestProperties"
-               || containingTypeDisplayName.IndexOf("GP.Juno.HttpApiClient.HttpSending.HttpSender", StringComparison.OrdinalIgnoreCase) >= 0
-               || namespaceName.IndexOf("GP.Juno.HttpApiClient.HttpSending", StringComparison.OrdinalIgnoreCase) >= 0
-               || namespaceName.IndexOf("GP.Juno.Abstractions.HttpApiClient.HttpSending", StringComparison.OrdinalIgnoreCase) >= 0
-               || namespaceName.IndexOf("GP.Juno.HttpClient", StringComparison.OrdinalIgnoreCase) >= 0
-               || namespaceName.IndexOf("GP.Juno.Abstractions.HttpClient", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private static bool IsLikelyHttpMethod(string methodName) =>
-        methodName is "GetAsync" or "PostAsync" or "PutAsync" or "DeleteAsync" or "SendAsync" or "GetFromJsonAsync" or "PostAsJsonAsync";
-
-    private static bool IsLikelyHttpCall(SonarSyntaxNodeReportingContext context, InvocationExpressionSyntax invocation, IMethodSymbol method)
-    {
-        var typeName = method.ContainingType?.ToDisplayString() ?? string.Empty;
-        var namespaceName = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-
-        if (typeName.IndexOf("HttpClient", StringComparison.OrdinalIgnoreCase) >= 0
-            || namespaceName.IndexOf("System.Net.Http", StringComparison.OrdinalIgnoreCase) >= 0)
+        if (IsJunoHttpTargetType(method.ContainingType))
         {
             return true;
         }
 
-        if (invocation.Expression is not MemberAccessExpressionSyntax { Expression: var receiverExpression })
-        {
-            return false;
-        }
-
-        var receiverTypeName = context.Model.GetTypeInfo(receiverExpression).Type?.ToDisplayString() ?? string.Empty;
-        return receiverTypeName.IndexOf("HttpClient", StringComparison.OrdinalIgnoreCase) >= 0
-               || receiverTypeName.IndexOf("Http", StringComparison.OrdinalIgnoreCase) >= 0;
+        return method.IsExtensionMethod
+               && method.Parameters.Length > 0
+               && IsJunoHttpTargetType(method.Parameters[0].Type);
     }
 
-    private static bool IsLikelyMessagingCall(SonarSyntaxNodeReportingContext context, InvocationExpressionSyntax invocation, IMethodSymbol method)
+    private static bool IsJunoHttpTargetType(ITypeSymbol type)
     {
-        var namespaceName = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-        if (ContainsNetworkHint(namespaceName))
+        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
+        return JunoHttpTargetTypes.Contains(typeDisplayName);
+    }
+
+    private static bool IsFrameworkHttpCall(IMethodSymbol method)
+    {
+        if (IsFrameworkHttpTargetType(method.ContainingType))
         {
             return true;
         }
 
-        if (invocation.Expression is not MemberAccessExpressionSyntax { Expression: var receiverExpression })
-        {
-            return false;
-        }
-
-        var receiverTypeName = context.Model.GetTypeInfo(receiverExpression).Type?.ToDisplayString() ?? string.Empty;
-        return ContainsNetworkHint(receiverTypeName);
+        return method.IsExtensionMethod
+               && method.Parameters.Length > 0
+               && IsFrameworkHttpTargetType(method.Parameters[0].Type);
     }
+
+    private static bool IsFrameworkHttpTargetType(ITypeSymbol type)
+    {
+        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
+        return FrameworkHttpTargetTypes.Contains(typeDisplayName);
+    }
+
 
     private static bool IsTransactionOwnerInvocation(InvocationExpressionSyntax invocation, string transactionVariableName) =>
         transactionVariableName is not null
@@ -341,6 +287,4 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
             Expression: IdentifierNameSyntax { Identifier.ValueText: var ownerName }
         } && ownerName == transactionVariableName;
 
-    private static bool ContainsNetworkHint(string value) =>
-        NetworkReceiverHints.Any(x => value.IndexOf(x, StringComparison.OrdinalIgnoreCase) >= 0);
 }
