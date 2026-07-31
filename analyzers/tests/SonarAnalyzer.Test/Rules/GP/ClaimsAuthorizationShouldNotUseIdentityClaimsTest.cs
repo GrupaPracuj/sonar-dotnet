@@ -148,6 +148,83 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .Verify();
 
     [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoHasUserClaim() =>
+        builder.AddSnippet(
+            """
+            public class ClaimsPrincipal
+            {
+                public bool HasUserClaim() => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    user.HasUserClaim(); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoNegatedHasApplicationClaim() =>
+        builder.AddSnippet(
+            """
+            public class ClaimsPrincipal
+            {
+                public bool HasApplicationClaim() => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    !user.HasApplicationClaim(); // Noncompliant {{Do not base access decisions on a negated HasClaim check.}}
+                                                  // Noncompliant@-1 {{Do not base access control on identity claim 'app'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoFindUserGroupClaimHasValue() =>
+        builder.AddSnippet(
+            """
+            public class Claim { }
+
+            public class Option<T> { public bool HasValue => true; }
+
+            public class ClaimsPrincipal
+            {
+                public Option<Claim> FindUserGroupClaim() => null;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    user.FindUserGroupClaim().HasValue; // Noncompliant {{Do not base access control on identity claim 'userGroup'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoHasCompanyClaim() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class Claim { }
+
+            public static class ClaimsExtractionExtensions
+            {
+                public static bool HasCompanyClaim(this IEnumerable<Claim> claims) => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(IEnumerable<Claim> claims) =>
+                    claims.HasCompanyClaim(); // Noncompliant {{Do not base access control on identity claim 'company'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_Compliant() =>
         builder.AddSnippet(
             """

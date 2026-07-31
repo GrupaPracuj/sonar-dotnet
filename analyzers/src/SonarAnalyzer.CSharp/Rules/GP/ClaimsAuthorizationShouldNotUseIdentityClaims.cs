@@ -40,6 +40,20 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         "AddUserActivitiesAlternative"
     };
 
+    // GP.Juno.Security(.UserContexts) exposes its own parameterless claim-existence checks, each tied to one fixed
+    // claim type (see GP.Juno CustomClaimTypes / ClaimPrincipalExtensions.ClaimTypeUserId): these bypass the generic
+    // HasClaim(string)/HasClaim(predicate) overloads entirely, so they need their own name-to-claim mapping.
+    private static readonly Dictionary<string, string> JunoParameterlessClaimCheckMethods = new(StringComparer.Ordinal)
+    {
+        ["HasUserClaim"] = "sub",
+        ["FindUserClaim"] = "sub",
+        ["HasApplicationClaim"] = "app",
+        ["FindApplicationClaim"] = "app",
+        ["HasUserGroupClaim"] = "userGroup",
+        ["FindUserGroupClaim"] = "userGroup",
+        ["HasCompanyClaim"] = "company"
+    };
+
     private static readonly DiagnosticDescriptor NegativeHasClaimRule = DescriptorFactory.Create(NegativeHasClaimRuleId, NegativeHasClaimMessage);
     private static readonly DiagnosticDescriptor IdentityClaimRule = DescriptorFactory.Create(IdentityClaimRuleId, IdentityClaimMessage);
 
@@ -63,7 +77,19 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
     private static void CheckHasClaimInvocation(SonarSyntaxNodeReportingContext context)
     {
-        if (context.Node is not InvocationExpressionSyntax invocation || !IsHasClaimInvocation(invocation))
+        if (context.Node is not InvocationExpressionSyntax invocation
+            || invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: var methodName })
+        {
+            return;
+        }
+
+        if (JunoParameterlessClaimCheckMethods.TryGetValue(methodName, out var junoClaimName))
+        {
+            context.ReportIssue(IdentityClaimRule, invocation, junoClaimName);
+            return;
+        }
+
+        if (methodName != "HasClaim")
         {
             return;
         }
@@ -113,7 +139,8 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
     }
 
     private static bool IsHasClaimInvocation(InvocationExpressionSyntax invocation) =>
-        invocation.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "HasClaim" };
+        invocation.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var methodName }
+        && (methodName == "HasClaim" || (JunoParameterlessClaimCheckMethods.ContainsKey(methodName) && methodName.StartsWith("Has", StringComparison.Ordinal)));
 
     private static bool IsAuthorizeAttribute(AttributeSyntax attribute) =>
         attribute.Name switch
