@@ -1,0 +1,24 @@
+{
+  "title": "Published events should not use the 'Event' suffix",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "messaging"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0002",
+  "sqKey": "GP0002",
+  "scope": "All",
+  "quickfix": "unknown"
+}

@@ -47,7 +47,17 @@ class CSharpRulesDefinitionTest {
     assertThat(CONTEXT.repositories()).hasSize(1);
     assertThat(ruleRepo.name()).isEqualTo("GP C#");
     RulesDefinition.Rule gp0001 = ruleRepo.rule("GP0001");
+    RulesDefinition.Rule gp0002 = ruleRepo.rule("GP0002");
+    RulesDefinition.Rule gp0003 = ruleRepo.rule("GP0003");
+    RulesDefinition.Rule gp0004 = ruleRepo.rule("GP0004");
+    RulesDefinition.Rule gp0005 = ruleRepo.rule("GP0005");
+    RulesDefinition.Rule gp0006 = ruleRepo.rule("GP0006");
     assertThat(gp0001).isNotNull();
+    assertThat(gp0002).isNotNull();
+    assertThat(gp0003).isNotNull();
+    assertThat(gp0004).isNotNull();
+    assertThat(gp0005).isNotNull();
+    assertThat(gp0006).isNotNull();
     assertThat(gp0001.name()).isEqualTo("The word 'abrakadabra' should not appear in C# source files");
   }
 
@@ -56,7 +66,7 @@ class CSharpRulesDefinitionTest {
     assertThat(CONTEXT.repositories()).hasSize(1);
     assertThat(ruleRepo.rule("S100")).isNull();
     assertThat(ruleRepo.rule("S2259")).isNull();
-    assertThat(ruleRepo.rules()).hasSize(1);
+    assertThat(ruleRepo.rules()).hasSize(6);
   }
 
   @Test

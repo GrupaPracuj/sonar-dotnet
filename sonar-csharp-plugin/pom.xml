@@ -234,6 +234,10 @@
                     <include name="*.json"/>
                     <include name="*.html"/>
                   </fileset>
+                  <fileset dir="${rspec.directory}/cs/GP">
+                    <include name="*.json"/>
+                    <include name="*.html"/>
+                  </fileset>
                 </copy>
                 <exec executable="dotnet"
                       failonerror="true"

@@ -1,0 +1,25 @@
+{
+  "title": "Message contracts should be immutable and behavior-free",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0004",
+  "sqKey": "GP0004",
+  "scope": "All",
+  "quickfix": "unknown"
+}

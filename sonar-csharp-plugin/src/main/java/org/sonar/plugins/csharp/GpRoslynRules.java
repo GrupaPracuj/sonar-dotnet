@@ -17,11 +17,12 @@
 package org.sonar.plugins.csharp;
 
 import java.util.List;
+import java.util.Set;
 import org.sonarsource.dotnet.shared.plugins.PluginMetadata;
 import org.sonarsource.dotnet.shared.plugins.RoslynRules;
 
 public class GpRoslynRules extends RoslynRules {
-  private static final String CUSTOM_RULE_ID = "GP0001";
+  private static final Set<String> CUSTOM_RULE_IDS = Set.of("GP0001", "GP0002", "GP0003", "GP0004", "GP0005", "GP0006");
 
   public GpRoslynRules(PluginMetadata metadata) {
     super(metadata);
@@ -29,6 +30,6 @@ public class GpRoslynRules extends RoslynRules {
 
   @Override
   public List<Rule> rules() {
-    return super.rules().stream().filter(rule -> CUSTOM_RULE_ID.equals(rule.getId())).toList();
+    return super.rules().stream().filter(rule -> CUSTOM_RULE_IDS.contains(rule.getId())).toList();
   }
 }

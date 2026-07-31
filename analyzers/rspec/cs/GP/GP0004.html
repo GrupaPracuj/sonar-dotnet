@@ -1,0 +1,11 @@
+<p>
+  Message contracts (events and commands) should be plain immutable data structures and should not contain business behavior.
+</p>
+<ul>
+  <li>No mutable fields.</li>
+  <li>No writable properties using <code>set</code>.</li>
+  <li>No methods with behavior.</li>
+</ul>
+<p>
+  This rule applies to types registered through <code>Publishes&lt;T&gt;()</code> or <code>Sends&lt;T&gt;()</code>.
+</p>
