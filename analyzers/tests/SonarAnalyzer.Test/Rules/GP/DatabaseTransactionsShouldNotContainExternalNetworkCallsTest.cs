@@ -371,6 +371,117 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
             .Verify();
 
     [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantJunoEventStreamInheritedPublishInsideUsing() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                Task Execute(object command);
+                void Commit();
+            }
+
+            // Matches the real GP.Juno.EventStream.EventStream shape: it declares no members of its own,
+            // Publish is only inherited from a base interface (MassTransit's IPublishEndpoint in production).
+            public interface IPublishEndpoint
+            {
+                Task Publish(object message);
+            }
+
+            namespace GP.Juno.EventStream
+            {
+                public interface EventStream : IPublishEndpoint
+                {
+                }
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly GP.Juno.EventStream.EventStream _eventStream;
+
+                public Service(ITransactional transactional, GP.Juno.EventStream.EventStream eventStream)
+                {
+                    _transactional = transactional;
+                    _eventStream = eventStream;
+                }
+
+                public async Task Save(object order)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        await transaction.Execute(order);
+                        await _eventStream.Publish(order); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        transaction.Commit();
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantJunoEventStreamExtensionMethodInsideUsing() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+            using GP.Juno.EventStream;
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                Task Execute(object command);
+                void Commit();
+            }
+
+            namespace GP.Juno.EventStream
+            {
+                public interface EventStream
+                {
+                }
+
+                // Matches the real GP.Juno.EventStream.SendTimeout.PublishWithTimeoutExtensions.Publish(this EventStream, ...) shape.
+                public static class PublishWithTimeoutExtensions
+                {
+                    public static Task Publish(this EventStream eventStream, object message, System.TimeSpan timeout) =>
+                        System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly GP.Juno.EventStream.EventStream _eventStream;
+
+                public Service(ITransactional transactional, GP.Juno.EventStream.EventStream eventStream)
+                {
+                    _transactional = transactional;
+                    _eventStream = eventStream;
+                }
+
+                public async Task Save(object order)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        await transaction.Execute(order);
+                        await _eventStream.Publish(order, System.TimeSpan.FromSeconds(5)); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                        transaction.Commit();
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantJunoHttpSenderPostJsonInsideRunInTransaction() =>
         builder.AddSnippet(
             """

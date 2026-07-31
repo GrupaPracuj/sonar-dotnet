@@ -199,19 +199,29 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
             return false;
         }
 
-        return IsJunoServiceBusCall(method) || GpHttpCallHelper.IsHttpCall(method);
+        return IsJunoServiceBusCall(context, invocation, method) || GpHttpCallHelper.IsHttpCall(method);
     }
 
-    private static bool IsJunoServiceBusCall(IMethodSymbol method)
+    private static bool IsJunoServiceBusCall(SonarSyntaxNodeReportingContext context, InvocationExpressionSyntax invocation, IMethodSymbol method)
     {
         if (IsJunoServiceBusTargetType(method.ContainingType))
         {
             return true;
         }
 
-        return method.IsExtensionMethod
-               && method.Parameters.Length > 0
-               && IsJunoServiceBusTargetType(method.Parameters[0].Type);
+        if (method.IsExtensionMethod
+            // For an extension method called via instance syntax, GetSymbolInfo returns the reduced symbol: Parameters
+            // excludes the receiver, so it must be read from ReceiverType (e.g. PublishWithTimeoutExtensions.Publish(this EventStream, ...)).
+            && (IsJunoServiceBusTargetType(method.ReceiverType) || (method.Parameters.Length > 0 && IsJunoServiceBusTargetType(method.Parameters[0].Type))))
+        {
+            return true;
+        }
+
+        // GP.Juno.EventStream.EventStream declares no members of its own (it only combines MassTransit's IPublishEndpoint
+        // and ISendEndpointProvider), so calling an inherited member like Publish/Send resolves ContainingType to the
+        // MassTransit interface that actually declares it, not to EventStream. Fall back to the receiver's static type.
+        return invocation.Expression is MemberAccessExpressionSyntax { Expression: var receiverExpression }
+               && IsJunoServiceBusTargetType(context.Model.GetTypeInfo(receiverExpression).Type);
     }
 
     private static bool IsJunoServiceBusTargetType(ITypeSymbol type)
