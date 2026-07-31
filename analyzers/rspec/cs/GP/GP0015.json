@@ -1,0 +1,25 @@
+{
+  "title": "Action method names should match their HTTP verb attribute",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0015",
+  "sqKey": "GP0015",
+  "scope": "All",
+  "quickfix": "unknown"
+}

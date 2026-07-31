@@ -1,0 +1,9 @@
+<p>
+  An action's name should match the HTTP verb it is annotated with, e.g. a method annotated with <code>[HttpGet]</code>
+  should not be named <code>DeleteUser</code>, and a method annotated with <code>[HttpDelete]</code> should not be
+  named <code>GetUser</code> or <code>CreateUser</code>.
+</p>
+<p>
+  When the method name and the actual HTTP verb disagree, it is unclear which one reflects the real behavior, making
+  the endpoint's contract misleading for API consumers and for anyone reading the code.
+</p>
