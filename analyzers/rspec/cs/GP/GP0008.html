@@ -1,0 +1,14 @@
+<p>
+  Between transaction begin and commit (or <code>TransactionScope.Complete()</code>), keep only the essential SQL work for the same database transaction.
+</p>
+<p>
+  Do not call external network resources (for example REST APIs or message queues) inside a database transaction before commit.
+</p>
+<p>
+  In Juno-based code this includes calls such as <code>RunInTransaction(...)</code> callback bodies that use
+  <code>GP.Juno.EventStream</code> (<code>Publish</code>/<code>Send</code>) or HTTP abstractions like
+  <code>GP.Juno.HttpApiClient.HttpSending.HttpSender</code> and <code>GP.Juno.HttpClient.IHttpClient</code>.
+</p>
+<p>
+  Move network communication after transaction commit/complete or use outbox/integration patterns to preserve consistency.
+</p>

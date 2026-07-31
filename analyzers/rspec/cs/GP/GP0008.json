@@ -1,0 +1,25 @@
+{
+  "title": "Database transactions should not contain external network calls before commit",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "database",
+    "architecture"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0008",
+  "sqKey": "GP0008",
+  "scope": "All",
+  "quickfix": "unknown"
+}
