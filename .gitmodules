@@ -1,6 +1,6 @@
 [submodule "juno"]
-	path = juno
+	path = submodules/juno
 	url = https://github.com/GrupaPracuj/juno.git
-[submodule "analyzers/skidblandir"]
-	path = analyzers/skidblandir
+[submodule "skidblandir"]
+	path = submodules/skidblandir
 	url = https://github.com/GrupaPracuj/GP.Skidblandir.git
