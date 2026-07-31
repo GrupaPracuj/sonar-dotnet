@@ -68,6 +68,43 @@ public class SharedDictionariesShouldUseJunoDictionariesTest
             .Verify();
 
     [TestMethod]
+    public void SharedDictionariesShouldUseJunoDictionaries_NoncompliantDirectJunoHttpClientBuilder() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+            using GP.Juno.HttpClient;
+
+            // Shape matches the real GP.Juno.HttpClient fluent chain: IHttpClientBuilder.Service(name) -> HttpRequestProperties.AddPath(path) -> ...GetJson<T>().
+            namespace GP.Juno.HttpClient
+            {
+                public interface IHttpClientBuilder { }
+
+                public class HttpRequestProperties
+                {
+                    public HttpRequestProperties AddPath(string path) => this;
+
+                    public Task<T> GetJson<T>() => Task.FromResult(default(T));
+                }
+
+                public static class HttpClientBuilderExtensions
+                {
+                    public static HttpRequestProperties Service(this IHttpClientBuilder builder, string name) => new HttpRequestProperties();
+                }
+            }
+
+            public class Service
+            {
+                private readonly GP.Juno.HttpClient.IHttpClientBuilder _clientBuilder;
+
+                public Service(GP.Juno.HttpClient.IHttpClientBuilder clientBuilder) => _clientBuilder = clientBuilder;
+
+                public Task<string> Fetch() =>
+                    _clientBuilder.Service("skidblandir").AddPath("/api/dictionaries/categories").GetJson<string>(); // Noncompliant {{Use Juno.Dictionaries instead of calling Skidblandir API directly.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void SharedDictionariesShouldUseJunoDictionaries_CompliantForNonSkidblandirHttpCall() =>
         builder.AddSnippet(
             """
@@ -101,23 +138,34 @@ public class SharedDictionariesShouldUseJunoDictionariesTest
     public void SharedDictionariesShouldUseJunoDictionaries_CompliantForJunoDictionaryFacade() =>
         builder.AddSnippet(
             """
+            using System.Collections.Generic;
+            using System.Threading;
             using System.Threading.Tasks;
 
-            namespace GP.Juno.Dictionaries
+            // Shape matches the real GP.Juno.Abstractions.Dictionaries.IDictionaries facade.
+            namespace GP.Juno.Abstractions.Dictionaries
             {
-                public interface IDictionaryReader
+                public class DictionaryName
                 {
-                    Task<string> GetAsync(string dictionaryName);
+                    public static implicit operator DictionaryName(string name) => new DictionaryName();
+                }
+
+                public class Parameters { }
+
+                public interface IDictionaries
+                {
+                    Task<IReadOnlyCollection<T>> GetItems<T>(DictionaryName dictionaryName, Parameters parameters, CancellationToken cancellation);
                 }
             }
 
             public class Service
             {
-                private readonly GP.Juno.Dictionaries.IDictionaryReader _reader;
+                private readonly GP.Juno.Abstractions.Dictionaries.IDictionaries _dictionaries;
 
-                public Service(GP.Juno.Dictionaries.IDictionaryReader reader) => _reader = reader;
+                public Service(GP.Juno.Abstractions.Dictionaries.IDictionaries dictionaries) => _dictionaries = dictionaries;
 
-                public Task<string> Fetch() => _reader.GetAsync("categories");
+                public Task<IReadOnlyCollection<string>> Fetch() =>
+                    _dictionaries.GetItems<string>("categories", new GP.Juno.Abstractions.Dictionaries.Parameters(), CancellationToken.None);
             }
             """)
             .VerifyNoIssues();
