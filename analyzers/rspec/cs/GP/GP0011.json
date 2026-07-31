@@ -1,0 +1,25 @@
+{
+  "title": "Authentication and authorization checks should return the matching HTTP status code",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0011",
+  "sqKey": "GP0011",
+  "scope": "All",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,13 @@
+<p>
+  A 401 (Unauthorized) response means the caller's identity could not be established or its credentials were rejected.
+  A 403 (Forbidden) response means the caller is known, but is not allowed to perform the requested operation.
+</p>
+<p>
+  Returning <code>401</code> from a permission/role check (e.g. <code>IsInRole</code>, <code>HasClaim</code>), or returning
+  <code>403</code> from an authentication check (e.g. <code>Identity.IsAuthenticated</code>), mixes up these two distinct
+  failure reasons and can mislead API clients about how to react to the error.
+</p>
+<p>
+  Return <code>403 (Forbid)</code> when the check is about what the caller is allowed to do, and
+  <code>401 (Unauthorized)</code> when the check is about whether the caller is authenticated at all.
+</p>
