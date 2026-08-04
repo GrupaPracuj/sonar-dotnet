@@ -10,12 +10,18 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     // Only the sending side. IConsumer<T> has no Juno wrapper and is the sanctioned way to handle a message.
-    private static readonly HashSet<string> SendingTypes = new(StringComparer.Ordinal)
+    // Matched on namespace plus name so the generic IRequestClient<T> is covered without spelling out type arguments.
+    private const string MassTransitNamespace = "MassTransit";
+
+    private static readonly HashSet<string> SendingTypeNames = new(StringComparer.Ordinal)
     {
-        "MassTransit.IPublishEndpoint",
-        "MassTransit.ISendEndpointProvider",
-        "MassTransit.ISendEndpoint",
-        "MassTransit.IBus",
+        "IPublishEndpoint",
+        "ISendEndpointProvider",
+        "ISendEndpoint",
+        "IBus",
+        // Request/response is a third way out through MassTransit: it sends a message and waits for a reply, so it
+        // needs the same envelope conventions and the timeout policy the Juno client applies.
+        "IRequestClient",
     };
 
     private static readonly HashSet<string> SendingMethods = new(StringComparer.Ordinal)
@@ -24,6 +30,7 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
         "PublishBatch",
         "Send",
         "GetSendEndpoint",
+        "GetResponse",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -65,6 +72,8 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
 
     private static bool IsSendingType(ITypeSymbol type) =>
         type is not null
-        && (SendingTypes.Contains(type.ToDisplayString())
-            || type.AllInterfaces.Any(x => SendingTypes.Contains(x.ToDisplayString())));
+        && (IsMassTransitSenderInterface(type) || type.AllInterfaces.Any(IsMassTransitSenderInterface));
+
+    private static bool IsMassTransitSenderInterface(ITypeSymbol type) =>
+        type.ContainingNamespace?.ToDisplayString() == MassTransitNamespace && SendingTypeNames.Contains(type.Name);
 }

@@ -94,6 +94,34 @@ public class DoNotPublishThroughRawMassTransitTest
             """)
             .Verify();
 
+    // Request/response is a third way out through MassTransit and needs the same treatment as publish and send.
+    [TestMethod]
+    public void DoNotPublishThroughRawMassTransit_NoncompliantForRequestClient() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace MassTransit
+            {
+                public interface Response<T> where T : class { }
+
+                public interface IRequestClient<TRequest> where TRequest : class
+                {
+                    Task<Response<TResponse>> GetResponse<TResponse>(TRequest request) where TResponse : class;
+                }
+            }
+
+            public class OrderStatus { }
+
+            public class OrderService
+            {
+                private readonly MassTransit.IRequestClient<OrderAccepted> _client;
+
+                public Task<MassTransit.Response<OrderStatus>> Ask(OrderAccepted request) =>
+                    _client.GetResponse<OrderStatus>(request); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'GetResponse'.}}
+            }
+            """)
+            .Verify();
+
     // Consuming has no Juno wrapper - Juno's own examples implement IConsumer<T>.
     [TestMethod]
     public void DoNotPublishThroughRawMassTransit_CompliantForConsumer() =>

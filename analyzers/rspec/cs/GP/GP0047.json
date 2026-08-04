@@ -1,0 +1,25 @@
+{
+  "title": "Service discovery should go through Juno, not the Consul client",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "discovery"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0047",
+  "sqKey": "GP0047",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

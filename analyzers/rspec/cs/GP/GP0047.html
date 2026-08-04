@@ -1,0 +1,36 @@
+<p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
+<h2>Why is this an issue?</h2>
+<p>Juno owns service discovery. Naming a service - <code>Service("orders")</code> on the Juno HTTP client - resolves the address, applies the configured
+retry and timeout policy, and records the call. Reaching for <code>IConsulClient</code> gets you an address and nothing else, so everything Juno layers on
+top has to be rebuilt by hand at each call site: the health filter, the choice between instances, the cache lifetime, the failure behaviour when the
+catalog is briefly unavailable.</p>
+<p>The consequences show up under exactly the conditions discovery exists for. Code that takes the first entry from the catalog sends all traffic to one
+instance, so scaling out changes nothing. Code that caches the address without a lifetime keeps calling an instance that has since been drained. Neither
+fails in a test - both fail during a deployment.</p>
+<pre>
+var services = await _consul.Catalog.Service("orders");
+var address = services.Response[0].ServiceAddress;
+var response = await _httpClient.GetStringAsync($"http://{address}/orders");
+</pre>
+<p>Registration and health checks are a separate matter: in a GP service they are configured by Juno's host, not written per service, so
+<code>AgentServiceRegistration</code> appearing in application code is itself the signal that something is being done twice.</p>
+<h3>Exceptions</h3>
+<p>Types under the <code>GP.Juno</code> namespaces are not reported - that is where the Consul client belongs, since Juno is what wraps it. Locking on
+Consul is covered separately by GP0040.</p>
+<h2>How to fix it</h2>
+<p>Name the service and let Juno resolve it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task&lt;string&gt; GetOrders()
+{
+    var services = await _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'IConsulClient' directly.}}
+    var address = services.Response[0].ServiceAddress;
+    return await _httpClient.GetStringAsync($"http://{address}/orders");
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task&lt;string&gt; GetOrders() =&gt;
+    _builder.Service("orders").AddPath("orders").GetJson&lt;string&gt;();
+</pre>

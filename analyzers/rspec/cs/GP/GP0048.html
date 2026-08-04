@@ -1,0 +1,61 @@
+<p>Committing to the database and then publishing a message, with no outbox, writes to two systems that cannot fail together.</p>
+<h2>Why is this an issue?</h2>
+<p>The commit and the publish are two independent writes with no transaction spanning them. Whatever happens between them decides the outcome, and one
+of the outcomes is silent divergence:</p>
+<ul>
+  <li>the commit succeeds, then the broker is unreachable, the process is recycled, or the pod is evicted - the data changed and nobody was told. No
+  error is raised anywhere, because the request already succeeded;</li>
+  <li>the publish is retried by a framework that does not know the commit already happened - consumers see the event twice.</li>
+</ul>
+<p>The first case is the dangerous one. There is no failed request to investigate, no exception in the log, and no way to detect it from either side -
+the producer's data is correct and the consumer simply never heard. It surfaces days later as two services disagreeing, and the only repair is a manual
+reconciliation.</p>
+<pre>
+public async Task Accept(Order order, CancellationToken cancellationToken)
+{
+    _context.Orders.Add(order);
+    await _context.SaveChangesAsync(cancellationToken);   // write 1: committed
+
+    await _publisher.Publish(new OrderAccepted(order.PublicId), cancellationToken); // write 2: may never happen
+}
+</pre>
+<p>An outbox removes the second write. The message is stored in the same transaction as the data, so both land or neither does, and a separate process
+delivers it afterwards with at-least-once semantics.</p>
+<h3>Exceptions</h3>
+<p>A publish that happens <em>before</em> the commit is not reported here - that shape is GP0008's, which objects to holding a transaction open across a
+network call. This rule only reports a publish that follows a commit in the same method, so the two rules never fire on the same statement.</p>
+<p>Set the <code>outboxTypes</code> parameter to the types that mark an approved outbox - a company wrapper, a MassTransit outbox marker interface, a
+base class - and a method inside such a type is not reported. The parameter defaults to empty, so out of the box every commit-then-publish pair is
+reported.</p>
+<p>The rule reads one method body and does not follow calls, so a commit and a publish split across two methods are not reported. An issue here is
+reliable; the absence of one is not proof that the flow is safe.</p>
+<h2>How to fix it</h2>
+<p>Store the message in the same transaction as the data and let a delivery process publish it - the MassTransit Entity Framework outbox, or the
+approved company outbox. If an outbox genuinely does not apply, make the consumer side idempotent and reconcile explicitly, and record that decision.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task Accept(Order order, CancellationToken cancellationToken)
+{
+    _context.Orders.Add(order);
+    await _context.SaveChangesAsync(cancellationToken);
+
+    await _publisher.Publish(new OrderAccepted(order.PublicId), cancellationToken); // Noncompliant {{This publish follows a database commit with no outbox - if it fails, the data has changed and nobody was told.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+// The outbox stores the message in the same transaction as the data; delivery happens afterwards.
+public async Task Accept(Order order, CancellationToken cancellationToken)
+{
+    _context.Orders.Add(order);
+    await _outbox.Publish(new OrderAccepted(order.PublicId), cancellationToken);
+    await _context.SaveChangesAsync(cancellationToken);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microservices.io - <a href="https://microservices.io/patterns/data/transactional-outbox.html">Transactional outbox pattern</a></li>
+  <li>MassTransit - <a href="https://masstransit.io/documentation/patterns/transactional-outbox">Transactional Outbox</a></li>
+</ul>
