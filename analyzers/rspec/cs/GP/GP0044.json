@@ -1,0 +1,31 @@
+{
+  "title": "Message contracts should not carry secrets",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "TRUSTWORTHY"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "messaging",
+    "cwe"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0044",
+  "sqKey": "GP0044",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      200
+    ]
+  }
+}

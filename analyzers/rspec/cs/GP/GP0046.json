@@ -1,0 +1,25 @@
+{
+  "title": "GET endpoints should not have side effects",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0046",
+  "sqKey": "GP0046",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

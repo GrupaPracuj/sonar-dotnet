@@ -1,0 +1,42 @@
+<p>A controller action should not return a database entity or an <code>IQueryable</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Returning the entity makes the database schema the API contract. A column added for internal bookkeeping appears in the response; a column renamed
+during a refactor silently breaks every client. Worse, it leaks whatever the entity happens to carry - an <code>IsDeleted</code> flag, an internal cost,
+a password hash - because nobody chose what to expose, the mapper simply serialized everything public.</p>
+<p>Returning <code>IQueryable&lt;T&gt;</code> is a sharper version of the same problem: the query has not run yet when the action returns, so it executes
+during serialization, outside the action's error handling and after the scope that owned the <code>DbContext</code> may have been disposed. Whatever the
+serializer touches becomes a database query, which is how a single endpoint turns into hundreds of round trips.</p>
+<pre>
+[HttpGet("{id}")]
+public async Task&lt;Order&gt; Get(int id) =&gt;
+    await _context.Orders.FirstAsync(x =&gt; x.Id == id);
+</pre>
+<p>A type is treated as an entity on the same signals as GP0043: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
+base types and domain namespaces.</p>
+<h2>How to fix it</h2>
+<p>Return a response contract and map the entity onto it, choosing explicitly what the API exposes.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet("{id}")]
+public async Task&lt;Order&gt; Get(int id) =&gt; // Noncompliant {{'Order' is a database entity - return a response contract instead.}}
+    await _orders.FindAsync(id);
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record OrderResponse(Guid Id, string CustomerReference, decimal TotalAmount, string Currency);
+
+[HttpGet("{id}")]
+public async Task&lt;OrderResponse&gt; Get(int id)
+{
+    var order = await _orders.FindAsync(id);
+    return new OrderResponse(order.PublicId, order.Customer.Reference, order.Total, order.Currency);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/tutorials/first-web-api#prevent-over-posting">Prevent over-posting with
+  DTOs</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/ef/core/querying/tracking">Tracking and no-tracking queries</a></li>
+</ul>

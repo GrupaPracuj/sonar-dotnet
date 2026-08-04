@@ -1,0 +1,25 @@
+{
+  "title": "Endpoints should not return database entities",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "design"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0045",
+  "sqKey": "GP0045",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

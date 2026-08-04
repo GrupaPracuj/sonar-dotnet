@@ -1,0 +1,25 @@
+{
+  "title": "Domain entities should not be used as message contracts",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "design"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0043",
+  "sqKey": "GP0043",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

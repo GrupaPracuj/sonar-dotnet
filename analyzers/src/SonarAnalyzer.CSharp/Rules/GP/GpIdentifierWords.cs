@@ -19,8 +19,16 @@ internal static class GpIdentifierWords
     internal static bool ContainsWord(string identifier, string word) =>
         SplitWords(identifier).Any(x => x.Equals(word, StringComparison.OrdinalIgnoreCase));
 
+    // A trailing qualifier that turns the name into a pointer at, or a fact about, the secret rather than the secret
+    // itself: apiKeyId, credentialReference, secretUri, tokenType, passwordLength. These are exactly the shapes the
+    // secret rules recommend as the fix, so matching them would punish the remediation.
+    private static readonly HashSet<string> PointerQualifiers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "id", "ids", "reference", "references", "ref", "name", "names", "count", "length", "uri", "url", "path", "type"
+    };
+
     internal static bool ContainsSecretWord(string identifier) =>
-        ContainsAnyWord(identifier, SecretWords);
+        ContainsAnyWord(identifier, SecretWords) && !IsPointerToSecret(identifier);
 
     internal static bool ContainsPiiWord(string identifier) =>
         ContainsAnyWord(identifier, PiiWords);
@@ -64,6 +72,9 @@ internal static class GpIdentifierWords
 
         return false;
     }
+
+    private static bool IsPointerToSecret(string identifier) =>
+        SplitWords(identifier).LastOrDefault() is { } last && PointerQualifiers.Contains(last);
 
     private static IEnumerable<string> SplitWords(string identifier)
     {

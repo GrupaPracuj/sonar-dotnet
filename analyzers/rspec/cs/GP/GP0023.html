@@ -9,8 +9,9 @@ strong hint that a value meant to stay confidential is being passed exactly wher
 public IActionResult GetByToken(string token) { /* ... */ }
 </pre>
 <p>Only route <em>parameters</em> (<code>{name}</code>) are checked, not literal path segments - a fixed segment like <code>/api-keys</code> is just
-a resource name, it doesn't carry a caller-supplied value. A parameter name that only references a record rather than holding the secret itself
-(for example <code>apiKeyId</code>) can still match and needs a human judgment call.</p>
+a resource name, it doesn't carry a caller-supplied value. A name that only points at a secret rather than holding one is not reported either:
+a trailing <code>Id</code>, <code>Reference</code>, <code>Name</code>, <code>Uri</code>, <code>Path</code>, <code>Type</code>, <code>Count</code> or
+<code>Length</code> makes <code>{apiKeyId}</code> and <code>{credentialReference}</code> compliant.</p>
 <h2>How to fix it</h2>
 <p>Pass the value in the request body, in an <code>Authorization</code> header, or as a short-lived opaque identifier instead of a path segment.</p>
 <h3>Code examples</h3>

@@ -1,0 +1,40 @@
+<p>A message contract should not declare a member whose name says it holds a secret.</p>
+<h2>Why is this an issue?</h2>
+<p>A message does not go to one place. It is serialized onto a broker, kept in a queue until every subscriber has read it, copied into the error queue
+when a consumer fails, written to whatever traces the transport records, and read by anyone who can inspect the broker while diagnosing a problem. A
+password or token placed in the payload is therefore not shared with one consumer - it is persisted, replicated and made visible to a much wider
+audience than the two services that were being connected.</p>
+<p>Unlike a leaked log line, a leaked contract cannot be rotated away quietly: the field is part of a published interface, so removing it is a breaking
+change for every consumer that already reads it.</p>
+<pre>
+public sealed record ServiceRegistered(string ServiceName, string ApiKey);
+</pre>
+<p>Names are matched word by word, so <code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</code> and <code>ConnectionString</code> all
+match. A name that only points at a secret rather than holding one does not: a trailing <code>Id</code>, <code>Reference</code>, <code>Name</code>,
+<code>Uri</code>, <code>Path</code>, <code>Type</code>, <code>Count</code> or <code>Length</code> makes <code>ApiKeyId</code>,
+<code>CredentialReference</code> and <code>SecretUri</code> compliant - which matters, because those are exactly the shapes this rule recommends as the
+fix.</p>
+<h3>Exceptions</h3>
+<p>Only types whose own name ends with one of the contract suffixes are examined, the same convention the other contract rules use, so an internal
+options class that legitimately carries a secret is not reported.</p>
+<h2>How to fix it</h2>
+<p>Do not move the secret. Send a reference the consumer can exchange for the secret through a channel that authenticates it - a secret identifier, a
+key vault path, or a short-lived token requested by the consumer itself.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed record ServiceRegisteredContract(string ServiceName, string ApiKey); // Noncompliant {{'ApiKey' looks like a secret - a message contract is persisted on the broker and readable by every subscriber.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record ServiceRegisteredContract(string ServiceName, string CredentialReference);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html">Secrets Management Cheat Sheet</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/200.html">CWE-200 - Exposure of Sensitive Information to an Unauthorized Actor</a></li>
+</ul>
