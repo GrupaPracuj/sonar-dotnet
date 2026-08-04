@@ -1,0 +1,25 @@
+{
+  "title": "Consumers should await all the work they start",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "20min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "asynchrony"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0053",
+  "sqKey": "GP0053",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,45 @@
+<p>A consumer should await everything it starts, so the broker only sees the message as handled once the work is actually done.</p>
+<h2>Why is this an issue?</h2>
+<p>The broker's contract with a consumer is the returned task. When <code>Consume</code> completes, the message is acknowledged and removed - so any work
+that is still running at that moment has lost the only safety net it had. If it then fails, there is no redelivery, no error queue and no exception anyone
+sees: the message was already acknowledged as successfully handled.</p>
+<p>Fire-and-forget work also outlives the scope it was started in. The <code>ConsumeContext</code> is disposed when <code>Consume</code> returns, taking
+the scoped dependency-injection container with it, so a <code>DbContext</code> captured by the abandoned task is disposed underneath it. During shutdown it
+is worse: the host stops, and work that nothing is awaiting is simply killed mid-flight.</p>
+<pre>
+public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context)
+{
+    _ = ProcessAsync(context.Message);            // nothing awaits this
+    Task.Run(() =&gt; Notify(context.Message));      // nor this
+    return Task.CompletedTask;                     // message acknowledged immediately
+}
+</pre>
+<p>The rule reports, inside a consumer, a call that returns a <code>Task</code> or <code>ValueTask</code> and is neither awaited nor returned - whether it
+is discarded with <code>_ =</code>, left as a bare expression statement, or wrapped in <code>Task.Run</code>.</p>
+<h3>Exceptions</h3>
+<p><code>async void</code> is not reported here: S3168 reports it already, on every method rather than only in consumers.</p>
+<p>A task that is stored, passed on, or later awaited through a variable is not reported, since the work is still tracked by something.</p>
+<h2>How to fix it</h2>
+<p>Await the work, or return its task. If it genuinely must happen out of band, publish a message for it so the broker keeps the guarantee instead of
+dropping it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context)
+{
+    _ = ProcessAsync(context.Message); // Noncompliant {{Await this call - the message is acknowledged when Consume returns, so work nothing awaits is lost without a trace.}}
+    return Task.CompletedTask;
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context) =&gt;
+    ProcessAsync(context.Message);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>MassTransit - <a href="https://masstransit.io/documentation/concepts/consumers">Consumers</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios">Asynchronous programming
+  scenarios</a></li>
+</ul>

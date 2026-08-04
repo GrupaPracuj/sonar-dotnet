@@ -1,0 +1,24 @@
+{
+  "title": "Published events should carry the time they occurred",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "messaging"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0051",
+  "sqKey": "GP0051",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

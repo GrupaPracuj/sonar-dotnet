@@ -1,0 +1,39 @@
+<p>A message contract member that holds personal data should be classified with an approved attribute or interface.</p>
+<h2>Why is this an issue?</h2>
+<p>Personal data on a message travels further than personal data in a method. The payload is serialized onto the broker, held in the queue until every
+subscriber has read it, copied into the error queue when a consumer fails, and read by whoever inspects the broker while diagnosing an incident. Each of
+those is a place the data now lives, and none of them is obvious from the contract's declaration.</p>
+<p>The rule does not object to sending personal data - services legitimately need to. It objects to sending it <em>unmarked</em>. A classification is what
+lets the rest of the organisation answer questions it will eventually be asked: which contracts carry personal data, which queues therefore need a
+retention policy, and what has to be reviewed when a subject exercises their rights. Without it, that inventory is reconstructed by reading every
+contract by hand.</p>
+<pre>
+public sealed record CandidateRegistered(Guid CandidateId, string Email, string Pesel);
+</pre>
+<p>Members are matched by name, word by word, against the personal-data vocabulary shared with GP0022 - <code>email</code>, <code>pesel</code>,
+<code>phone</code>, <code>iban</code>, <code>surname</code>, <code>firstname</code>, <code>lastname</code>, <code>birthdate</code>,
+<code>dateofbirth</code>, <code>creditcard</code>.</p>
+<h3>Exceptions</h3>
+<p>A contract is not reported once it or the member carries one of the types named in the <code>classificationAttributes</code> or
+<code>classificationInterfaces</code> parameters. Both default to empty, which means that until they are configured the rule reports every unclassified
+personal-data member - configure them first, then let the rule find what is left.</p>
+<h2>How to fix it</h2>
+<p>Mark the contract, or the individual member, with the classification your organisation uses. If the field is not actually needed by any consumer,
+removing it is better than classifying it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed record CandidateRegisteredContract(Guid CandidateId, string Email); // Noncompliant {{'Email' is personal data - classify it with an approved attribute or interface.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[PersonalData]
+public sealed record CandidateRegisteredContract(Guid CandidateId, string Email);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>EUR-Lex - <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">Regulation (EU) 2016/679 (GDPR)</a></li>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude">Logging Cheat Sheet - Data to
+  exclude</a></li>
+</ul>

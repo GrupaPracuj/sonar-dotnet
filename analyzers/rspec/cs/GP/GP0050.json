@@ -1,0 +1,25 @@
+{
+  "title": "Message contracts should not carry binary payloads",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "EFFICIENT"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "performance"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0050",
+  "sqKey": "GP0050",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

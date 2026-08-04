@@ -1,0 +1,42 @@
+<p>A published event should state when the fact it describes occurred.</p>
+<h2>Why is this an issue?</h2>
+<p>An event describes something that already happened. When it does not say <em>when</em>, the only time a consumer has is the moment it happened to
+receive the message - and that is not the same thing. A redelivery after an outage, a queue that backed up, a consumer started later to replay history:
+all of them make receive time drift arbitrarily far from occurrence time. Any consumer that orders events, computes a duration, or decides whether a
+newer fact has superseded an older one is then working from the wrong clock.</p>
+<p>The failure is quiet, because processing succeeds. A consumer building a timeline simply produces a timeline of when its own queue was drained. Adding
+the timestamp later does not fix the messages already published, so it has to be there from the start.</p>
+<pre>
+public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency);
+
+appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<p>The rule looks at the types actually registered for publishing or passed to a publish call, so a contract that is never published is not reported. It
+requires a <code>DateTimeOffset</code> member whose name is one of those in the <code>occurrenceTimeNames</code> parameter, which defaults to
+<code>OccurredAt,OccurredOn,Timestamp</code>. <code>DateTimeOffset</code> rather than <code>DateTime</code> is deliberate and matches S6566: an instant
+crossing a service boundary needs its offset.</p>
+<h3>Exceptions</h3>
+<p>Only publishing is checked, not sending. A command says what should happen next, so it has no occurrence time to state.</p>
+<h2>How to fix it</h2>
+<p>Add the occurrence time to the contract and set it where the fact is recorded - not where the message is published, which may be later.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency);
+
+appConfig.Publishes&lt;PaymentReceived&gt;(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency, DateTimeOffset OccurredAt);
+
+appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/azure/architecture/guide/architecture-styles/event-driven">Event-driven architecture
+  style</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/multi-container-microservice-net-applications/integration-event-based-microservice-communications">Integration
+  events for microservice communication</a></li>
+</ul>

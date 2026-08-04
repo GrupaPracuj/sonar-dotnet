@@ -1,0 +1,25 @@
+{
+  "title": "Personal data in a message contract should be classified",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "20min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "privacy"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0049",
+  "sqKey": "GP0049",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

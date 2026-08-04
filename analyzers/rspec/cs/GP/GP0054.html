@@ -1,0 +1,57 @@
+<p>A cancellation exception should not be caught and turned into a successful result.</p>
+<h2>Why is this an issue?</h2>
+<p><code>OperationCanceledException</code> is not a failure - it is the answer to a request to stop. Swallowing it and continuing tells the caller the
+operation completed, when in fact it was abandoned partway through. Everything downstream then acts on a result that was never produced.</p>
+<p>Where this hurts most is shutdown. The host signals cancellation, the code catches it, reports success, and the caller proceeds to acknowledge the
+message, commit the transaction or return <code>200 OK</code> - so half-finished work is recorded as finished, at exactly the moment nobody is watching
+because the process is going away. It is also why a graceful shutdown appears to work in testing and loses data in production: the symptom only appears
+when the cancellation actually fires mid-operation.</p>
+<pre>
+try
+{
+    await _client.Send(request, cancellationToken);
+}
+catch (OperationCanceledException)
+{
+    // treated as success
+}
+</pre>
+<p>The rule reports a <code>catch</code> of <code>OperationCanceledException</code> or <code>TaskCanceledException</code> whose body neither rethrows,
+nor throws something else, nor returns a value that signals the cancellation to the caller.</p>
+<h3>Exceptions</h3>
+<p>A block that rethrows - with <code>throw;</code>, <code>throw ex;</code> or a different exception - is not reported. Neither is one that returns a
+value, since the code is then deliberately mapping cancellation to a result the caller can see rather than hiding it. Logging alone does not count: a log
+line does not stop the caller from treating the operation as complete.</p>
+<h2>How to fix it</h2>
+<p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
+learns the operation did not finish.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+try
+{
+    await _client.Send(request, cancellationToken);
+}
+catch (OperationCanceledException) // Noncompliant {{Do not turn cancellation into success - let 'OperationCanceledException' propagate or rethrow it.}}
+{
+    _logger.LogInformation("Cancelled");
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+try
+{
+    await _client.Send(request, cancellationToken);
+}
+catch (OperationCanceledException)
+{
+    _logger.LogInformation("Cancelled");
+    throw;
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/parallel-programming/task-cancellation">Task cancellation</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.operationcanceledexception">OperationCanceledException</a></li>
+</ul>

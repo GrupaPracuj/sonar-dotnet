@@ -1,0 +1,24 @@
+{
+  "title": "Cancellation should not be silently suppressed",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "asynchrony"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0054",
+  "sqKey": "GP0054",
+  "scope": "Main",
+  "quickfix": "unknown"
+}
