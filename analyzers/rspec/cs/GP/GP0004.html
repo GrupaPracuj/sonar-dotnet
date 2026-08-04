@@ -1,11 +1,62 @@
-<p>
-  Message contracts (events and commands) should be plain immutable data structures and should not contain business behavior.
-</p>
+<p>Message contracts (events and commands) should be plain data carriers and must not contain business behavior.</p>
+<h2>Why is this an issue?</h2>
+<p>A message contract describes <em>what happened</em> (an event) or <em>what should happen</em> (a command); it is serialized, transported and
+deserialized by the messaging infrastructure, often by a different service or a different version of the same service than the one that produced it.
+When a message class also carries methods with business logic, that logic silently becomes part of the wire contract:</p>
+<pre>
+public class NotifyUser
+{
+    public string Email { get; set; }
+
+    public void SendNow() { /* ... calls an email service directly ... */ }
+}
+</pre>
 <ul>
-  <li>No mutable fields.</li>
-  <li>No writable properties using <code>set</code>.</li>
-  <li>No methods with behavior.</li>
+  <li>Consumers may call the method expecting it to behave the same way it did on the producer side, even though the two sides can evolve
+  independently.</li>
+  <li>The behavior is not visible in the serialized payload, so it is easy to forget it exists when the contract is changed.</li>
+  <li>It blurs the boundary between the messaging layer and the domain layer, making the contract harder to reason about and to version.</li>
 </ul>
-<p>
-  This rule applies to types registered through <code>Publishes&lt;T&gt;()</code> or <code>Sends&lt;T&gt;()</code>.
-</p>
+<p>Keeping message contracts free of behavior forces business logic to live where it belongs - in the handler that receives the message - and keeps
+the contract itself a stable, predictable data shape.</p>
+<p>Only methods the author added are treated as behavior. Mutable properties and fields are not flagged, and neither are members that describe the
+value rather than act on it: overrides, explicit interface implementations, <code>Equals</code>/<code>GetHashCode</code>/<code>ToString</code>/
+<code>Deconstruct</code>/<code>Clone</code>, and everything a <code>record</code> declaration generates for you. A static method that returns an
+instance of the contract itself is a factory - it constructs the message rather than acting on it - and is not flagged either.</p>
+<p>The issue is reported at the point where the contract is registered for publishing or sending, not on the contract's own declaration - the
+declaration usually lives in a different file, often a different project, than the registration.</p>
+<h2>How to fix it</h2>
+<p>Move any behavior out of the message class and into the component that handles the message. The message class itself should only expose the data
+needed to describe the event or command.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class NotifyUser
+{
+    public string Email { get; set; }
+
+    public void SendNow() { /* ... calls an email service directly ... */ }
+}
+
+appConfig.Sends&lt;NotifyUser&gt;(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class NotifyUser
+{
+    public string Email { get; set; }
+}
+
+public class NotifyUserHandler
+{
+    public void Handle(NotifyUser message) { /* ... calls an email service directly ... */ }
+}
+
+appConfig.Sends&lt;NotifyUser&gt;();
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Martin Fowler - <a href="https://martinfowler.com/eaaCatalog/dataTransferObject.html">Data Transfer Object</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/cqrs">CQRS pattern</a></li>
+</ul>

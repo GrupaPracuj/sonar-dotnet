@@ -370,6 +370,72 @@ public class RouteNamingConventionsTest
             .Verify();
 
     [TestMethod]
+    public void RouteNamingConventions_NoncompliantSecretRouteParameter() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpGetAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            public class SessionsController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token}")] // Noncompliant {{Route parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                public void GetByToken(string token) { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void RouteNamingConventions_CompliantOrdinaryRouteParameter() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpGetAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            public class UsersController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet("users/{id}")]
+                public void Get(int id) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void RouteNamingConventions_CompliantPluralNounsSharingPrefixWithExpandedVerbs() =>
         builder.AddSnippet(
             """

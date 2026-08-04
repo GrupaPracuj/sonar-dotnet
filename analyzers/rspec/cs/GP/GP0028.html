@@ -1,0 +1,84 @@
+<p>A URL that arrives as a parameter of a controller action should not be passed directly to an outbound HTTP call.</p>
+<h2>Why is this an issue?</h2>
+<p>When the destination of a server-side request is chosen by the caller, the caller decides what your service connects to. MITRE
+describes the weakness as:</p>
+<blockquote>
+  The web server receives a URL or similar request from an upstream component and retrieves the contents of this URL, but it does not sufficiently
+  ensure that the request is being sent to the expected destination.
+</blockquote>
+<p>This matters more inside a service mesh than on a developer machine. The request leaves from inside your network, so it reaches things the original
+caller never could: another service's internal endpoint, an admin port bound to localhost, or a cloud metadata endpoint that hands out credentials to
+anything that asks. Firewalls and network policies do not help, because from their point of view the request is your service making a perfectly normal
+call.</p>
+<p>The OWASP SSRF Prevention Cheat Sheet is direct about the input itself:</p>
+<blockquote>
+  Do not accept complete URLs from the user because URL are difficult to validate and the parser can be abused.
+</blockquote>
+<pre>
+[HttpGet("preview")]
+public async Task&lt;IActionResult&gt; Preview(string imageUrl)
+{
+    var content = await _httpClient.GetStringAsync(imageUrl);
+    return Ok(content);
+}
+</pre>
+<p>This rule reports a value the model binder filled from the route, the query string or the body when that value can still steer where the request
+goes - it is the whole URL, or it lands in the part of the URL that decides the host. An identifier substituted into a path segment of an address whose
+host is already fixed in the code, such as <code>$"{_options.ImageServiceBaseUrl}/images/{imageId}"</code>, picks which resource is fetched rather than
+which server answers, and is not reported.</p>
+<p>It also does not follow a value through local variables, fields or other methods, so a URL that takes a longer path to the same call is not reported
+- the absence of an issue here is not proof that the code is free of this weakness.</p>
+<h2>How to fix it</h2>
+<p>Do not let the caller name the destination. Take an identifier instead of a URL and build the address yourself, or - when a URL genuinely has to
+be accepted - resolve its host and compare it against an allowlist of trusted hosts before the request is made. The OWASP guidance is:</p>
+<blockquote>
+  Build an allowlist with all the domain names of every identified and trusted applications. Verify that the domain name received is part of this
+  allowlist (string strict comparison with case sensitive).
+</blockquote>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet("preview")]
+public async Task&lt;IActionResult&gt; Preview(string imageUrl)
+{
+    var content = await _httpClient.GetStringAsync(imageUrl); // Noncompliant {{Do not send a request to a URL taken from parameter 'imageUrl' - validate the host against an allowlist first.}}
+    return Ok(content);
+}
+</pre>
+<h4>Compliant solution</h4>
+<p>Accept an identifier and build the URL from configuration you control:</p>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpGet("preview")]
+public async Task&lt;IActionResult&gt; Preview(Guid imageId)
+{
+    var content = await _httpClient.GetStringAsync($"{_options.ImageServiceBaseUrl}/images/{imageId}");
+    return Ok(content);
+}
+</pre>
+<p>Or, when a URL has to be accepted, check its host against an allowlist first:</p>
+<pre data-diff-id="2" data-diff-type="compliant">
+[HttpGet("preview")]
+public async Task&lt;IActionResult&gt; Preview(string imageUrl)
+{
+    if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+        || !_options.AllowedImageHosts.Contains(uri.Host, StringComparer.Ordinal))
+    {
+        return BadRequest();
+    }
+
+    var content = await _httpClient.GetStringAsync(uri);
+    return Ok(content);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html">Server Side Request
+  Forgery Prevention Cheat Sheet</a></li>
+  <li>OWASP - <a href="https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/">Top 10 2021 Category A10 - Server-Side Request
+  Forgery (SSRF)</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/918.html">CWE-918 - Server-Side Request Forgery (SSRF)</a></li>
+</ul>

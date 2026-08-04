@@ -20,6 +20,6 @@
   "defaultSeverity": "Minor",
   "ruleSpecification": "GP-0012",
   "sqKey": "GP0012",
-  "scope": "All",
+  "scope": "Main",
   "quickfix": "unknown"
 }

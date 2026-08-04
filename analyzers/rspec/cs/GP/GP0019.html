@@ -1,0 +1,33 @@
+<p>A value whose name suggests it holds a secret (a password, an API key, a token, ...) should not be passed to a logging call.</p>
+<h2>Why is this an issue?</h2>
+<p>Log output routinely ends up somewhere that isn't as tightly access-controlled as the application itself - a log aggregator, a support
+ticket, a developer's terminal, a file shipped to a third-party monitoring service. Once a secret is written to a log, it is effectively out of the
+application's control: it can't be rotated away from those copies, and anyone with read access to the logs can use it directly.</p>
+<pre>
+_logger.LogInformation("User authenticated with {Password}", password);
+</pre>
+<h3>Exceptions</h3>
+<p>Only calls to <code>Microsoft.Extensions.Logging.ILogger</code> (<code>LogTrace</code>/<code>LogDebug</code>/<code>LogInformation</code>/
+<code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
+each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not trace
+where the value itself originally came from.</p>
+<h2>How to fix it</h2>
+<p>Remove the secret from the log call entirely, or replace it with a non-reversible indicator (for example whether a value was present, or its
+length) if that is genuinely useful for diagnostics.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+_logger.LogInformation("User authenticated with {Password}", password); // Noncompliant {{Do not log 'Password' - its name suggests it holds a secret.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+_logger.LogInformation("User {UserId} authenticated", userId);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure">Top 10 2017 Category A3 - Sensitive Data
+  Exposure</a></li>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude">Logging Cheat Sheet - Data to
+  exclude</a></li>
+</ul>

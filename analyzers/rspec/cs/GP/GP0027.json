@@ -1,0 +1,25 @@
+{
+  "title": "Calls to other services should propagate the available CancellationToken",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "reliability",
+    "microservices"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0027",
+  "sqKey": "GP0027",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

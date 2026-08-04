@@ -15,11 +15,17 @@
   "tags": [
     "gp",
     "security",
-    "authorization"
+    "authorization",
+    "cwe"
   ],
   "defaultSeverity": "Major",
   "ruleSpecification": "GP-0005",
   "sqKey": "GP0005",
-  "scope": "All",
-  "quickfix": "unknown"
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      285
+    ]
+  }
 }

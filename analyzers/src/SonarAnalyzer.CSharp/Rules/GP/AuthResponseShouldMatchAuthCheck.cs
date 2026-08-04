@@ -5,7 +5,7 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0011";
 
-    private const string MessageFormat = "This looks like a {0} check; return {1} instead of {2}.";
+    private const string MessageFormat = "This looks like {0} check; return {1} instead of {2}.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -39,11 +39,11 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
         {
             if (isPermissionCheck && IsUnauthorizedResponse(context.Model, invocation))
             {
-                context.ReportIssue(Rule, invocation, "permission", "403 (Forbid)", "401 (Unauthorized)");
+                context.ReportIssue(Rule, invocation, "a permission", "403 (Forbid)", "401 (Unauthorized)");
             }
             else if (isAuthenticationCheck && IsForbiddenResponse(context.Model, invocation))
             {
-                context.ReportIssue(Rule, invocation, "authentication", "401 (Unauthorized)", "403 (Forbid)");
+                context.ReportIssue(Rule, invocation, "an authentication", "401 (Unauthorized)", "403 (Forbid)");
             }
         }
     }

@@ -1,0 +1,31 @@
+{
+  "title": "Secret-like values should not be logged",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "logging",
+    "cwe"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0019",
+  "sqKey": "GP0019",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      532
+    ]
+  }
+}

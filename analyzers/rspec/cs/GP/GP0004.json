@@ -1,5 +1,5 @@
 {
-  "title": "Message contracts should be immutable and behavior-free",
+  "title": "Message contracts should not contain business behavior",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
@@ -20,6 +20,6 @@
   "defaultSeverity": "Major",
   "ruleSpecification": "GP-0004",
   "sqKey": "GP0004",
-  "scope": "All",
+  "scope": "Main",
   "quickfix": "unknown"
 }

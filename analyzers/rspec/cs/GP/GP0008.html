@@ -1,14 +1,53 @@
-<p>
-  Between transaction begin and commit (or <code>TransactionScope.Complete()</code>), keep only the essential SQL work for the same database transaction.
-</p>
-<p>
-  Do not call external network resources (for example REST APIs or message queues) inside a database transaction before commit.
-</p>
-<p>
-  In Juno-based code this includes calls such as <code>RunInTransaction(...)</code> callback bodies that use
-  <code>GP.Juno.EventStream</code> (<code>Publish</code>/<code>Send</code>) or HTTP abstractions like
-  <code>GP.Juno.HttpApiClient.HttpSending.HttpSender</code> and <code>GP.Juno.HttpClient.IHttpClient</code>.
-</p>
-<p>
-  Move network communication after transaction commit/complete or use outbox/integration patterns to preserve consistency.
-</p>
+<p>A database transaction should not perform external network calls (HTTP requests, message-bus publishes) before it commits.</p>
+<h2>Why is this an issue?</h2>
+<p>Making a remote call while a database transaction is still open ties the transaction's outcome to the availability and latency of an external
+system, and extends how long database locks are held. If the remote call is slow, the transaction stays open longer than necessary; if it fails
+after the transaction later commits (or the reverse - it succeeds but the transaction then rolls back), the database and the external system end up
+in an inconsistent state that is hard to reconcile. Keeping a transaction limited to the database work it actually needs, and moving integration
+calls after commit (or through an outbox), avoids coupling the transaction's fate to systems outside its control.</p>
+<pre>
+using (var transaction = await _transactional.StartTransaction())
+{
+    await transaction.Execute(order);
+    await _httpClient.GetAsync("/orders");
+    transaction.Commit();
+}
+</pre>
+<p>Both ways of scoping a transaction are covered. A <code>using</code> block scopes it to the block; a <code>using</code> declaration
+(<code>using var transaction = ...</code>) scopes it to the rest of the enclosing block, so the statements that follow the declaration are inside the
+transaction just as they would be inside a block. In either form, calls placed after the <code>Commit()</code> are outside the transaction and are not
+reported.</p>
+<h2>How to fix it</h2>
+<p>Move the network/message-bus call after the transaction has committed, or publish it through an outbox so it only fires once the database change
+is durable.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task Save(object order)
+{
+    using (var transaction = await _transactional.StartTransaction())
+    {
+        await transaction.Execute(order);
+        await _httpClient.GetAsync("/orders"); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+        transaction.Commit();
+    }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public async Task Save(object order)
+{
+    using (var transaction = await _transactional.StartTransaction())
+    {
+        await transaction.Execute(order);
+        transaction.Commit();
+    }
+
+    await _eventStream.Publish(order);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microservices.io - <a href="https://microservices.io/patterns/data/transactional-outbox.html">Transactional outbox pattern</a></li>
+</ul>

@@ -1,0 +1,30 @@
+{
+  "title": "Redirects should not use a URL taken straight from the request",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "cwe"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0031",
+  "sqKey": "GP0031",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      601
+    ]
+  }
+}

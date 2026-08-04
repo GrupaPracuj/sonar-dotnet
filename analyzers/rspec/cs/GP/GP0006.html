@@ -1,6 +1,30 @@
-<p>
-  User identity claims (for example <code>sub</code>, <code>email</code>, <code>name</code>) should not be used as access-control claims.
-</p>
-<p>
-  Use dedicated service access claims and explicit authorization policies instead.
-</p>
+<p>An access-control decision should not be based directly on an identity claim such as <code>sub</code>, <code>name</code>, <code>email</code>,
+<code>phone</code>, <code>preferred_username</code>, <code>upn</code>, <code>given_name</code>, <code>family_name</code> or
+<code>unique_name</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Identity claims describe <em>who</em> the caller is, not <em>what</em> the caller is allowed to do. Branching authorization logic on the presence
+or value of an identity claim conflates authentication data with permission data: it bypasses whatever role/permission/policy model the application
+uses elsewhere, and it silently breaks if that claim's format or presence changes (for example when the identity provider changes, or a service
+account with no <code>email</code> claim calls the endpoint). Access decisions should be based on dedicated authorization claims or policies instead.</p>
+<pre>
+public bool HasAccess(User user) =&gt;
+    user.HasClaim("sub");
+</pre>
+<p>Besides the generic <code>HasClaim</code> overloads, the rule also covers the <code>GP.Juno</code> claim helpers that each imply one fixed claim
+type (<code>HasUserClaim</code>, <code>FindUserClaim</code>, <code>HasApplicationClaim</code>, <code>HasUserGroupClaim</code>,
+<code>HasCompanyClaim</code> and friends). Those are matched only when the method actually comes from a <code>GP.Juno</code> namespace, so an unrelated
+method that happens to share the name is not reported. Claim types written as <code>ClaimTypes.Email</code> are recognised whether the class is
+imported or fully qualified.</p>
+<h2>How to fix it</h2>
+<p>Base the decision on a dedicated permission/role claim or an explicit authorization policy instead of an identity claim.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public bool HasAccess(User user) =&gt;
+    user.HasClaim("sub"); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public bool HasAccess(User user) =&gt;
+    user.HasClaim("filestore_access");
+</pre>

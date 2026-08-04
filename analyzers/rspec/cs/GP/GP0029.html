@@ -1,0 +1,82 @@
+<p>Deserializers that let the incoming payload decide which types to instantiate should not be used.</p>
+<h2>Why is this an issue?</h2>
+<p>Most serializers deserialize into a type you name in the code. A few instead read the type names out of the payload itself and instantiate whatever
+they find there. That hands control over which code runs to whoever wrote the payload. Microsoft's guidance on
+<code>BinaryFormatter</code> puts it plainly:</p>
+<blockquote>
+  As a simpler analogy, assume that calling <code>BinaryFormatter.Deserialize</code> over a payload is the equivalent of interpreting that payload as a
+  standalone executable and launching it.
+</blockquote>
+<blockquote>
+  The <code>BinaryFormatter.Deserialize</code> method is <strong>never</strong> safe when used with untrusted input.
+</blockquote>
+<p>Microsoft names four more serializers with the same problem:</p>
+<blockquote>
+  The preceding serializers all perform unrestricted polymorphic deserialization and are dangerous, just like <code>BinaryFormatter</code>.
+</blockquote>
+<p>This rule reports <code>BinaryFormatter</code>, <code>SoapFormatter</code>, <code>NetDataContractSerializer</code>, <code>LosFormatter</code> and
+<code>ObjectStateFormatter</code>, plus <code>JsonSerializerSettings.TypeNameHandling</code> set to anything other than <code>None</code>, which turns
+Json.NET into the same kind of type-driven deserializer. The Json.NET documentation warns:</p>
+<blockquote>
+  TypeNameHandling should be used with caution when your application deserializes JSON from an external source. Incoming types should be validated
+  with a custom SerializationBinder when deserializing with a value other than None.
+</blockquote>
+<pre>
+var formatter = new BinaryFormatter();
+var order = (Order)formatter.Deserialize(stream);
+</pre>
+<p>The common objection is that a given payload is trusted. Microsoft addresses that directly - the point is that a trust boundary is easy to miss:</p>
+<blockquote>
+  In general terms, the intent of serialization is to transmit an object into or out of an app. A threat modeling exercise almost always marks this
+  kind of data transfer as crossing a trust boundary.
+</blockquote>
+<p>For <code>BinaryFormatter</code> specifically there is also no longer a way to keep the code working: starting with .NET 9 the in-box implementation
+throws on use, and the switches that previously re-enabled it have been removed.</p>
+<h2>How to fix it</h2>
+<p>Move to a serializer that deserializes into the type your code asks for. Microsoft lists the safe in-box options as
+<code>System.Text.Json</code>, <code>XmlSerializer</code> and <code>DataContractSerializer</code> - note that <code>DataContractSerializer</code> is a
+different type from the unsafe <code>NetDataContractSerializer</code>. For Json.NET, leave <code>TypeNameHandling</code> at <code>None</code>; if
+polymorphism is genuinely required, restrict the accepted types with a custom <code>SerializationBinder</code> instead of accepting any type named in
+the payload.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Order Read(Stream stream)
+{
+    var formatter = new BinaryFormatter(); // Noncompliant {{'BinaryFormatter' lets the payload decide which types to instantiate - use a serializer that deserializes into a known type.}}
+    return (Order)formatter.Deserialize(stream);
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Order Read(Stream stream) =>
+    JsonSerializer.Deserialize&lt;Order&gt;(stream);
+</pre>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="2" data-diff-type="noncompliant">
+var settings = new JsonSerializerSettings
+{
+    TypeNameHandling = TypeNameHandling.All // Noncompliant {{'TypeNameHandling.All' lets the payload decide which types to instantiate - use a serializer that deserializes into a known type.}}
+};
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="2" data-diff-type="compliant">
+var settings = new JsonSerializerSettings
+{
+    TypeNameHandling = TypeNameHandling.None
+};
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-security-guide">Deserialization risks
+  in use of BinaryFormatter and related types</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-migration-guide/">BinaryFormatter
+  migration guide</a></li>
+  <li>Json.NET - <a href="https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_TypeNameHandling.htm">TypeNameHandling enumeration</a></li>
+  <li>OWASP - <a href="https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data">Deserialization of untrusted data</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/502.html">CWE-502 - Deserialization of Untrusted Data</a></li>
+</ul>

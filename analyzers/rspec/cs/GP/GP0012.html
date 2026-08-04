@@ -1,8 +1,36 @@
-<p>
-  Route segments should use kebab-case (lowercase words separated by hyphens), e.g. <code>job-offers</code> instead of
-  <code>jobOffers</code>, <code>JobOffers</code> or <code>job_offers</code>.
-</p>
-<p>
-  URLs are case-sensitive by convention and mixing casing styles across a service's endpoints makes the API inconsistent
-  and harder to predict for clients.
-</p>
+<p>Route segments should use kebab-case (lowercase words separated by hyphens), e.g. <code>job-offers</code> instead of <code>jobOffers</code>,
+<code>JobOffers</code> or <code>job_offers</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>URLs are conventionally treated as case-sensitive. When some endpoints use PascalCase, others camelCase and others snake_case, the casing style
+becomes one more thing a client has to memorize per endpoint instead of relying on a single, predictable pattern across the whole API. Kebab-case is
+the most common convention for REST resource paths precisely because it avoids this ambiguity.</p>
+<pre>
+[HttpGet("JobOffers")]
+public void GetAll() { }
+</pre>
+<h2>How to fix it</h2>
+<p>Rewrite the segment in kebab-case.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class JobOffersController
+{
+    [HttpGet("JobOffers")] // Noncompliant {{Rename route segment 'JobOffers' to kebab-case.}}
+    public void GetAll() { }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class JobOffersController
+{
+    [HttpGet("job-offers")]
+    public void GetAll() { }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft - <a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md#7811-uri-formatting">Microsoft REST API
+  Guidelines - URL structure</a></li>
+  <li>Google - <a href="https://cloud.google.com/apis/design/resource_names">API Design Guide - Resource names</a></li>
+</ul>

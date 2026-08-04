@@ -1,0 +1,36 @@
+<p>A call to another service should pass along the <code>CancellationToken</code> that is already available in the calling method.</p>
+<h2>Why is this an issue?</h2>
+<p>In a system made of many services calling each other, a call that cannot be cancelled keeps running - and keeps its thread, connection and any
+locks it holds - for as long as the callee takes to respond, even after the original caller has given up (the client disconnected, an upstream
+timeout fired, the whole request was cancelled). Under normal conditions this is invisible; under partial failure, when one downstream service gets
+slow, it is exactly how a local slowdown turns into resource exhaustion in every service upstream of it. A <code>CancellationToken</code> is how
+.NET propagates "the caller no longer needs this" down the call chain - it is only useful if every link in the chain actually passes it on.</p>
+<pre>
+public Task&lt;OrderDto&gt; GetOrder(string id, CancellationToken cancellationToken) =>
+    _httpClient.GetFromJsonAsync&lt;OrderDto&gt;($"/orders/{id}");
+</pre>
+<h3>Exceptions</h3>
+<p>Only the immediately enclosing method's own parameters are considered "available" - a token reachable only through a field, a captured
+variable, or an outer method is not. A call that already passes some <code>CancellationToken</code> (even a different one, such as
+<code>CancellationToken.None</code>) is not flagged, since that is a conscious choice already visible at the call site.</p>
+<h2>How to fix it</h2>
+<p>Pass the method's own <code>CancellationToken</code> parameter to the outgoing call.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Task&lt;OrderDto&gt; GetOrder(string id, CancellationToken cancellationToken) =>
+    _httpClient.GetFromJsonAsync&lt;OrderDto&gt;($"/orders/{id}"); // Noncompliant {{Pass the available CancellationToken to this call to another service, so it can be cancelled or time out.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task&lt;OrderDto&gt; GetOrder(string id, CancellationToken cancellationToken) =>
+    _httpClient.GetFromJsonAsync&lt;OrderDto&gt;($"/orders/{id}", cancellationToken);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/threading/cancellation-in-managed-threads">Cancellation in
+  managed threads</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/request-cancellation">Handling request cancellation in
+  ASP.NET Core</a></li>
+</ul>

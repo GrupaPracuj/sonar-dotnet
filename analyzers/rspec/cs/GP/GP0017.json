@@ -1,0 +1,24 @@
+{
+  "title": "Date-only properties should not have 'Utc' in their name",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0017",
+  "sqKey": "GP0017",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

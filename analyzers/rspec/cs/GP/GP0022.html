@@ -1,0 +1,32 @@
+<p>A value whose name suggests it holds personal data (an email address, a national ID number, a phone number, ...) should not be passed to a
+logging call.</p>
+<h2>Why is this an issue?</h2>
+<p>Logs typically live far longer than the request that produced them, get shipped to third-party aggregation services, and are read by a wider
+group of people than the data subject ever agreed to. Writing personal data into logs quietly turns a diagnostic tool into an additional store of
+personal data that has to be inventoried, retained and protected like any other - it just usually isn't.</p>
+<pre>
+_logger.LogInformation("New user registered with {Email}", email);
+</pre>
+<h3>Exceptions</h3>
+<p>Only calls to <code>Microsoft.Extensions.Logging.ILogger</code> (<code>LogTrace</code>/<code>LogDebug</code>/<code>LogInformation</code>/
+<code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
+each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not know
+whether logging this particular field is actually required for audit purposes in your context.</p>
+<h2>How to fix it</h2>
+<p>Log an identifier that isn't personal data on its own (for example a user ID) instead of the personal data itself, or mask/truncate the value if
+some of it is genuinely needed for support.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+_logger.LogInformation("New user registered with {Email}", email); // Noncompliant {{Do not log 'Email' - its name suggests it holds personal data.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+_logger.LogInformation("New user registered with id {UserId}", userId);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude">Logging Cheat Sheet - Data to
+  exclude</a></li>
+</ul>

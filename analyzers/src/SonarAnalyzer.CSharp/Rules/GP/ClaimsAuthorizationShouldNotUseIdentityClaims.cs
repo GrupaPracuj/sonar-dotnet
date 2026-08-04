@@ -69,7 +69,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
     private static void CheckNegatedHasClaim(SonarSyntaxNodeReportingContext context)
     {
-        if (context.Node is PrefixUnaryExpressionSyntax { Operand: InvocationExpressionSyntax invocation } && IsHasClaimInvocation(invocation))
+        if (context.Node is PrefixUnaryExpressionSyntax { Operand: InvocationExpressionSyntax invocation } && IsHasClaimInvocation(context.Model, invocation))
         {
             context.ReportIssue(NegativeHasClaimRule, context.Node);
         }
@@ -85,7 +85,13 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
         if (JunoParameterlessClaimCheckMethods.TryGetValue(methodName, out var junoClaimName))
         {
-            context.ReportIssue(IdentityClaimRule, invocation, junoClaimName);
+            // The name alone is not enough: only the GP.Juno claim helpers imply a fixed claim type, so an
+            // unrelated method that happens to be called HasCompanyClaim must not be reported.
+            if (IsJunoSecurityMethod(context.Model, invocation))
+            {
+                context.ReportIssue(IdentityClaimRule, invocation, junoClaimName);
+            }
+
             return;
         }
 
@@ -138,9 +144,25 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         }
     }
 
-    private static bool IsHasClaimInvocation(InvocationExpressionSyntax invocation) =>
+    private static bool IsHasClaimInvocation(SemanticModel model, InvocationExpressionSyntax invocation) =>
         invocation.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var methodName }
-        && (methodName == "HasClaim" || (JunoParameterlessClaimCheckMethods.ContainsKey(methodName) && methodName.StartsWith("Has", StringComparison.Ordinal)));
+        && (methodName == "HasClaim"
+            || (JunoParameterlessClaimCheckMethods.ContainsKey(methodName)
+                && methodName.StartsWith("Has", StringComparison.Ordinal)
+                && IsJunoSecurityMethod(model, invocation)));
+
+    private static bool IsJunoSecurityMethod(SemanticModel model, InvocationExpressionSyntax invocation)
+    {
+        if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method)
+        {
+            return false;
+        }
+
+        return IsJunoNamespace(method.ContainingNamespace) || IsJunoNamespace(method.ContainingType?.ContainingNamespace);
+    }
+
+    private static bool IsJunoNamespace(INamespaceSymbol namespaceSymbol) =>
+        (namespaceSymbol?.ToDisplayString() ?? string.Empty).StartsWith("GP.Juno", StringComparison.Ordinal);
 
     private static bool IsAuthorizeAttribute(AttributeSyntax attribute) =>
         attribute.Name switch
@@ -202,71 +224,30 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
         return firstArgument switch
         {
-            ParenthesizedLambdaExpressionSyntax lambda => ExtractClaimNameFromPredicate(lambda, model),
-            SimpleLambdaExpressionSyntax lambda => ExtractClaimNameFromPredicate(lambda, model),
-            AnonymousMethodExpressionSyntax anonymousMethod => ExtractClaimNameFromPredicate(anonymousMethod, model),
+            ParenthesizedLambdaExpressionSyntax { Body: { } body } => ExtractClaimNameFromPredicate(body, model),
+            SimpleLambdaExpressionSyntax { Body: { } body } => ExtractClaimNameFromPredicate(body, model),
+            AnonymousMethodExpressionSyntax { Body: { } body } => ExtractClaimNameFromPredicate(body, model),
             _ => null
         };
     }
 
-    private static string ExtractClaimNameFromPredicate(LambdaExpressionSyntax lambda, SemanticModel model)
+    // Finds the claim type a predicate compares against, e.g. x => x.Type == ClaimTypes.Email.
+    private static string ExtractClaimNameFromPredicate(SyntaxNode predicateBody, SemanticModel model)
     {
-        var candidates = lambda.Body.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>();
-        foreach (var binary in candidates)
+        foreach (var binary in predicateBody.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>())
         {
             if (binary.Kind() is not (SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression))
             {
                 continue;
             }
 
-            if (IsClaimTypeAccess(binary.Left))
-            {
-                var claimName = ExtractClaimNameFromExpression(binary.Right, model);
-                if (claimName is not null)
-                {
-                    return claimName;
-                }
-            }
+            var comparedToClaimType = IsClaimTypeAccess(binary.Left)
+                ? binary.Right
+                : IsClaimTypeAccess(binary.Right) ? binary.Left : null;
 
-            if (IsClaimTypeAccess(binary.Right))
+            if (comparedToClaimType is not null && ExtractClaimNameFromExpression(comparedToClaimType, model) is { } claimName)
             {
-                var claimName = ExtractClaimNameFromExpression(binary.Left, model);
-                if (claimName is not null)
-                {
-                    return claimName;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static string ExtractClaimNameFromPredicate(AnonymousMethodExpressionSyntax anonymousMethod, SemanticModel model)
-    {
-        var candidates = anonymousMethod.Body?.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>() ?? Enumerable.Empty<BinaryExpressionSyntax>();
-        foreach (var binary in candidates)
-        {
-            if (binary.Kind() is not (SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression))
-            {
-                continue;
-            }
-
-            if (IsClaimTypeAccess(binary.Left))
-            {
-                var claimName = ExtractClaimNameFromExpression(binary.Right, model);
-                if (claimName is not null)
-                {
-                    return claimName;
-                }
-            }
-
-            if (IsClaimTypeAccess(binary.Right))
-            {
-                var claimName = ExtractClaimNameFromExpression(binary.Left, model);
-                if (claimName is not null)
-                {
-                    return claimName;
-                }
+                return claimName;
             }
         }
 
@@ -276,6 +257,15 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
     private static bool IsClaimTypeAccess(ExpressionSyntax expression) =>
         expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Type" };
 
+    // Accepts both "ClaimTypes.Email" and a qualified "System.Security.Claims.ClaimTypes.Email".
+    private static bool IsClaimTypesQualifier(ExpressionSyntax expression) =>
+        expression switch
+        {
+            IdentifierNameSyntax { Identifier.ValueText: "ClaimTypes" } => true,
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "ClaimTypes" } => true,
+            _ => false
+        };
+
     private static string ExtractClaimNameFromExpression(ExpressionSyntax expression, SemanticModel model)
     {
         if (expression is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression))
@@ -284,7 +274,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         }
 
         if (expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var memberName } memberAccess
-            && memberAccess.Expression is IdentifierNameSyntax { Identifier.ValueText: "ClaimTypes" }
+            && IsClaimTypesQualifier(memberAccess.Expression)
             && ForbiddenClaimTypesMembers.Contains(memberName))
         {
             return memberName;

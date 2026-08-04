@@ -1,0 +1,71 @@
+<p>A redirect target that arrives as a parameter of a controller action should be checked to be local before it is used.</p>
+<h2>Why is this an issue?</h2>
+<p>Microsoft's ASP.NET Core guidance describes the problem and the reason it works:</p>
+<blockquote>
+  A web app that redirects to a URL that's specified via the request such as the querystring or form data can potentially be tampered with to redirect
+  users to an external, malicious URL. This tampering is called an open redirection attack.
+</blockquote>
+<p>What makes it effective is that the link the user inspects is yours. They see your host name at the start of the URL, trust it, and click; the
+redirect then delivers them to a copy of your login page on someone else's host. Microsoft's own example walks through the result: the user logs in
+again on the fake site, believing their first attempt simply failed, and:</p>
+<blockquote>
+  The user most likely remains unaware that their credentials are compromised.
+</blockquote>
+<pre>
+public IActionResult LogOn(string returnUrl)
+{
+    // ...
+    return Redirect(returnUrl);
+}
+</pre>
+<p>This rule reports a parameter of the enclosing controller action passed to <code>Redirect</code> or <code>RedirectPermanent</code> when that
+parameter can still decide the destination, and the enclosing method contains no local-URL check at all. A parameter appended to a path that is already
+fixed in the code, such as <code>Redirect("/orders/" + id)</code>, cannot leave the site and is not reported.</p>
+<p>It does not follow a value through local variables or fields, and it does not verify that an <code>IsLocalUrl</code> check present in the method
+actually guards this particular redirect.</p>
+<h2>How to fix it</h2>
+<p>Microsoft states the requirement as:</p>
+<blockquote>
+  Whenever your application logic redirects to a specified URL, you must verify that the redirection URL hasn't been tampered with.
+</blockquote>
+<p>The simplest way is <code>LocalRedirect</code>, which does the check for you - "<code>LocalRedirect</code> will throw an exception if a non-local URL
+is specified. Otherwise, it behaves just like the <code>Redirect</code> method." Where you need to handle a non-local URL yourself rather than throw,
+test it first with <code>Url.IsLocalUrl</code> and fall back to a known destination.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public IActionResult LogOn(string returnUrl)
+{
+    return Redirect(returnUrl); // Noncompliant {{Do not redirect to a URL taken from parameter 'returnUrl' - use LocalRedirect or check it with Url.IsLocalUrl first.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public IActionResult LogOn(string returnUrl)
+{
+    return LocalRedirect(returnUrl);
+}
+</pre>
+<p>Or, to choose the fallback destination yourself instead of throwing:</p>
+<pre data-diff-id="2" data-diff-type="compliant">
+public IActionResult LogOn(string returnUrl)
+{
+    if (Url.IsLocalUrl(returnUrl))
+    {
+        return Redirect(returnUrl);
+    }
+
+    return RedirectToAction(nameof(HomeController.Index), "Home");
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/preventing-open-redirects">Prevent open redirect attacks in
+  ASP.NET Core</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.mvc.iurlhelper.islocalurl">IUrlHelper.IsLocalUrl</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/601.html">CWE-601 - URL Redirection to Untrusted Site ('Open Redirect')</a></li>
+</ul>

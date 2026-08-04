@@ -1,0 +1,31 @@
+{
+  "title": "Actions should explicitly declare their access policy",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "authorization",
+    "cwe"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0020",
+  "sqKey": "GP0020",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      862
+    ]
+  }
+}

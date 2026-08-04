@@ -1,5 +1,5 @@
 /*
- * SonarC#
+ * GP C#
  * Copyright (C) SonarSource Sàrl
  * mailto:info AT sonarsource DOT com
  *
@@ -34,14 +34,15 @@ class CSharpPluginTest {
 
     Plugin.Context context = new Plugin.Context(sonarRuntime);
     new CSharpPlugin().define(context);
-    assertThat(context.getExtensions()).hasSize(3);
+    assertThat(context.getExtensions()).hasSize(7);
+    assertThat(context.getExtensions()).contains(GpCSharpProfile.class);
   }
 
   @Test
   void pluginProperties() {
     assertThat(CSharpPlugin.METADATA.languageKey()).isEqualTo("cs");
     assertThat(CSharpPlugin.METADATA.languageName()).isEqualTo("C#");
-    assertThat(CSharpPlugin.METADATA.repositoryKey()).isEqualTo("gp-csharpsquid");
+    assertThat(CSharpPlugin.METADATA.repositoryKey()).isEqualTo("roslyn.GPcsharp.cs");
     assertThat(CSharpPlugin.METADATA.fileSuffixesKey()).isEqualTo("sonar.cs.file.suffixes");
     assertThat(CSharpPlugin.METADATA.fileSuffixesDefaultValue()).isEqualTo(".cs,.razor");
     assertThat(CSharpPlugin.METADATA.resourcesDirectory()).isEqualTo("/org/sonar/plugins/csharp");

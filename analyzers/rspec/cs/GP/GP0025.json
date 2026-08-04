@@ -1,0 +1,25 @@
+{
+  "title": "Contracts should not expose non-serializable members",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0025",
+  "sqKey": "GP0025",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

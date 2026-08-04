@@ -111,7 +111,7 @@ public class AuthResponseShouldMatchAuthCheckTest
                 {
                     if (!User.Identity.IsAuthenticated)
                     {
-                        return Forbid(); // Noncompliant {{This looks like a authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
+                        return Forbid(); // Noncompliant {{This looks like an authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
                     }
 
                     return Ok();
@@ -156,7 +156,7 @@ public class AuthResponseShouldMatchAuthCheckTest
                     }
                     else
                     {
-                        return StatusCode(403); // Noncompliant {{This looks like a authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
+                        return StatusCode(403); // Noncompliant {{This looks like an authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
                     }
                 }
             }

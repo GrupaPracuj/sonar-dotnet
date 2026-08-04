@@ -1,6 +1,33 @@
-<p>
-  Command contracts should express intent and should not use the technical <code>Command</code> suffix.
-</p>
-<p>
-  This rule checks only contracts registered with <code>Sends&lt;T&gt;()</code>.
-</p>
+<p>A command contract registered for sending should express intent and should not use the technical <code>Command</code> suffix.</p>
+<h2>Why is this an issue?</h2>
+<p>A command represents an intent: a request for something to happen (<code>AcceptOrder</code>, <code>ShipPackage</code>). Once the type is sent
+through the messaging infrastructure, its role as a command is already clear from that context, so appending the technical suffix
+<code>Command</code> to its name (<code>AcceptOrderCommand</code>) is redundant noise that doesn't add any information for the reader.</p>
+<pre>
+public class AcceptOrderCommand { }
+
+appConfig.Sends&lt;AcceptOrderCommand&gt;();
+</pre>
+<h2>How to fix it</h2>
+<p>Rename the command type to an imperative name that expresses the requested action, without the technical suffix.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class AcceptOrderCommand { }
+
+public static class Startup
+{
+    public static void RegisterMessages(AppConfig appConfig) =&gt;
+        appConfig.Sends&lt;AcceptOrderCommand&gt;(); // Noncompliant {{Rename command 'AcceptOrderCommand' to remove the 'Command' suffix.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class AcceptOrder { }
+
+public static class Startup
+{
+    public static void RegisterMessages(AppConfig appConfig) =&gt;
+        appConfig.Sends&lt;AcceptOrder&gt;();
+}
+</pre>

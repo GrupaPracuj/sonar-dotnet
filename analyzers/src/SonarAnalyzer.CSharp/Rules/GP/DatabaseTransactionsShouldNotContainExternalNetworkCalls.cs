@@ -1,4 +1,4 @@
-﻿namespace SonarAnalyzer.CSharp.Rules;
+namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : SonarDiagnosticAnalyzer
@@ -30,20 +30,50 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
     protected override void Initialize(SonarAnalysisContext context)
     {
         context.RegisterNodeAction(AnalyzeUsingStatement, SyntaxKind.UsingStatement);
+        context.RegisterNodeAction(AnalyzeUsingDeclaration, SyntaxKind.LocalDeclarationStatement);
         context.RegisterNodeAction(AnalyzeRunInTransactionInvocation, SyntaxKind.InvocationExpression);
     }
 
+    // using (var transaction = connection.BeginTransaction()) { ... } - the transaction lives for the whole block.
     private static void AnalyzeUsingStatement(SonarSyntaxNodeReportingContext context)
     {
-        if (context.Node is not UsingStatementSyntax usingStatement
-            || usingStatement.Declaration?.Variables is not { Count: 1 } variables
-            || variables[0].Identifier.ValueText is not { Length: > 0 } transactionVariableName
-            || variables[0].Initializer?.Value is not ExpressionSyntax initializerExpression
+        var usingStatement = (UsingStatementSyntax)context.Node;
+        if (SingleDeclaredVariable(usingStatement.Declaration) is not { } variable
             || usingStatement.Statement is not BlockSyntax block)
         {
             return;
         }
 
+        AnalyzeTransactionScope(context, variable, block.Statements, firstIndex: 0);
+    }
+
+    // using var transaction = connection.BeginTransaction(); - the transaction lives from here to the end of the
+    // enclosing block, so only the statements that follow the declaration are inside it.
+    private static void AnalyzeUsingDeclaration(SonarSyntaxNodeReportingContext context)
+    {
+        var localDeclaration = (LocalDeclarationStatementSyntax)context.Node;
+        if (!localDeclaration.UsingKeyword.IsKind(SyntaxKind.UsingKeyword)
+            || SingleDeclaredVariable(localDeclaration.Declaration) is not { } variable
+            || localDeclaration.Parent is not BlockSyntax block)
+        {
+            return;
+        }
+
+        AnalyzeTransactionScope(context, variable, block.Statements, firstIndex: block.Statements.IndexOf(localDeclaration) + 1);
+    }
+
+    private static VariableDeclaratorSyntax SingleDeclaredVariable(VariableDeclarationSyntax declaration) =>
+        declaration?.Variables is { Count: 1 } variables
+        && variables[0] is { Identifier.ValueText.Length: > 0, Initializer.Value: not null } variable
+            ? variable
+            : null;
+
+    private static void AnalyzeTransactionScope(SonarSyntaxNodeReportingContext context,
+                                               VariableDeclaratorSyntax variable,
+                                               SyntaxList<StatementSyntax> statements,
+                                               int firstIndex)
+    {
+        var initializerExpression = variable.Initializer.Value;
         var isTransactionStart = IsTransactionStartExpression(initializerExpression);
         var isTransactionScope = IsTransactionScopeExpression(context.Model, initializerExpression);
         if (!isTransactionStart && !isTransactionScope)
@@ -51,14 +81,12 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
             return;
         }
 
-        var statements = block.Statements;
-        var boundaryIndex = isTransactionScope
-            ? GetCompleteStatementIndex(statements, transactionVariableName)
-            : GetCommitStatementIndex(statements, transactionVariableName);
-
+        var transactionVariableName = variable.Identifier.ValueText;
+        var boundaryName = isTransactionScope ? "Complete" : "Commit";
+        var boundaryIndex = GetBoundaryStatementIndex(statements, firstIndex, transactionVariableName, boundaryName);
         var lastStatementToAnalyze = boundaryIndex >= 0 ? boundaryIndex - 1 : statements.Count - 1;
 
-        for (var i = 0; i <= lastStatementToAnalyze; i++)
+        for (var i = firstIndex; i <= lastStatementToAnalyze; i++)
         {
             foreach (var invocation in statements[i].DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
             {
@@ -128,27 +156,21 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
                && TransactionStartMethods.Contains(memberAccess.Name.Identifier.ValueText);
     }
 
-    private static bool IsTransactionScopeExpression(SemanticModel model, ExpressionSyntax expression)
-    {
-        var creation = expression as ObjectCreationExpressionSyntax;
-        if (creation is null)
-        {
-            return false;
-        }
+    private static bool IsTransactionScopeExpression(SemanticModel model, ExpressionSyntax expression) =>
+        ObjectCreationFactory.TryCreate(expression, out var creation)
+        && creation.TypeSymbol(model)?.ToDisplayString() == "System.Transactions.TransactionScope";
 
-        var createdType = model.GetTypeInfo(creation).Type?.ToDisplayString() ?? string.Empty;
-        return createdType == "System.Transactions.TransactionScope";
-    }
-
-    private static int GetCommitStatementIndex(SyntaxList<StatementSyntax> statements, string transactionVariableName)
+    // Index of the statement that ends the transaction (Commit/Complete), or -1 when the block never ends it -
+    // in which case every statement in scope is still inside the open transaction.
+    private static int GetBoundaryStatementIndex(SyntaxList<StatementSyntax> statements, int firstIndex, string transactionVariableName, string boundaryMethodName)
     {
-        for (var i = 0; i < statements.Count; i++)
+        for (var i = firstIndex; i < statements.Count; i++)
         {
-            var hasCommit = statements[i].DescendantNodesAndSelf()
+            var endsTransaction = statements[i].DescendantNodesAndSelf()
                 .OfType<InvocationExpressionSyntax>()
-                .Any(x => IsCommitInvocation(x, transactionVariableName));
+                .Any(x => IsTransactionMemberInvocation(x, transactionVariableName, boundaryMethodName));
 
-            if (hasCommit)
+            if (endsTransaction)
             {
                 return i;
             }
@@ -157,43 +179,17 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         return -1;
     }
 
-    private static bool IsCommitInvocation(InvocationExpressionSyntax invocation, string transactionVariableName) =>
+    private static bool IsTransactionMemberInvocation(InvocationExpressionSyntax invocation, string transactionVariableName, string memberName) =>
         transactionVariableName is not null
         && invocation.Expression is MemberAccessExpressionSyntax
         {
             Expression: IdentifierNameSyntax { Identifier.ValueText: var ownerName },
-            Name.Identifier.ValueText: "Commit"
-        } && ownerName == transactionVariableName;
-
-    private static int GetCompleteStatementIndex(SyntaxList<StatementSyntax> statements, string transactionVariableName)
-    {
-        for (var i = 0; i < statements.Count; i++)
-        {
-            var hasComplete = statements[i].DescendantNodesAndSelf()
-                .OfType<InvocationExpressionSyntax>()
-                .Any(x => IsCompleteInvocation(x, transactionVariableName));
-
-            if (hasComplete)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private static bool IsCompleteInvocation(InvocationExpressionSyntax invocation, string transactionVariableName) =>
-        transactionVariableName is not null
-        && invocation.Expression is MemberAccessExpressionSyntax
-        {
-            Expression: IdentifierNameSyntax { Identifier.ValueText: var ownerName },
-            Name.Identifier.ValueText: "Complete"
-        } && ownerName == transactionVariableName;
+            Name.Identifier.ValueText: var invokedName
+        } && ownerName == transactionVariableName && invokedName == memberName;
 
     private static bool IsExternalNetworkCall(SonarSyntaxNodeReportingContext context, InvocationExpressionSyntax invocation, string transactionVariableName)
     {
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
-            || IsCommitInvocation(invocation, transactionVariableName)
             || IsTransactionOwnerInvocation(invocation, transactionVariableName))
         {
             return false;
@@ -237,11 +233,12 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
                && type?.Name == "IPublisher";
     }
 
+    // Anything called on the transaction itself (Commit, Rollback, Save, ...) is transaction bookkeeping, not an
+    // external call, so it is never reported.
     private static bool IsTransactionOwnerInvocation(InvocationExpressionSyntax invocation, string transactionVariableName) =>
         transactionVariableName is not null
         && invocation.Expression is MemberAccessExpressionSyntax
         {
             Expression: IdentifierNameSyntax { Identifier.ValueText: var ownerName }
         } && ownerName == transactionVariableName;
-
 }

@@ -1,0 +1,32 @@
+{
+  "title": "Personal data should not be logged",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "logging",
+    "privacy",
+    "cwe"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0022",
+  "sqKey": "GP0022",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      532
+    ]
+  }
+}

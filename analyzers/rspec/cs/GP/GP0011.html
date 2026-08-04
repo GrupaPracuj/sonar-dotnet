@@ -1,13 +1,98 @@
-<p>
-  A 401 (Unauthorized) response means the caller's identity could not be established or its credentials were rejected.
-  A 403 (Forbidden) response means the caller is known, but is not allowed to perform the requested operation.
-</p>
-<p>
-  Returning <code>401</code> from a permission/role check (e.g. <code>IsInRole</code>, <code>HasClaim</code>), or returning
-  <code>403</code> from an authentication check (e.g. <code>Identity.IsAuthenticated</code>), mixes up these two distinct
-  failure reasons and can mislead API clients about how to react to the error.
-</p>
-<p>
-  Return <code>403 (Forbid)</code> when the check is about what the caller is allowed to do, and
-  <code>401 (Unauthorized)</code> when the check is about whether the caller is authenticated at all.
-</p>
+<p>A response returned from a permission check should use <code>403 (Forbid)</code>, and a response returned from an authentication check should
+use <code>401 (Unauthorized)</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>RFC 9110, the current HTTP semantics standard, defines the two status codes precisely:</p>
+<blockquote>
+  401 (Unauthorized) status code indicates that the request has not been applied because it lacks valid authentication credentials for the target
+  resource.
+</blockquote>
+<blockquote>
+  403 (Forbidden) status code indicates that the server understood the request but refuses to fulfill it.
+</blockquote>
+<p>In practice: a <code>401</code> response means the caller's identity could not be established or its credentials were rejected - the client's
+reasonable reaction is to (re-)authenticate. A <code>403</code> response means the caller is known, but isn't allowed to perform the requested
+operation - re-authenticating won't help; the client needs different permissions. The rule looks for two mirror-image mistakes:</p>
+<p><strong>A permission/role check (<code>IsInRole(...)</code>, <code>HasClaim(...)</code>) that returns 401 instead of 403</strong> - the caller's
+identity is not in question here, only whether their role/claims allow the operation, so <code>401</code> wrongly suggests that logging in again
+would help:</p>
+<pre>
+if (!User.IsInRole("Admin"))
+{
+    return Unauthorized(); // should be Forbid() - the caller is authenticated, just not an Admin
+}
+</pre>
+<p><strong>An authentication check (<code>Identity.IsAuthenticated</code>) that returns 403 instead of 401</strong> - there is no established
+identity yet to be "forbidden", so <code>403</code> wrongly suggests that the caller is known and simply denied:</p>
+<pre>
+if (!User.Identity.IsAuthenticated)
+{
+    return Forbid(); // should be Unauthorized() - there is no caller identity yet
+}
+</pre>
+<p>Either way, the response code tells the client the wrong thing to do next.</p>
+<h3>Exceptions</h3>
+<p>A condition that mixes both kinds of checks, or neither (for example <code>!IsAuthenticated || !IsInRole(...)</code>), is intentionally left
+alone rather than guessed at.</p>
+<h2>How to fix it</h2>
+<p>Return <code>Forbid()</code> from a permission check and <code>Unauthorized()</code> from an authentication check.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public IActionResult DeleteUser()
+{
+    if (!User.IsInRole("Admin"))
+    {
+        return Unauthorized(); // Noncompliant {{This looks like a permission check; return 403 (Forbid) instead of 401 (Unauthorized).}}
+    }
+
+    return Ok();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public IActionResult DeleteUser()
+{
+    if (!User.IsInRole("Admin"))
+    {
+        return Forbid();
+    }
+
+    return Ok();
+}
+</pre>
+<p>The same mismatch also happens in the other direction, for an authentication check:</p>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="2" data-diff-type="noncompliant">
+public IActionResult DeleteUser()
+{
+    if (!User.Identity.IsAuthenticated)
+    {
+        return Forbid(); // Noncompliant {{This looks like an authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
+    }
+
+    return Ok();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="2" data-diff-type="compliant">
+public IActionResult DeleteUser()
+{
+    if (!User.Identity.IsAuthenticated)
+    {
+        return Unauthorized();
+    }
+
+    return Ok();
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>IETF - <a href="https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.2">RFC 9110 - HTTP Semantics, Section 15.5.2 - 401
+  Unauthorized</a></li>
+  <li>IETF - <a href="https://www.rfc-editor.org/rfc/rfc9110.html#section-15.5.4">RFC 9110 - HTTP Semantics, Section 15.5.4 - 403 Forbidden</a></li>
+  <li>MDN - <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401">401 Unauthorized</a></li>
+  <li>MDN - <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403">403 Forbidden</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/authorization/introduction">Introduction to authorization in
+  ASP.NET Core</a></li>
+</ul>

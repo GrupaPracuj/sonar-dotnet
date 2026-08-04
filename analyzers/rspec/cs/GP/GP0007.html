@@ -1,9 +1,23 @@
-<p>
-  Shared dictionaries should be consumed through <code>Juno.Dictionaries</code> instead of direct HTTP calls to Skidblandir.
-</p>
-<p>
-  Direct calls to Skidblandir endpoints couple application code to transport details and bypass standardized caching/retry behavior.
-</p>
-<p>
-  Use Juno dictionary abstractions in application code and keep Skidblandir API communication behind that integration layer.
-</p>
+<p>Shared dictionaries should be consumed through <code>Juno.Dictionaries</code> instead of calling the Skidblandir API directly over HTTP.</p>
+<h2>Why is this an issue?</h2>
+<p><code>Juno.Dictionaries</code> is the standard integration layer for shared dictionary data: it centralizes caching, retries and error handling for
+Skidblandir lookups. Calling the Skidblandir endpoints directly with an <code>HttpClient</code> bypasses all of that, couples the calling code to
+transport details (URLs, response shapes) that <code>Juno.Dictionaries</code> is meant to hide, and duplicates behavior that the shared layer already
+provides consistently across services.</p>
+<pre>
+public Task&lt;string&gt; Fetch() =&gt;
+    _httpClient.GetStringAsync("https://skidblandir.pracuj.local/api/dictionaries/categories");
+</pre>
+<h2>How to fix it</h2>
+<p>Replace the direct HTTP call with the corresponding <code>Juno.Dictionaries</code> facade method.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Task&lt;string&gt; Fetch() =&gt;
+    _httpClient.GetStringAsync("https://skidblandir.pracuj.local/api/dictionaries/categories"); // Noncompliant {{Use Juno.Dictionaries instead of calling Skidblandir API directly.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task&lt;IReadOnlyCollection&lt;string&gt;&gt; Fetch() =&gt;
+    _dictionaries.GetItems&lt;string&gt;("categories", new Parameters(), CancellationToken.None);
+</pre>

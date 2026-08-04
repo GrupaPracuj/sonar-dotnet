@@ -41,7 +41,7 @@ public sealed class HttpMethodShouldMatchActionName : SonarDiagnosticAnalyzer
             return;
         }
 
-        var leadingWord = LeadingWord(method.Name);
+        var leadingWord = GpIdentifierWords.LeadingWord(method.Name);
 
         if (httpVerbAttribute == "HttpGet" && MutatingVerbs.Contains(leadingWord))
         {
@@ -69,22 +69,5 @@ public sealed class HttpMethodShouldMatchActionName : SonarDiagnosticAnalyzer
         }
 
         return null;
-    }
-
-    // Method names are PascalCase (e.g. "DeleteUser"): extract the leading capitalized word ("Delete").
-    private static string LeadingWord(string methodName)
-    {
-        if (string.IsNullOrEmpty(methodName) || !char.IsUpper(methodName[0]))
-        {
-            return string.Empty;
-        }
-
-        var end = 1;
-        while (end < methodName.Length && char.IsLower(methodName[end]))
-        {
-            end++;
-        }
-
-        return methodName.Substring(0, end);
     }
 }

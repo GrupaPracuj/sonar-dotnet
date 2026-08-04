@@ -1,0 +1,25 @@
+{
+  "title": "DELETE endpoints should not return a response body",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0024",
+  "sqKey": "GP0024",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

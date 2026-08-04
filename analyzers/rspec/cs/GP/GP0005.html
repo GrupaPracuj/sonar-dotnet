@@ -1,6 +1,39 @@
-<p>
-  Access control should not be based on negating a claim check such as <code>!user.HasClaim(...)</code>.
-</p>
-<p>
-  Verify claim existence/value positively and make authorization decisions explicitly.
-</p>
+<p>An access-control decision should not be based on negating a claim-existence check such as <code>!user.HasClaim(...)</code>.</p>
+<h2>Why is this an issue?</h2>
+<p><code>HasClaim(...)</code> (and its <code>GP.Juno</code> equivalents, e.g. <code>HasUserClaim()</code>) answers the question "does this claim
+exist?". Negating that call to decide whether access is granted mixes the existence check with the access decision in a single condition that reads
+awkwardly ("if the claim does NOT exist, then ...") and is easy to get backwards during a review or a later edit. Making the positive check the
+basis of the decision keeps the intent explicit: check what is required, then branch on the result.</p>
+<pre>
+if (!user.HasClaim("filestore_access"))
+{
+    return Forbid();
+}
+</pre>
+<h2>How to fix it</h2>
+<p>Invert the condition so the access decision reads from the positive existence check.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public IActionResult DeleteFile(User user)
+{
+    if (!user.HasClaim("filestore_access")) // Noncompliant
+    {
+        return Forbid();
+    }
+
+    return Ok();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public IActionResult DeleteFile(User user)
+{
+    if (user.HasClaim("filestore_access"))
+    {
+        return Ok();
+    }
+
+    return Forbid();
+}
+</pre>

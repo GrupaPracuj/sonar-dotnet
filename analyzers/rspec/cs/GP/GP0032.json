@@ -1,0 +1,24 @@
+{
+  "title": "Controllers should not use a DbContext directly",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "HIGH"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0032",
+  "sqKey": "GP0032",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

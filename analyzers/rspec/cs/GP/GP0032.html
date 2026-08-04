@@ -1,0 +1,70 @@
+<p>A controller should reach data through a service or repository, not by taking a dependency on a <code>DbContext</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>A controller belongs to the layer that handles HTTP: bind the request, call something, turn the result into a response. Microsoft's layering guidance
+draws the line explicitly:</p>
+<blockquote>
+  The UI layer shouldn't make any requests to the DAL directly, nor should it interact with persistence directly through other means.
+</blockquote>
+<p>The same guidance places <code>DbContext</code> squarely on the far side of that line, listing "EF Core types (<code>DbContext</code>,
+<code>Migration</code>)" among Infrastructure types, alongside repositories - and states for the UI layer:</p>
+<blockquote>
+  No direct instantiation of or static calls to the Infrastructure layer types should be allowed in the UI layer.
+</blockquote>
+<p>When a controller queries the context itself, the query becomes part of the endpoint. A second endpoint that needs the same data gets its own copy,
+and the two drift apart - one remembers the <code>IsDeleted</code> filter or the <code>Include</code>, the other does not. Testing the endpoint now
+means standing up a context, so the logic worth testing is reachable only through a database. And a change to the model has to be chased through every
+controller that happened to query it.</p>
+<pre>
+[ApiController]
+public class OrdersController : ControllerBase
+{
+    private readonly ShopDbContext _context;
+
+    [HttpGet("{id}")]
+    public async Task&lt;IActionResult&gt; Get(int id) =&gt;
+        Ok(await _context.Orders.FirstOrDefaultAsync(x =&gt; x.Id == id));
+}
+</pre>
+<p>This rule reports a <code>DbContext</code> reaching a controller as a field, a constructor parameter or a local variable.</p>
+<h2>How to fix it</h2>
+<p>Move the query behind a service or repository that the controller depends on through an interface, and let the controller call that. The query then
+lives in one place, can be tested without a database, and the controller is left with the HTTP concerns that are actually its job.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[ApiController]
+public class OrdersController : ControllerBase
+{
+    private readonly ShopDbContext _context; // Noncompliant {{Do not use 'ShopDbContext' in a controller - reach data through a service or repository instead.}}
+
+    public OrdersController(ShopDbContext context) =&gt;
+        _context = context;
+
+    [HttpGet("{id}")]
+    public async Task&lt;IActionResult&gt; Get(int id) =&gt;
+        Ok(await _context.Orders.FirstOrDefaultAsync(x =&gt; x.Id == id));
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[ApiController]
+public class OrdersController : ControllerBase
+{
+    private readonly IOrderRepository _orders;
+
+    public OrdersController(IOrderRepository orders) =&gt;
+        _orders = orders;
+
+    [HttpGet("{id}")]
+    public async Task&lt;IActionResult&gt; Get(int id) =&gt;
+        Ok(await _orders.FindAsync(id));
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures">Common
+  web application architectures</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/architectural-principles">Architectural
+  principles</a></li>
+</ul>

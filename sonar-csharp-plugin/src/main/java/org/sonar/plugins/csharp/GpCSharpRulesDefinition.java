@@ -1,5 +1,5 @@
 /*
- * SonarC#
+ * GP C#
  * Copyright (C) SonarSource Sàrl
  * mailto:info AT sonarsource DOT com
  *

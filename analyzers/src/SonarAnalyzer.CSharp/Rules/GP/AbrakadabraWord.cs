@@ -1,64 +1,32 @@
-﻿/*
- * SonarAnalyzer for .NET
- * Copyright (C) SonarSource Sàrl
- * mailto:info AT sonarsource DOT com
- *
- * You can redistribute and/or modify this program under the terms of
- * the Sonar Source-Available License Version 1, as published by SonarSource Sàrl.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the Sonar Source-Available License for more details.
- *
- * You should have received a copy of the Sonar Source-Available License
- * along with this program; if not, see https://sonarsource.com/license/ssal/
- */
-
-using System;
-using System.Collections.Immutable;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class AbrakadabraWord : DiagnosticAnalyzer
+public sealed class AbrakadabraWord : SonarDiagnosticAnalyzer
 {
-    internal const string DiagnosticId = "GP0001";
+    internal const string RuleId = "GP0001";
+
     private const string Keyword = "abrakadabra";
     private const string MessageFormat = "Remove the word 'abrakadabra' from the code.";
 
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        "'abrakadabra' should not appear in source code",
-        MessageFormat,
-        "GP C#",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+    private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    public override void Initialize(AnalysisContext context)
-    {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-        context.RegisterSyntaxTreeAction(Analyze);
-    }
-
-    private static void Analyze(SyntaxTreeAnalysisContext context)
-    {
-        var text = context.Tree.GetText(context.CancellationToken);
-        foreach (var line in text.Lines)
+    protected override void Initialize(SonarAnalysisContext context) =>
+        context.RegisterTreeAction(c =>
         {
-            var lineText = line.ToString();
-            var index = lineText.IndexOf(Keyword, StringComparison.OrdinalIgnoreCase);
-            if (index >= 0)
+            // Raw text rather than syntax, so the word is found in identifiers, string literals and comments alike.
+            var text = c.Tree.GetText(c.Cancel);
+            foreach (var line in text.Lines)
             {
-                var location = Location.Create(context.Tree, new TextSpan(line.Start + index, Keyword.Length));
-                context.ReportDiagnostic(Diagnostic.Create(Rule, location));
+                var lineText = line.ToString();
+                var index = lineText.IndexOf(Keyword, StringComparison.OrdinalIgnoreCase);
+                if (index >= 0)
+                {
+                    c.ReportIssue(Rule, Location.Create(c.Tree, new TextSpan(line.Start + index, Keyword.Length)));
+                }
             }
-        }
-    }
+        });
 }

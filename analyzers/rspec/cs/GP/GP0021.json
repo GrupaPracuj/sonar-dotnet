@@ -1,0 +1,31 @@
+{
+  "title": "Exceptions around access checks should not be silently swallowed",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "authorization",
+    "cwe"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0021",
+  "sqKey": "GP0021",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      390
+    ]
+  }
+}

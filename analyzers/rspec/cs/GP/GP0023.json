@@ -1,0 +1,32 @@
+{
+  "title": "Route parameters should not carry secrets",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "api",
+    "rest",
+    "cwe"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0023",
+  "sqKey": "GP0023",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      598
+    ]
+  }
+}

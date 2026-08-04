@@ -1,0 +1,24 @@
+{
+  "title": "DateTimeKind should match what the target's name implies",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0018",
+  "sqKey": "GP0018",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

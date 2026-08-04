@@ -1,0 +1,25 @@
+{
+  "title": "Resource-creating endpoints should return 201 Created",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "rest"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0026",
+  "sqKey": "GP0026",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,5 +1,5 @@
 /*
- * SonarC#
+ * GP C#
  * Copyright (C) SonarSource Sàrl
  * mailto:info AT sonarsource DOT com
  *
@@ -22,8 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.sonar.api.SonarEdition;
 import org.sonar.api.SonarQubeSide;
 import org.sonar.api.SonarRuntime;
+import org.sonar.api.rule.RuleScope;
 import org.sonar.api.server.rule.RulesDefinition;
 import org.sonar.api.utils.Version;
+import org.sonarsource.dotnet.shared.plugins.RoslynRules;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,26 +41,26 @@ class CSharpRulesDefinitionTest {
   static void setupContext() {
     GpCSharpRulesDefinition definition = new GpCSharpRulesDefinition(CSharpPlugin.METADATA, SONAR_RUNTIME, ROSLYN_RULES);
     definition.define(CONTEXT);
-    ruleRepo = CONTEXT.repository("gp-csharpsquid");
+    ruleRepo = CONTEXT.repository("roslyn.GPcsharp.cs");
   }
 
+  // Asserted against GpRoslynRules rather than a second hand-maintained list, so adding a rule cannot leave the two
+  // out of sync - which is exactly the failure mode that makes a rule silently report nothing.
   @Test
   void rules_areDefined() {
     assertThat(CONTEXT.repositories()).hasSize(1);
     assertThat(ruleRepo.name()).isEqualTo("GP C#");
-    RulesDefinition.Rule gp0001 = ruleRepo.rule("GP0001");
-    RulesDefinition.Rule gp0002 = ruleRepo.rule("GP0002");
-    RulesDefinition.Rule gp0003 = ruleRepo.rule("GP0003");
-    RulesDefinition.Rule gp0004 = ruleRepo.rule("GP0004");
-    RulesDefinition.Rule gp0005 = ruleRepo.rule("GP0005");
-    RulesDefinition.Rule gp0006 = ruleRepo.rule("GP0006");
-    assertThat(gp0001).isNotNull();
-    assertThat(gp0002).isNotNull();
-    assertThat(gp0003).isNotNull();
-    assertThat(gp0004).isNotNull();
-    assertThat(gp0005).isNotNull();
-    assertThat(gp0006).isNotNull();
-    assertThat(gp0001.name()).isEqualTo("The word 'abrakadabra' should not appear in C# source files");
+    assertThat(ROSLYN_RULES.rules()).isNotEmpty();
+    for (RoslynRules.Rule rule : ROSLYN_RULES.rules()) {
+      assertThat(ruleRepo.rule(rule.getId())).as("rule " + rule.getId()).isNotNull();
+    }
+    assertThat(ruleRepo.rules()).hasSize(ROSLYN_RULES.rules().size());
+    assertThat(ruleRepo.rule("GP0001").name()).isEqualTo("The word 'abrakadabra' should not appear in C# source files");
+  }
+
+  @Test
+  void everyRule_hasGpId() {
+    assertThat(ruleRepo.rules()).allSatisfy(rule -> assertThat(rule.key()).startsWith("GP"));
   }
 
   @Test
@@ -66,7 +68,22 @@ class CSharpRulesDefinitionTest {
     assertThat(CONTEXT.repositories()).hasSize(1);
     assertThat(ruleRepo.rule("S100")).isNull();
     assertThat(ruleRepo.rule("S2259")).isNull();
-    assertThat(ruleRepo.rules()).hasSize(6);
+  }
+
+  // Proves the securityStandards block in the rule metadata is actually picked up, which is what puts these rules
+  // into SonarQube's CWE-based security reports.
+  @Test
+  void securityRules_exposeTheirCwe() {
+    assertThat(ruleRepo.rule("GP0028").securityStandards()).contains("cwe:918");
+    assertThat(ruleRepo.rule("GP0029").securityStandards()).contains("cwe:502");
+    assertThat(ruleRepo.rule("GP0030").securityStandards()).contains("cwe:117");
+    assertThat(ruleRepo.rule("GP0031").securityStandards()).contains("cwe:601");
+    assertThat(ruleRepo.rule("GP0020").securityStandards()).contains("cwe:862");
+  }
+
+  @Test
+  void everyRule_isScopedToMainCode() {
+    assertThat(ruleRepo.rules()).allSatisfy(rule -> assertThat(rule.scope()).isEqualTo(RuleScope.MAIN));
   }
 
   @Test

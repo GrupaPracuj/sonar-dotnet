@@ -1,0 +1,33 @@
+<p>A route parameter should not be named like it carries a secret (a password, an API key, a token, ...).</p>
+<h2>Why is this an issue?</h2>
+<p>A value placed in the URL path travels through places a request body doesn't: web server access logs, reverse proxy and CDN logs, browser
+history, and the <code>Referer</code> header sent to any third-party resource the page subsequently loads. None of those are designed to hold
+secrets, and none of them get cleaned up when the secret is later rotated. A route parameter named <code>token</code> or <code>apiKey</code> is a
+strong hint that a value meant to stay confidential is being passed exactly where it is most likely to leak.</p>
+<pre>
+[HttpGet("sessions/{token}")]
+public IActionResult GetByToken(string token) { /* ... */ }
+</pre>
+<h3>Exceptions</h3>
+<p>Only route <em>parameters</em> (<code>{name}</code>) are checked, not literal path segments - a fixed segment like <code>/api-keys</code> is just
+a resource name, it doesn't carry a caller-supplied value. A parameter name that only references a record rather than holding the secret itself
+(for example <code>apiKeyId</code>) can still match and needs a human judgment call.</p>
+<h2>How to fix it</h2>
+<p>Pass the value in the request body, in an <code>Authorization</code> header, or as a short-lived opaque identifier instead of a path segment.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet("sessions/{token}")] // Noncompliant {{Route parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+public IActionResult GetByToken(string token) { /* ... */ }
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpGet("sessions/current")]
+public IActionResult GetCurrent([FromHeader(Name = "Authorization")] string token) { /* ... */ }
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#sensitive-information-in-http-requests">REST
+  Security Cheat Sheet - Sensitive information in HTTP requests</a></li>
+</ul>

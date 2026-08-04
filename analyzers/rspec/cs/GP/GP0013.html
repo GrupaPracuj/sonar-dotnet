@@ -1,9 +1,40 @@
-<p>
-  Route paths should use nouns to identify resources, e.g. <code>/orders</code>, not verbs describing an action, e.g.
-  <code>/getOrders</code> or <code>/create-order</code>.
-</p>
-<p>
-  The action is already expressed by the HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>,
-  <code>PATCH</code>, <code>DELETE</code>). Repeating it in the path is redundant and, when the two disagree
-  (e.g. a <code>[HttpPost("get-order")]</code>), actively misleading.
-</p>
+<p>Route paths should use nouns to identify resources, e.g. <code>/orders</code>, not a verb describing an action, e.g. <code>/getOrders</code> or
+<code>/create-order</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>In a resource-oriented API, the action is already expressed by the HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>,
+<code>PATCH</code>, <code>DELETE</code>). Repeating it as a verb in the path is redundant, and when the verb in the path disagrees with the actual
+HTTP method - for example <code>[HttpPost("get-order")]</code> - it actively misleads anyone reading the route about what the endpoint does.</p>
+<pre>
+[HttpGet("get-orders")]
+public void GetAll() { }
+</pre>
+<h3>Exceptions</h3>
+<p>A word that merely starts with the same letters as a verb, without a real word boundary (<code>-</code>, <code>_</code>, or an uppercase letter)
+after it, is not flagged: <code>addresses</code> is compliant even though it starts with <code>add</code>, and so are <code>checks</code>,
+<code>searches</code> and <code>confirmations</code>.</p>
+<h2>How to fix it</h2>
+<p>Remove the verb from the path and let the HTTP method express the action; keep the path itself a plural noun for the resource.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class OrdersController
+{
+    [HttpGet("get-orders")] // Noncompliant {{Remove the verb 'get' from the route; the HTTP method already expresses the action.}}
+    public void GetAll() { }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class OrdersController
+{
+    [HttpGet("orders")]
+    public void GetAll() { }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft - <a href="https://github.com/microsoft/api-guidelines/blob/vNext/azure/Guidelines.md#7811-uri-formatting">Microsoft REST API
+  Guidelines - URL structure</a></li>
+  <li>Google - <a href="https://cloud.google.com/apis/design/resource_names">API Design Guide - Resource names</a></li>
+</ul>

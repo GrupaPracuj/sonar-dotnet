@@ -51,15 +51,112 @@ public class MessageContractsShouldFollowConventionsTest
             """)
             .Verify();
 
+    // Reported at the registration site, not on the contract's declaration, which usually lives in another file.
     [TestMethod]
-    public void MessageContractsShouldFollowConventions_MutableOrBehaviorful() =>
+    public void MessageContractsShouldFollowConventions_Behaviorful() =>
         builder.AddSnippet(
             """
-            public class NotifyUser // Noncompliant {{Message contract 'NotifyUser' should be immutable and must not contain business behavior.}}
+            public class NotifyUser
             {
                 public string Email { get; set; }
 
                 public void SendNow() { }
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig)
+                {
+                    appConfig.Sends<NotifyUser>(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+                    return appConfig;
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_RecordWithValueSemantics_Compliant() =>
+        builder.WithOptions(LanguageOptions.CSharpLatest).AddSnippet(
+            """
+            public record PaymentReceived(string PaymentId)
+            {
+                public override string ToString() => PaymentId;
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Publishes<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_StaticFactory_Compliant() =>
+        builder.AddSnippet(
+            """
+            public class NotifyUser
+            {
+                public string Email { get; set; }
+
+                public static NotifyUser For(string email) => new NotifyUser { Email = email };
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<NotifyUser>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_StaticMethodReturningSomethingElse_Noncompliant() =>
+        builder.AddSnippet(
+            """
+            public class NotifyUser
+            {
+                public string Email { get; set; }
+
+                public static bool IsValid(string email) => email.Length > 0;
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<NotifyUser>(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_MutableButBehaviorFree_Compliant() =>
+        builder.AddSnippet(
+            """
+            public class NotifyUser
+            {
+                // Mutable properties are allowed - only business behavior (methods) is flagged.
+                public string Email { get; set; }
             }
 
             public class AppConfig
@@ -76,7 +173,7 @@ public class MessageContractsShouldFollowConventionsTest
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void MessageContractsShouldFollowConventions_JunoPublishEventSuffix() =>

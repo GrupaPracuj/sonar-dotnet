@@ -1,0 +1,51 @@
+<p>Every action in a controller should explicitly state whether it requires authorization, once other actions in the same controller already do.</p>
+<h2>Why is this an issue?</h2>
+<p>When some actions in a controller carry <code>[Authorize]</code> and others don't, the missing declaration is ambiguous: it might be an
+intentionally public endpoint, or it might be an endpoint that was simply forgotten when access control was added to the rest of the controller.
+Making the omission explicit with <code>[AllowAnonymous]</code> removes that ambiguity - a reviewer (and the next person to touch the file) can tell
+at a glance that the endpoint is public on purpose, not by oversight.</p>
+<pre>
+public class UsersController : ControllerBase
+{
+    [Authorize]
+    public IActionResult GetProfile() { /* ... */ }
+
+    public IActionResult GetSettings() { /* ... */ } // no [Authorize], no [AllowAnonymous] - intentional?
+}
+</pre>
+<h3>Exceptions</h3>
+<p>The rule only compares actions within the same controller class. A controller where no action uses <code>[Authorize]</code> at all is not
+checked - there is no established convention in that controller to be inconsistent with. A controller (or the specific action) already carrying
+<code>[Authorize]</code> or <code>[AllowAnonymous]</code> at the class level is not checked either, since in that case every action already inherits
+an explicit default.</p>
+<h2>How to fix it</h2>
+<p>Add <code>[Authorize]</code> if the endpoint should require authorization, or <code>[AllowAnonymous]</code> if it is meant to stay public.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class UsersController : ControllerBase
+{
+    [Authorize]
+    public IActionResult GetProfile() { /* ... */ }
+
+    public IActionResult GetSettings() { /* ... */ } // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous], but other actions in 'UsersController' are explicitly protected with [Authorize].}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class UsersController : ControllerBase
+{
+    [Authorize]
+    public IActionResult GetProfile() { /* ... */ }
+
+    [AllowAnonymous]
+    public IActionResult GetSettings() { /* ... */ }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/authorization/simple">Simple authorization in ASP.NET
+  Core</a></li>
+  <li>OWASP - <a href="https://owasp.org/Top10/A01_2021-Broken_Access_Control/">Top 10 2021 Category A1 - Broken Access Control</a></li>
+</ul>

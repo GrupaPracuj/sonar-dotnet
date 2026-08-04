@@ -1,0 +1,31 @@
+{
+  "title": "Deserializers that allow arbitrary types should not be used",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "TRUSTWORTHY"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "serialization",
+    "cwe"
+  ],
+  "defaultSeverity": "Critical",
+  "ruleSpecification": "GP-0029",
+  "sqKey": "GP0029",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      502
+    ]
+  }
+}

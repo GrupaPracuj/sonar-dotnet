@@ -1,5 +1,5 @@
 /*
- * SonarC#
+ * GP C#
  * Copyright (C) SonarSource Sàrl
  * mailto:info AT sonarsource DOT com
  *
@@ -17,12 +17,14 @@
 package org.sonar.plugins.csharp;
 
 import java.util.List;
-import java.util.Set;
 import org.sonarsource.dotnet.shared.plugins.PluginMetadata;
 import org.sonarsource.dotnet.shared.plugins.RoslynRules;
 
 public class GpRoslynRules extends RoslynRules {
-  private static final Set<String> CUSTOM_RULE_IDS = Set.of("GP0001", "GP0002", "GP0003", "GP0004", "GP0005", "GP0006");
+
+  // Derived from the rule ID rather than kept as a hand-maintained list: a rule missing from such a list produces no
+  // build failure and no error at scan time - the rule simply never reports anything, which is very hard to notice.
+  private static final String CUSTOM_RULE_ID_PREFIX = "GP";
 
   public GpRoslynRules(PluginMetadata metadata) {
     super(metadata);
@@ -30,6 +32,6 @@ public class GpRoslynRules extends RoslynRules {
 
   @Override
   public List<Rule> rules() {
-    return super.rules().stream().filter(rule -> CUSTOM_RULE_IDS.contains(rule.getId())).toList();
+    return super.rules().stream().filter(rule -> rule.getId().startsWith(CUSTOM_RULE_ID_PREFIX)).toList();
   }
 }
