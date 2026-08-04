@@ -1,0 +1,43 @@
+<p>A database connection should be obtained from Juno, not constructed with <code>new SqlConnection(...)</code> or any other
+<code>DbConnection</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Constructing the connection yourself means supplying the connection string yourself, which is the actual problem: the address, credentials, failover
+target and pooling settings stop coming from the service's configured data source and start coming from whatever string is in scope at that point. It
+also bypasses the transaction accessor, so the new connection is invisible to any Juno transaction that is already open - work you believe is
+transactional silently is not.</p>
+<pre>
+public async Task&lt;Order&gt; Find(int id)
+{
+    using var connection = new SqlConnection(_connectionString);
+    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+}
+</pre>
+<p>Dapper is deliberately not reported. Juno hands you a raw connection on purpose - <code>IAdoConnectionFactory.CreateConnection()</code> returns a
+<code>DbConnection</code> and <code>IDbExecute.Execute</code> receives an <code>IDbConnection</code> - so querying that connection with Dapper is the
+sanctioned pattern, not a workaround. What this rule objects to is producing a connection outside Juno, not what you do with a connection Juno gave
+you.</p>
+<h2>How to fix it</h2>
+<p>Take the connection from <code>IAdoConnectionFactory.CreateConnection()</code>, or express the work as an <code>IDbExecute</code> and let Juno pass
+in the connection and the ambient transaction.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task&lt;Order&gt; Find(int id)
+{
+    using var connection = new SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of constructing 'SqlConnection'.}}
+    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class FindOrder : IDbExecute&lt;Order&gt;
+{
+    private readonly int _id;
+
+    public FindOrder(int id) =&gt;
+        _id = id;
+
+    public Task&lt;Order&gt; Execute(IDbConnection dbConnection, IDbTransaction dbTransaction = null) =&gt;
+        dbConnection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id = _id }, dbTransaction);
+}
+</pre>

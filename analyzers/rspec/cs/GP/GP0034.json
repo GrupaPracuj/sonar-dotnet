@@ -1,0 +1,25 @@
+{
+  "title": "Messages should be published through Juno, not raw MassTransit",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "messaging"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0034",
+  "sqKey": "GP0034",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Database connections should not be constructed directly",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "20min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "sql"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0035",
+  "sqKey": "GP0035",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,43 @@
+<p>Locking that has to hold across processes should go through Juno's <code>ILockableFactory</code>, not a named <code>Mutex</code> or a direct Consul
+lock.</p>
+<h2>Why is this an issue?</h2>
+<p>Juno implements cross-process locking on Consul or SQL Server, which is what makes the lock work between instances of a service spread across
+machines. A named <code>Mutex</code> only coordinates processes on the same operating system, so it holds on a developer machine and in a single-node
+test, then silently stops holding once the service runs as several pods - the classic failure that shows up as duplicated work or a lost update long
+after the code was written. Going directly at Consul works, but skips the configured lock backend, the acquire timeout handling and the
+<code>AcquireLockResult</code> contract the rest of the code expects.</p>
+<pre>
+using var mutex = new Mutex(false, "Global\\order-import");
+mutex.WaitOne();
+</pre>
+<h3>Exceptions</h3>
+<p>In-process synchronization is not reported: the <code>lock</code> statement, <code>SemaphoreSlim</code>, <code>Monitor</code> and an unnamed
+<code>Mutex</code> coordinate threads inside one process, which is a different problem with a legitimate answer. Only a construct whose whole point is
+to reach beyond the current process is reported.</p>
+<h2>How to fix it</h2>
+<p>Create the lock through <code>ILockableFactory</code> and acquire it against a lock resource, so the backend and timeout come from configuration.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public void ImportOrders()
+{
+    using var mutex = new Mutex(false, "Global\\order-import"); // Noncompliant {{Use Juno's ILockableFactory instead of 'Mutex' for locking across processes.}}
+    mutex.WaitOne();
+
+    Import();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public async Task ImportOrders()
+{
+    var lockable = _lockableFactory.Create("order-import");
+    var acquired = await lockable.TryAcquire(new SimpleTypeLockResource(typeof(OrderImport)));
+    if (!acquired.Success)
+    {
+        return;
+    }
+
+    Import();
+}
+</pre>

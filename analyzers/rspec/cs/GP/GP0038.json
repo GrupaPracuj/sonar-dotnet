@@ -1,0 +1,25 @@
+{
+  "title": "Recurring work should be scheduled through Juno",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "scheduling"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0038",
+  "sqKey": "GP0038",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

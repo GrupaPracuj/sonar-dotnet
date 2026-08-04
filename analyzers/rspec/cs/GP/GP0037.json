@@ -1,0 +1,25 @@
+{
+  "title": "Email should not be sent with SmtpClient",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "obsolete"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0037",
+  "sqKey": "GP0037",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

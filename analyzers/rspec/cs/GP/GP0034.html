@@ -1,0 +1,47 @@
+<p>A message should be published or sent through Juno's <code>IPublisher</code> or <code>IMessageSender</code>, not through MassTransit's
+<code>IPublishEndpoint</code>/<code>ISendEndpointProvider</code>/<code>IBus</code> or a raw RabbitMQ connection.</p>
+<h2>Why is this an issue?</h2>
+<p>Juno wraps MassTransit rather than hiding it, and the wrapper is where the conventions live: the message-type naming and schema headers, the
+encryption support, the correlation context carried from the incoming request, and the publish metrics. Publishing straight through MassTransit
+delivers the message, so nothing fails loudly - the envelope simply lacks whatever the consumers on the other side expect to find, and the publish is
+missing from the service's outgoing-message telemetry.</p>
+<pre>
+public class OrderService
+{
+    private readonly IPublishEndpoint _publishEndpoint;
+
+    public Task Save(OrderAccepted @event) =&gt;
+        _publishEndpoint.Publish(@event);
+}
+</pre>
+<h3>Exceptions</h3>
+<p>Consuming is not wrapped and is not reported: implementing MassTransit's <code>IConsumer&lt;T&gt;</code> is the sanctioned way to handle a message,
+and Juno's own examples do exactly that. Bus configuration during start-up is not reported either - that is where MassTransit is supposed to be
+referenced.</p>
+<h2>How to fix it</h2>
+<p>Inject <code>GP.Juno.Abstractions.EventStream.IPublisher</code> to publish an event, or
+<code>GP.Juno.Abstractions.Massaging.IMessageSender</code> when you need to send to a specific endpoint or attach headers and metadata.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class OrderService
+{
+    private readonly IPublishEndpoint _publishEndpoint;
+
+    public Task Save(OrderAccepted @event) =&gt;
+        _publishEndpoint.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'Publish'.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class OrderService
+{
+    private readonly IPublisher _publisher;
+
+    public OrderService(IPublisher publisher) =&gt;
+        _publisher = publisher;
+
+    public Task Save(OrderAccepted @event, CancellationToken cancellationToken) =&gt;
+        _publisher.Publish(@event, cancellationToken);
+}
+</pre>

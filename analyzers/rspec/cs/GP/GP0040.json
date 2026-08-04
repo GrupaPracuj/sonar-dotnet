@@ -1,0 +1,25 @@
+{
+  "title": "Cross-process locking should go through Juno",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "concurrency"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0040",
+  "sqKey": "GP0040",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

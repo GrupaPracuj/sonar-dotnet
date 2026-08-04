@@ -1,0 +1,45 @@
+<p>Recurring or delayed work should be scheduled through Juno's <code>ISchedulerFactory</code>/<code>IScheduleJobsRegistry</code>, not with a
+<code>Timer</code> or a third-party scheduler.</p>
+<h2>Why is this an issue?</h2>
+<p>A service runs as several instances. A <code>Timer</code> fires in every one of them, so work meant to happen once per interval happens once per
+instance - and the more you scale out, the more duplicates you get. Juno's scheduler exists to answer that: the schedule is coordinated rather than
+per-process, the job is registered where it can be inspected, and failures surface through the usual monitoring instead of being swallowed on a
+background thread.</p>
+<p>A <code>Timer</code> also has no relationship with the host lifetime, so a callback can still be running while the application is shutting down, and
+an exception thrown inside it takes down the process rather than being reported as a failed job.</p>
+<pre>
+public class ReportSender
+{
+    private readonly Timer _timer;
+
+    public ReportSender() =&gt;
+        _timer = new Timer(_ =&gt; SendReports(), null, TimeSpan.Zero, TimeSpan.FromHours(1));
+}
+</pre>
+<h3>Exceptions</h3>
+<p>A <code>Task.Delay</code> inside a loop is not reported. It is used for far too many legitimate things - polling with backoff, a retry pause, a test
+helper - for the shape alone to mean "this is a scheduled job".</p>
+<h2>How to fix it</h2>
+<p>Register the job through <code>IScheduleJobsRegistry</code>, describing it with a <code>RecurringSchedule</code>, and let Juno decide when and where
+it runs.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class ReportSender
+{
+    private readonly Timer _timer;
+
+    public ReportSender() =&gt;
+        _timer = new Timer(_ =&gt; SendReports(), null, TimeSpan.Zero, TimeSpan.FromHours(1)); // Noncompliant {{Schedule this work through Juno (ISchedulerFactory / IScheduleJobsRegistry) instead of 'Timer'.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class ReportSenderJobs : IScheduleJobsRegistry
+{
+    public Task ScheduleJobs(ISchedulerFactory schedulerFactory, CancellationToken cancellation) =&gt;
+        schedulerFactory
+            .CreateAsync("reports")
+            .Schedule(new RecurringSchedule(TimeSpan.FromHours(1)), SendReports, cancellation);
+}
+</pre>

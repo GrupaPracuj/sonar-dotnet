@@ -1,0 +1,40 @@
+<p>Email should be sent through Juno's email sender, not with <code>System.Net.Mail.SmtpClient</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Juno provides an email-sending abstraction with the templating, request tracking and configured relay that GP services rely on. Reaching for
+<code>SmtpClient</code> means a second, undocumented delivery path: a hard-coded relay host, no template handling, and nothing recorded about what was
+sent.</p>
+<p>Independently of the GP convention, Microsoft advises against the type for new code:</p>
+<blockquote>
+  We don't recommend that you use the <code>SmtpClient</code> class for new development because <code>SmtpClient</code> doesn't support many modern
+  protocols.
+</blockquote>
+<p>The API reference summary is equally blunt - "The SmtpClient type is not recommended for new development" - and Microsoft's platform-compatibility
+note DE0005 records the same deprecation.</p>
+<pre>
+using var client = new SmtpClient("smtp.internal");
+client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
+</pre>
+<h2>How to fix it</h2>
+<p>Send the message through Juno's email sender, describing it with the email/template info types rather than assembling an SMTP conversation
+yourself.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public void NotifyUser(User user, string subject, string body)
+{
+    using var client = new SmtpClient("smtp.internal"); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+    client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task NotifyUser(User user, string templateName, CancellationToken cancellationToken) =&gt;
+    _emailSender.Send(new TemplateBasedEmailInfo(user.Email, templateName), cancellationToken);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.net.mail.smtpclient">SmtpClient Class</a></li>
+  <li>.NET platform compatibility - <a href="https://github.com/dotnet/platform-compat/blob/master/docs/DE0005.md">DE0005: SmtpClient shouldn't be
+  used</a></li>
+</ul>

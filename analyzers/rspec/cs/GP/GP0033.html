@@ -1,0 +1,66 @@
+<p>An HTTP client should be obtained from Juno, not constructed with <code>new HttpClient()</code>, <code>new WebClient()</code>,
+<code>WebRequest.Create(...)</code> or <code>IHttpClientFactory.CreateClient(...)</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Every outbound call from a GP service is expected to go through the Juno HTTP client. That is not a stylistic preference: the Juno client is where
+service discovery, the retry and timeout policy, the propagated correlation headers, the authentication handler and the outgoing-call metrics live. A
+hand-rolled client reaches the same endpoint while quietly opting out of all of it, so the call is invisible in tracing, ignores the configured
+timeouts, and resolves addresses by whatever string happened to be at hand instead of through discovery.</p>
+<p>A directly constructed client also brings the connection-management problem that Microsoft warns about:</p>
+<blockquote>
+  To avoid port exhaustion problems, we recommend reusing HttpClient instances for as many HTTP requests as possible.
+</blockquote>
+<blockquote>
+  If you don't use the factory and instead create a new client instance for each request yourself, you can exhaust available ports.
+</blockquote>
+<p>Note that Microsoft's guidance stops at "reuse the instance" - a long-lived static <code>HttpClient</code> is acceptable as far as the framework is
+concerned. This rule is stricter on purpose, because the point is not only connection reuse but going through the one client that carries the
+cross-cutting behavior every GP service is expected to have.</p>
+<pre>
+public class OrderClient
+{
+    private readonly HttpClient _client = new HttpClient();
+
+    public Task&lt;string&gt; GetOrder(string id) =&gt;
+        _client.GetStringAsync($"https://orders.internal/orders/{id}");
+}
+</pre>
+<p>Types such as <code>HttpResponseMessage</code>, <code>HttpMethod</code> and <code>HttpContent</code> are not reported - the Juno client hands them
+back and they legitimately flow through service code. Only acquiring a client of your own is.</p>
+<h3>Exceptions</h3>
+<p><code>new HttpClient()</code> inside the body of a controller action is left to rule S6962, which reports exactly that shape; reporting it here as
+well would put two issues on one line. A client created in a controller's field initializer or constructor - which S6962 does not report - is still
+reported here.</p>
+<h2>How to fix it</h2>
+<p>Take an <code>IHttpClientBuilder</code> from dependency injection and start the call with <code>Service("&lt;service-name&gt;")</code>, so the
+address comes from discovery and the configured policies apply.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class OrderClient
+{
+    private readonly HttpClient _client = new HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'HttpClient' directly.}}
+
+    public Task&lt;string&gt; GetOrder(string id) =&gt;
+        _client.GetStringAsync($"https://orders.internal/orders/{id}");
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class OrderClient
+{
+    private readonly IHttpClientBuilder _builder;
+
+    public OrderClient(IHttpClientBuilder builder) =&gt;
+        _builder = builder;
+
+    public Task&lt;string&gt; GetOrder(string id) =&gt;
+        _builder.Service("orders").AddPath("orders").AddPath(id).GetJson&lt;string&gt;();
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines">HttpClient guidelines for
+  .NET</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory">IHttpClientFactory with .NET</a></li>
+</ul>

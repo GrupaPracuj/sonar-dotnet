@@ -1,0 +1,25 @@
+{
+  "title": "Configuration should be bound to a typed class, not read by key",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "configuration"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0039",
+  "sqKey": "GP0039",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

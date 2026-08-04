@@ -1,0 +1,25 @@
+{
+  "title": "Database transactions should be started through Juno",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "20min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "sql"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0036",
+  "sqKey": "GP0036",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,25 @@
+{
+  "title": "Framework HTTP clients should not be created directly",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "http"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0033",
+  "sqKey": "GP0033",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

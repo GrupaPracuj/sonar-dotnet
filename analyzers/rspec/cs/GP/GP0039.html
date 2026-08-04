@@ -1,0 +1,60 @@
+<p>Configuration should be bound to a typed configuration class, not read value by value through a string key.</p>
+<h2>Why is this an issue?</h2>
+<p>A key read inline is invisible to everything except the line that reads it. Nothing lists what the service needs in order to start, nothing validates
+it, and a missing or misspelled key does not fail at start-up - it produces <code>null</code> or a default at whatever moment that code path first runs,
+often in production and often far from the cause. Types are lost too: everything is a <code>string</code> until somebody parses it by hand.</p>
+<p>Binding a section to a class turns configuration into part of the service's declared shape: the properties document what is required, the types are
+checked, the values can be validated once at start-up, and the class is what gets injected instead of a configuration bag threaded through the code.
+This is what Juno's own examples do - they register configuration with
+<code>configuration.GetSection("sample").Get&lt;SampleConfig&gt;()</code> and inject the resulting object.</p>
+<pre>
+public class OrderService
+{
+    private readonly IConfiguration _configuration;
+
+    public Task Send() =&gt;
+        _client.PostAsync(_configuration["Orders:BaseUrl"], content);
+}
+</pre>
+<p>Note that <code>IConfiguration</code> itself is not the problem and is not reported - it is how binding is done. Only reading a value out of it by
+key is.</p>
+<h2>How to fix it</h2>
+<p>Declare a configuration class for the section, bind it once during registration, and inject the class.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class OrderService
+{
+    private readonly IConfiguration _configuration;
+
+    public Task Send(HttpContent content) =&gt;
+        _client.PostAsync(_configuration["Orders:BaseUrl"], content); // Noncompliant {{Bind configuration to a typed class instead of reading it by key.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class OrdersConfig
+{
+    public string BaseUrl { get; set; }
+}
+
+// registration
+services.AddSingleton(sp =&gt; sp.GetRequiredService&lt;IConfiguration&gt;().GetSection("orders").Get&lt;OrdersConfig&gt;());
+
+public class OrderService
+{
+    private readonly OrdersConfig _config;
+
+    public OrderService(OrdersConfig config) =&gt;
+        _config = config;
+
+    public Task Send(HttpContent content) =&gt;
+        _client.PostAsync(_config.BaseUrl, content);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/options">Options pattern in .NET</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration">Configuration in .NET</a></li>
+</ul>
