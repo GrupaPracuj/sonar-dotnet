@@ -81,9 +81,12 @@ class CSharpRulesDefinitionTest {
     assertThat(ruleRepo.rule("GP0020").securityStandards()).contains("cwe:862");
   }
 
+  // Main code unless the rule is about the tests themselves, where running on main code would find nothing.
   @Test
-  void everyRule_isScopedToMainCode() {
-    assertThat(ruleRepo.rules()).allSatisfy(rule -> assertThat(rule.scope()).isEqualTo(RuleScope.MAIN));
+  void everyRule_isScopedToMainOrTestCode() {
+    assertThat(ruleRepo.rules()).allSatisfy(rule -> assertThat(rule.scope()).isIn(RuleScope.MAIN, RuleScope.TEST));
+    assertThat(ruleRepo.rule("GP0041").scope()).isEqualTo(RuleScope.TEST);
+    assertThat(ruleRepo.rule("GP0042").scope()).isEqualTo(RuleScope.MAIN);
   }
 
   @Test

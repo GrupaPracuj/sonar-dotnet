@@ -1,0 +1,59 @@
+<p>A <code>volatile</code> field should not be updated by reading and writing it back - use <code>Interlocked</code> or a lock instead.</p>
+<h2>Why is this an issue?</h2>
+<p>Marking a field <code>volatile</code> is easily read as "this field is now safe to touch from several threads". It is not. Microsoft's C# reference
+states the limit plainly:</p>
+<blockquote>
+  The <code>volatile</code> keyword doesn't provide atomicity for operations other than assignment. It doesn't prevent race conditions, and it doesn't
+  provide ordering guarantees for other memory operations.
+</blockquote>
+<p><code>counter++</code> is not an assignment. It is a read, an add and a write, and two threads can interleave those steps so that both read the same
+value and both write the same result - one increment is simply lost. The same applies to <code>counter += 1</code> and to
+<code>counter = counter + 1</code>. The bug is invisible under light load and shows up as counters that drift low under real traffic, which makes it
+one of the harder failures to reproduce and one of the easier ones to prevent.</p>
+<pre>
+private volatile int _processed;
+
+public void Process(Order order)
+{
+    Handle(order);
+    _processed++;
+}
+</pre>
+<p>The declaration itself is the signal that this field is shared, which is what makes a non-atomic update on it worth reporting rather than merely
+suspicious.</p>
+<h3>Exceptions</h3>
+<p>A plain assignment of a value that does not depend on the field's current value (<code>_shouldStop = true</code>) is exactly what
+<code>volatile</code> does guarantee, and is not reported.</p>
+<h2>How to fix it</h2>
+<p>Use <code>Interlocked.Increment</code>/<code>Add</code>/<code>Exchange</code> for a numeric counter, or take a lock if the update is part of a larger
+critical section. Microsoft recommends this generally, not only for compound updates: "For most multithreaded scenarios, even with supported types,
+prefer using <code>Interlocked</code> operations, <code>lock</code> statements, or other synchronization primitives instead of
+<code>volatile</code>."</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+private volatile int _processed;
+
+public void Process(Order order)
+{
+    Handle(order);
+    _processed++; // Noncompliant {{'_processed' is volatile, which does not make this update atomic - use Interlocked or a lock.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+private int _processed;
+
+public void Process(Order order)
+{
+    Handle(order);
+    Interlocked.Increment(ref _processed);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/volatile">volatile keyword - C#
+  reference</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.interlocked">Interlocked class</a></li>
+</ul>

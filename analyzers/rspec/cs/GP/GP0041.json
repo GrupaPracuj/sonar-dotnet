@@ -1,0 +1,25 @@
+{
+  "title": "Methods that look like tests should carry a test attribute",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "tests",
+    "suspicious"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0041",
+  "sqKey": "GP0041",
+  "scope": "Tests",
+  "quickfix": "unknown"
+}

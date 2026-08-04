@@ -1,0 +1,25 @@
+{
+  "title": "Volatile fields should not be updated non-atomically",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "concurrency",
+    "multi-threading"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0042",
+  "sqKey": "GP0042",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -1,0 +1,57 @@
+<p>A method in a test class that looks like a test but carries no test attribute never runs.</p>
+<h2>Why is this an issue?</h2>
+<p>A test that does not run is worse than no test at all. It sits in the file looking like coverage, it passes review, and it keeps passing forever
+because it is never executed - so the behavior it was written to protect can break without anything turning red. The usual cause is mundane: the
+attribute was lost in a merge, or a test was copied and the attribute was not carried over.</p>
+<pre>
+[TestClass]
+public class TokenValidatorTest
+{
+    [TestMethod]
+    public void Accepts_A_Valid_Token() { /* ... */ }
+
+    public void Rejects_An_Expired_Token() { /* ... */ }  // never runs
+}
+</pre>
+<p>Neither of the two rules nearby catches this. S3433 checks the signature of methods that <em>have</em> a test attribute, so a method without one is
+invisible to it. S2187 only reports a test class that contains no test case at all, so a class with several real tests and one unannotated method
+passes. That leaves exactly this case unreported.</p>
+<h3>Exceptions</h3>
+<p>Only a class that already contains at least one recognized test is examined, so a plain helper class is never reported. Within such a class the rule
+reports a public, parameterless, non-static method returning <code>void</code> or <code>Task</code> that carries no attributes at all - a shape that is
+a test in every framework and is unusual for a helper. A method with any attribute is left alone, which covers the fixture lifecycle
+(<code>[TestInitialize]</code>, <code>[SetUp]</code>, <code>[OneTimeTearDown]</code>, ...), and so is <code>Dispose</code>, which is how xUnit expresses
+teardown.</p>
+<h2>How to fix it</h2>
+<p>Add the test attribute the rest of the class uses, or - if the method really is a helper - make it private so its intent is unambiguous.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[TestClass]
+public class TokenValidatorTest
+{
+    [TestMethod]
+    public void Accepts_A_Valid_Token() { /* ... */ }
+
+    public void Rejects_An_Expired_Token() { /* ... */ } // Noncompliant {{Add a test attribute to 'Rejects_An_Expired_Token' or make it private - as it stands it never runs.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[TestClass]
+public class TokenValidatorTest
+{
+    [TestMethod]
+    public void Accepts_A_Valid_Token() { /* ... */ }
+
+    [TestMethod]
+    public void Rejects_An_Expired_Token() { /* ... */ }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-mstest">Unit testing C# with MSTest</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-with-dotnet-test">Unit testing C# with
+  xUnit</a></li>
+</ul>
