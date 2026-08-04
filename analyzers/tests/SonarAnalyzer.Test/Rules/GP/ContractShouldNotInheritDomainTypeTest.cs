@@ -1,0 +1,96 @@
+using CS = SonarAnalyzer.CSharp.Rules;
+
+namespace SonarAnalyzer.Test.Rules.GP;
+
+[TestClass]
+public class ContractShouldNotInheritDomainTypeTest
+{
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ContractShouldNotInheritDomainType>()
+        .WithOptions(LanguageOptions.CSharpLatest);
+
+    private const string Stubs =
+        """
+        namespace System.ComponentModel.DataAnnotations
+        {
+            public class KeyAttribute : System.Attribute { }
+        }
+
+        public class Order
+        {
+            [System.ComponentModel.DataAnnotations.Key]
+            public int Id { get; set; }
+        }
+
+        public interface IIntegrationEvent { }
+
+        public class BaseContract { }
+        """;
+
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_NoncompliantForEntityBase() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderAcceptedContract : Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+            {
+                public System.DateTimeOffset OccurredAt { get; init; }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_NoncompliantForConfiguredDomainNamespace() =>
+        CreateBuilderWithConfiguration(domainNamespaces: "MyCompany.Domain")
+            .AddSnippet(
+            Stubs + """
+
+            namespace MyCompany.Domain
+            {
+                public class Customer { }
+            }
+
+            public class CustomerRegisteredContract : MyCompany.Domain.Customer // Noncompliant {{'Customer' is a domain type - a contract that inherits it publishes the whole entity.}}
+            {
+            }
+            """)
+            .Verify();
+
+    // Inheriting another contract or implementing a marker is fine - only a domain base class is reported.
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_CompliantForContractBaseAndMarker() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderAcceptedContract : BaseContract, IIntegrationEvent
+            {
+                public System.Guid OrderId { get; init; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_CompliantForStandaloneRecord() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record OrderAcceptedContract(System.Guid OrderId, System.DateTimeOffset OccurredAt);
+            """)
+            .VerifyNoIssues();
+
+    // A non-contract type inheriting an entity is ordinary domain modelling.
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_CompliantForNonContractType() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class SpecialOrder : Order
+            {
+            }
+            """)
+            .VerifyNoIssues();
+
+    private static VerifierBuilder CreateBuilderWithConfiguration(string entityBaseTypes = "", string domainNamespaces = "") =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractShouldNotInheritDomainType { EntityBaseTypes = entityBaseTypes, DomainNamespaces = domainNamespaces })
+            .WithOptions(LanguageOptions.CSharpLatest);
+}

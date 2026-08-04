@@ -1,0 +1,24 @@
+{
+  "title": "Published messages must have an explicit contract type",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "messaging"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0055",
+  "sqKey": "GP0055",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

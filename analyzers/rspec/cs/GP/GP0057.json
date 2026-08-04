@@ -1,0 +1,25 @@
+{
+  "title": "Message contracts should not inherit from domain types",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "design"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0057",
+  "sqKey": "GP0057",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

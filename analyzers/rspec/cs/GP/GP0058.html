@@ -1,0 +1,44 @@
+<p>A collection on a contract should be a materialized read-only collection, not a lazy or queryable sequence.</p>
+<h2>Why is this an issue?</h2>
+<p><code>IEnumerable&lt;T&gt;</code> promises nothing about when its items are produced. On a contract that matters, because the serializer is what ends up
+enumerating it - so whatever work backs the sequence runs during serialization, outside the code that built the message and outside its error handling. If
+the sequence was a LINQ query over a <code>DbContext</code>, the database is queried at that point; if the scope has already been disposed, the publish
+fails with an exception that points at the serializer rather than at the cause.</p>
+<p><code>IQueryable&lt;T&gt;</code> is the same problem with a provider attached, and <code>IAsyncEnumerable&lt;T&gt;</code> cannot be serialized
+synchronously at all. All three also hide whether the sequence can be enumerated twice, which serializers and retries both do.</p>
+<p>A materialized read-only collection removes the question: the items exist, the count is known, and enumerating it again is free and identical.</p>
+<pre>
+public sealed class OrderAcceptedContract
+{
+    public IEnumerable&lt;OrderLine&gt; Lines { get; init; }
+}
+</pre>
+<h3>Exceptions</h3>
+<p><code>IReadOnlyCollection&lt;T&gt;</code>, <code>IReadOnlyList&lt;T&gt;</code>, arrays and concrete collections are not reported. Mutable collection
+types are outside this rule's scope - it is about when the items materialize, not about who can change them.</p>
+<h2>How to fix it</h2>
+<p>Declare the property as <code>IReadOnlyList&lt;T&gt;</code> or <code>IReadOnlyCollection&lt;T&gt;</code> and materialize the sequence when the message is
+built.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed class OrderAcceptedContract
+{
+    public IEnumerable&lt;OrderLine&gt; Lines { get; init; } // Noncompliant {{'Lines' is a lazy sequence - the serializer would enumerate it; use IReadOnlyList<T>.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed class OrderAcceptedContract
+{
+    public IReadOnlyList&lt;OrderLine&gt; Lines { get; init; }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/linq/deferred-execution-lazy-evaluation">Deferred execution and lazy
+  evaluation in LINQ</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/supported-collection-types">Supported
+  collection types in System.Text.Json</a></li>
+</ul>

@@ -1,0 +1,32 @@
+<p>A message should be published as a declared contract type, not as <code>object</code>, <code>dynamic</code>, an anonymous type or a loose dictionary.</p>
+<h2>Why is this an issue?</h2>
+<p>The type is the contract. It is what MassTransit uses to decide the exchange to publish to and therefore which consumers receive the message, and it is
+what documents the payload for the team on the other side. Publishing an anonymous type or a dictionary removes both: the topology is derived from a type
+that exists only at that call site, and nothing anywhere states what the message contains.</p>
+<p>Consumers then bind to a shape that no compiler checks. Renaming a property, changing its type or dropping it is invisible - the producer compiles, the
+publish succeeds, and the consumer silently receives a field that is now missing or of the wrong type. That is the same class of failure a contract exists
+to prevent, reintroduced by the way the message is sent.</p>
+<pre>
+await _publisher.Publish(new { OrderId = order.Id, Total = order.Total });
+await _publisher.Publish(new Dictionary&lt;string, object&gt; { ["orderId"] = order.Id });
+</pre>
+<p>The rule reports publishing or sending <code>object</code>, <code>dynamic</code>, an anonymous type, <code>ExpandoObject</code>,
+<code>Dictionary&lt;string, object&gt;</code>, <code>JsonElement</code>, <code>JsonDocument</code> or Newtonsoft's <code>JObject</code>.</p>
+<h2>How to fix it</h2>
+<p>Declare the contract and publish that.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+await _publisher.Publish(new { OrderId = order.Id, Total = order.Total }); // Noncompliant {{Publish a declared contract type instead of an anonymous type.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record OrderAccepted(Guid OrderId, decimal Total, string Currency, DateTimeOffset OccurredAt);
+
+await _publisher.Publish(new OrderAccepted(order.Id, order.Total, order.Currency, DateTimeOffset.UtcNow));
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>MassTransit - <a href="https://masstransit.io/documentation/concepts/messages">Messages</a></li>
+</ul>

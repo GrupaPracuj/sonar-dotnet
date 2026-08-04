@@ -18,9 +18,13 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
     public string DomainNamespaces { get; set; } = string.Empty;
 
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
-        context.RegisterNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes, DomainNamespaces);
+            start.RegisterNodeAction(c => AnalyzeMethod(c, entities), SyntaxKind.MethodDeclaration);
+        });
 
-    private void AnalyzeMethod(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
     {
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
         if (context.Model.GetDeclaredSymbol(methodDeclaration) is not { } method
@@ -34,7 +38,7 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
         {
             context.ReportIssue(Rule, methodDeclaration.ReturnType, returned.Name);
         }
-        else if (ElementType(returned) is { } element && IsEntity(element, context))
+        else if (ElementType(returned) is { } element && entities.IsEntity(element))
         {
             context.ReportIssue(Rule, methodDeclaration.ReturnType, element.Name);
         }
@@ -68,11 +72,4 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
     private static bool IsQueryable(ITypeSymbol type) =>
         type is INamedTypeSymbol named
         && named.OriginalDefinition.ToDisplayString() is "System.Linq.IQueryable<T>" or "System.Linq.IQueryable";
-
-    private bool IsEntity(ITypeSymbol type, SonarSyntaxNodeReportingContext context) =>
-        GpEntityTypes.IsEntity(
-            type,
-            context.Compilation,
-            GpEntityTypes.SplitParameter(EntityBaseTypes),
-            GpEntityTypes.SplitParameter(DomainNamespaces));
 }

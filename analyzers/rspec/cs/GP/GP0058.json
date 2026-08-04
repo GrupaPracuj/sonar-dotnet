@@ -1,0 +1,25 @@
+{
+  "title": "Contract collections should be stable when serialized",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "api"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0058",
+  "sqKey": "GP0058",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

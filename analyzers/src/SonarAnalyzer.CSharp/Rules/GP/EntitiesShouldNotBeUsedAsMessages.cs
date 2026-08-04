@@ -27,19 +27,23 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
     [RuleParameter("domainNamespaces", PropertyType.String, "Comma-separated namespaces holding domain types, e.g. MyCompany.Domain", "")]
     public string DomainNamespaces { get; set; } = string.Empty;
 
-    protected override void Initialize(SonarParametrizedAnalysisContext context)
-    {
-        context.RegisterNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
-        context.RegisterNodeAction(AnalyzeConsumerDeclaration, SyntaxKind.ClassDeclaration);
-    }
+    // The entity set is built once per compilation - the DbSet scan walks every type, so repeating it per call site
+    // would make the rule scale with the number of publish calls times the size of the assembly.
+    protected override void Initialize(SonarParametrizedAnalysisContext context) =>
+        context.RegisterCompilationStartAction(start =>
+        {
+            var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes, DomainNamespaces);
+            start.RegisterNodeAction(c => AnalyzeInvocation(c, entities), SyntaxKind.InvocationExpression);
+            start.RegisterNodeAction(c => AnalyzeConsumerDeclaration(c, entities), SyntaxKind.ClassDeclaration);
+        });
 
-    private void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !PublishMethods.Contains(method.Name)
             || MessageType(context.Model, invocation, method) is not { } messageType
-            || !IsEntity(messageType, context))
+            || !entities.IsEntity(messageType))
         {
             return;
         }
@@ -48,7 +52,7 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
     }
 
     // A consumer of an entity is the mirror image of publishing one: the contract is still the entity.
-    private void AnalyzeConsumerDeclaration(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeConsumerDeclaration(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
     {
         var classDeclaration = (ClassDeclarationSyntax)context.Node;
         if (context.Model.GetDeclaredSymbol(classDeclaration) is not { } type)
@@ -59,7 +63,7 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
         foreach (var consumed in type.AllInterfaces
             .Where(x => x is { Name: "IConsumer", IsGenericType: true, TypeArguments.Length: 1 })
             .Select(x => x.TypeArguments[0])
-            .Where(x => IsEntity(x, context)))
+            .Where(entities.IsEntity))
         {
             context.ReportIssue(Rule, classDeclaration.Identifier, consumed.Name);
         }
@@ -76,11 +80,4 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
             ? model.GetTypeInfo(firstArgument).Type
             : null;
     }
-
-    private bool IsEntity(ITypeSymbol type, SonarSyntaxNodeReportingContext context) =>
-        GpEntityTypes.IsEntity(
-            type,
-            context.Compilation,
-            GpEntityTypes.SplitParameter(EntityBaseTypes),
-            GpEntityTypes.SplitParameter(DomainNamespaces));
 }

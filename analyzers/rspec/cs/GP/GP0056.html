@@ -1,0 +1,44 @@
+<p>A type should not serve as both an HTTP request or response and a message contract.</p>
+<h2>Why is this an issue?</h2>
+<p>The two contracts have different audiences and change for different reasons. The HTTP shape is agreed with callers of the API; the message shape is
+agreed with subscribers on the broker. Sharing one type couples those two agreements together, so a field added for an API client silently changes the
+published message, and a field required by a consumer silently appears in the API.</p>
+<p>The consequence is that neither side can be versioned. A change that is harmless for the API - renaming a property, tightening a type - becomes a
+breaking change for every consumer that already reads the message, and the reverse is equally true. Both audiences end up blocking each other's changes
+for no reason other than a shared class.</p>
+<pre>
+public sealed class OrderRequest
+{
+    public Guid OrderId { get; set; }
+}
+
+// used as the HTTP request...
+[HttpPost] public IActionResult Create(OrderRequest request) =&gt; Ok();
+
+// ...and as the message
+await _publisher.Publish(request);
+</pre>
+<p>The rule needs both uses to be visible in one compilation: the type appears as a parameter or return type of a controller action, and is also published,
+sent or consumed. Where the two live in different projects, the check cannot see the overlap - so an issue here is reliable, but its absence is not proof
+that nothing is shared.</p>
+<h2>How to fix it</h2>
+<p>Declare a type per boundary and map between them. The mapping is what lets each side change on its own schedule.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpPost]
+public async Task&lt;IActionResult&gt; Create(OrderRequest request)
+{
+    await _publisher.Publish(request); // Noncompliant {{'OrderRequest' is also an HTTP contract - declare a separate message contract.}}
+    return Ok();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpPost]
+public async Task&lt;IActionResult&gt; Create(OrderRequest request)
+{
+    await _publisher.Publish(new OrderAccepted(request.OrderId, DateTimeOffset.UtcNow));
+    return Ok();
+}
+</pre>
