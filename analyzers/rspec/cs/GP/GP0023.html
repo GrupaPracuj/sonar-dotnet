@@ -8,7 +8,6 @@ strong hint that a value meant to stay confidential is being passed exactly wher
 [HttpGet("sessions/{token}")]
 public IActionResult GetByToken(string token) { /* ... */ }
 </pre>
-<h3>Exceptions</h3>
 <p>Only route <em>parameters</em> (<code>{name}</code>) are checked, not literal path segments - a fixed segment like <code>/api-keys</code> is just
 a resource name, it doesn't carry a caller-supplied value. A parameter name that only references a record rather than holding the secret itself
 (for example <code>apiKeyId</code>) can still match and needs a human judgment call.</p>

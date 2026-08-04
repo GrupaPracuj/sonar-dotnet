@@ -6,7 +6,6 @@ application's control: it can't be rotated away from those copies, and anyone wi
 <pre>
 _logger.LogInformation("User authenticated with {Password}", password);
 </pre>
-<h3>Exceptions</h3>
 <p>Only calls to <code>Microsoft.Extensions.Logging.ILogger</code> (<code>LogTrace</code>/<code>LogDebug</code>/<code>LogInformation</code>/
 <code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
 each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not trace

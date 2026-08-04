@@ -7,7 +7,6 @@ personal data that has to be inventoried, retained and protected like any other 
 <pre>
 _logger.LogInformation("New user registered with {Email}", email);
 </pre>
-<h3>Exceptions</h3>
 <p>Only calls to <code>Microsoft.Extensions.Logging.ILogger</code> (<code>LogTrace</code>/<code>LogDebug</code>/<code>LogInformation</code>/
 <code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
 each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not know

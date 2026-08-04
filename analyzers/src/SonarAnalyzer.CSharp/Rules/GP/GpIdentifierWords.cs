@@ -11,7 +11,9 @@ internal static class GpIdentifierWords
 
     private static readonly HashSet<string> PiiWords = new(StringComparer.OrdinalIgnoreCase)
     {
-        "email", "pesel", "phone", "nip", "iban", "surname", "firstname", "lastname", "birthdate", "dateofbirth", "creditcard"
+        // Deliberately no three-letter abbreviations: matching is per word, so a short token like "nip" fires on any
+        // identifier that happens to contain it and drowns the real findings in noise.
+        "email", "pesel", "phone", "iban", "surname", "firstname", "lastname", "birthdate", "dateofbirth", "creditcard"
     };
 
     internal static bool ContainsWord(string identifier, string word) =>
