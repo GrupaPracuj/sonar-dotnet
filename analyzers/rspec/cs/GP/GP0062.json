@@ -1,0 +1,25 @@
+{
+  "title": "Message contracts should stay within complexity limits",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "FOCUSED"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0062",
+  "sqKey": "GP0062",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

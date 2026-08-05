@@ -2,8 +2,15 @@
 lock.</p>
 <h2>Why is this an issue?</h2>
 <p>Juno implements cross-process locking on Consul or SQL Server, which is what makes the lock work between instances of a service spread across
-machines. A named <code>Mutex</code> only coordinates processes on the same operating system, so it holds on a developer machine and in a single-node
-test, then silently stops holding once the service runs as several pods - the classic failure that shows up as duplicated work or a lost update long
+machines. A <code>Mutex</code> reaches only as far as one operating system. Microsoft's documentation draws the line:</p>
+<blockquote>
+  Mutexes are of two types: local mutexes, which are unnamed, and named system mutexes. A local mutex exists only within your process.
+</blockquote>
+<blockquote>
+  Named system mutexes are visible throughout the operating system, and can be used to synchronize the activities of processes.
+</blockquote>
+<p>"Throughout the operating system" is exactly the limit: a named mutex holds on a developer machine and in a single-node test, then silently stops
+holding once the service runs as several pods - the classic failure that shows up as duplicated work or a lost update long
 after the code was written. Going directly at Consul works, but skips the configured lock backend, the acquire timeout handling and the
 <code>AcquireLockResult</code> contract the rest of the code expects.</p>
 <pre>
@@ -41,3 +48,9 @@ public async Task ImportOrders()
     Import();
 }
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.mutex">Mutex Class</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.interlocked">Interlocked class</a></li>
+</ul>

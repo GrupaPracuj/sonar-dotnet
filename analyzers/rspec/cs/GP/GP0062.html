@@ -1,0 +1,31 @@
+<p>A message contract should stay small enough to be understood and versioned.</p>
+<h2>Why is this an issue?</h2>
+<p>Contract size is a coupling measure. Every property is something a consumer may come to depend on and the producer can therefore no longer change, so a
+contract with sixty fields is sixty commitments to services you do not control. Large contracts also tend to be the symptom rather than the disease: the
+producer stopped deciding what the event means and started sending its whole model, which is how the contract ends up mirroring a database table.</p>
+<p>Depth compounds it. Each nested level multiplies what a consumer has to deserialize and match, and a deep graph is where breaking changes hide - a
+rename four levels down is invisible in review and fatal at runtime.</p>
+<pre>
+public sealed record OrderAccepted(
+    Guid OrderId,
+    Customer Customer,       // which nests Address, which nests Country...
+    /* ... 40 more properties ... */);
+</pre>
+<h3>Exceptions</h3>
+<p>All three limits are rule parameters: <code>maxProperties</code> (default 30), <code>maxDepth</code> (default 4) and
+<code>maxComplexTypes</code> (default 10). The count is of the contract's own public data members; depth follows contract-like types only and stops at
+BCL types, so a <code>string</code> or a <code>DateTimeOffset</code> is never a level.</p>
+<h2>How to fix it</h2>
+<p>Split the contract along the events that actually happened, or send identifiers and let the consumer fetch what it needs.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: 34 properties, above the limit of 30.}}
+{
+    // 34 properties
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record OrderAcceptedContract(Guid OrderId, string CustomerReference, decimal Total, string Currency, DateTimeOffset OccurredAt);
+</pre>

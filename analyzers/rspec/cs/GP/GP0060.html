@@ -1,0 +1,29 @@
+<p>A type published, sent or consumed as a message must be <code>public</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>A message contract is read by a different assembly than the one that declares it - that is the whole point. An <code>internal</code> or
+<code>private</code> contract cannot be referenced by the consuming service at all, so the agreement only holds as long as producer and consumer happen to
+be the same assembly. The first time the consumer moves out, the contract has to be made public anyway, and by then other code depends on its name and
+namespace.</p>
+<p>Serializers are also affected: the accessibility that keeps the type hidden from other assemblies keeps it hidden from reflection-based binding unless
+the serializer is specially configured, so the failure often shows up as a message that deserializes into empty properties rather than as a compile
+error.</p>
+<pre>
+internal sealed record OrderAccepted(Guid OrderId);
+
+await _publisher.Publish(new OrderAccepted(id));
+</pre>
+<h2>How to fix it</h2>
+<p>Make the contract <code>public</code>, and move it to the assembly the consumers reference.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+internal sealed record OrderAccepted(Guid OrderId);
+
+await _publisher.Publish(new OrderAccepted(id)); // Noncompliant {{'OrderAccepted' is not public, so no other service can reference this contract.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record OrderAccepted(Guid OrderId);
+
+await _publisher.Publish(new OrderAccepted(id));
+</pre>

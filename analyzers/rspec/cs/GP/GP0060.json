@@ -1,0 +1,24 @@
+{
+  "title": "Message contracts must be public",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "messaging"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0060",
+  "sqKey": "GP0060",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

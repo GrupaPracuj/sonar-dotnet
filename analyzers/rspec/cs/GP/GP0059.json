@@ -1,0 +1,25 @@
+{
+  "title": "Contract assemblies should not use domain or infrastructure types",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "design"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0059",
+  "sqKey": "GP0059",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

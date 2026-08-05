@@ -43,3 +43,8 @@ public class ReportSenderJobs : IScheduleJobsRegistry
             .Schedule(new RecurringSchedule(TimeSpan.FromHours(1)), SendReports, cancellation);
 }
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services">Background tasks with hosted services in ASP.NET Core</a></li>
+</ul>
