@@ -99,6 +99,16 @@ public sealed class TypeShouldNotBeBothHttpAndMessageContract : SonarDiagnosticA
             current = named.TypeArguments[0];
         }
 
-        return current is { SpecialType: SpecialType.None, TypeKind: TypeKind.Class or TypeKind.Struct } ? current : null;
+        return current is { SpecialType: SpecialType.None, TypeKind: TypeKind.Class or TypeKind.Struct } && !IsFrameworkType(current)
+            ? current
+            : null;
     }
+
+    // An action also takes CancellationToken, Guid and the like. Those are not contracts, and keeping them out of the
+    // set stops the rule from ever pairing one with a publish call.
+    private static bool IsFrameworkType(ITypeSymbol type) =>
+        (type.ContainingNamespace?.ToDisplayString() ?? string.Empty) is var containing
+        && (containing == "System"
+            || containing.StartsWith("System.", StringComparison.Ordinal)
+            || containing.StartsWith("Microsoft.", StringComparison.Ordinal));
 }

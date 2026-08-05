@@ -1,7 +1,14 @@
 <p>A consumer should await everything it starts, so the broker only sees the message as handled once the work is actually done.</p>
 <h2>Why is this an issue?</h2>
-<p>The broker's contract with a consumer is the returned task. When <code>Consume</code> completes, the message is acknowledged and removed - so any work
-that is still running at that moment has lost the only safety net it had. If it then fails, there is no redelivery, no error queue and no exception anyone
+<p>The broker's contract with a consumer is the returned task. MassTransit's documentation states it directly:</p>
+<blockquote>
+  The <code>Consume</code> method returns a <code>Task</code> that is awaited by MassTransit. MassTransit automatically renews the message lock until the
+  control returns from the consumer's <code>Consume</code> method to prevent message redelivery.
+</blockquote>
+<blockquote>
+  When the <code>Consume</code> method completes, MassTransit acknowledges the message so that the broker can remove it from the queue.
+</blockquote>
+<p>So any work that is still running at that moment has lost the only safety net it had. If it then fails, there is no redelivery, no error queue and no exception anyone
 sees: the message was already acknowledged as successfully handled.</p>
 <p>Fire-and-forget work also outlives the scope it was started in. The <code>ConsumeContext</code> is disposed when <code>Consume</code> returns, taking
 the scoped dependency-injection container with it, so a <code>DbContext</code> captured by the abandoned task is disposed underneath it. During shutdown it
@@ -39,7 +46,7 @@ public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context) =&gt;
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
-  <li>MassTransit - <a href="https://masstransit.io/documentation/concepts/consumers">Consumers</a></li>
+  <li>MassTransit - <a href="https://masstransit.massient.com/documentation/concepts/consumers">Consumers</a></li>
   <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios">Asynchronous programming
   scenarios</a></li>
 </ul>

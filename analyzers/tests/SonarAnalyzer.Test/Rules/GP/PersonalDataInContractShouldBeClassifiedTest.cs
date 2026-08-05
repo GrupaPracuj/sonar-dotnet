@@ -62,6 +62,18 @@ public class PersonalDataInContractShouldBeClassifiedTest
             """)
             .VerifyNoIssues();
 
+    // On a positional record the attribute is usually written with the property: target, which puts it on the
+    // generated property rather than on the parameter.
+    [TestMethod]
+    public void PersonalDataInContractShouldBeClassified_CompliantForPropertyTargetedAttribute() =>
+        CreateBuilderWithConfiguration(attributes: "PersonalData")
+            .AddSnippet(
+            Stubs + """
+
+            public sealed record CandidateRegisteredContract(System.Guid CandidateId, [property: PersonalData] string Email);
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void PersonalDataInContractShouldBeClassified_CompliantWhenContractImplementsMarker() =>
         CreateBuilderWithConfiguration(interfaces: "IContainsPersonalData")

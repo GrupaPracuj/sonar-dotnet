@@ -37,7 +37,7 @@ public class Order
 }
 
 public Task Accept(Order order) =&gt;
-    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">

@@ -34,8 +34,9 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         context.ReportIssue(Rule, typeSyntax, caught.Name);
     }
 
-    // Rethrowing, throwing something else, or returning a value all leave the caller able to see that the work did
-    // not finish. Logging alone does not - it records the fact without telling the caller.
+    // Rethrowing, throwing something else, returning a value, or breaking out of the enclosing loop all mean the code
+    // stops rather than carrying on as if the work had finished. Logging alone does not - it records the fact without
+    // changing what happens next.
     private static bool SignalsCancellationToCaller(BlockSyntax block) =>
         block is null
         || block.DescendantNodes(DoesNotBelongToANestedFunction).Any(IsCallerVisibleExit);
@@ -45,6 +46,8 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
     private static bool DoesNotBelongToANestedFunction(SyntaxNode node) =>
         node.Kind() != SyntaxKindEx.LocalFunctionStatement && node is not AnonymousFunctionExpressionSyntax;
 
+    // "break" covers the idiomatic worker loop: catch cancellation, leave the loop, shut down cleanly.
     private static bool IsCallerVisibleExit(SyntaxNode node) =>
-        node is ThrowStatementSyntax or ReturnStatementSyntax || node.Kind() == SyntaxKindEx.ThrowExpression;
+        node is ThrowStatementSyntax or ReturnStatementSyntax or BreakStatementSyntax
+        || node.Kind() == SyntaxKindEx.ThrowExpression;
 }

@@ -102,6 +102,33 @@ public class CancellationShouldNotBeSuppressedTest
             """)
             .VerifyNoIssues();
 
+    // The idiomatic worker loop: cancellation means leave the loop and shut down, which is reacting, not suppressing.
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantWhenBreakingOutOfALoop() =>
+        builder.AddSnippet(
+            """
+            public class Worker
+            {
+                public void Run()
+                {
+                    while (true)
+                    {
+                        try
+                        {
+                            Work();
+                        }
+                        catch (System.OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                private void Work() { }
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void CancellationShouldNotBeSuppressed_CompliantForOtherExceptions() =>
         builder.AddSnippet(

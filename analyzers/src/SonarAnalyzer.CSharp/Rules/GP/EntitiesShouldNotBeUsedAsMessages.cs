@@ -5,7 +5,8 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
 {
     internal const string RuleId = "GP0043";
 
-    private const string MessageFormat = "'{0}' is a database entity - publish a dedicated contract type instead.";
+    // Wording covers both directions the rule reports: publishing an entity and consuming one.
+    private const string MessageFormat = "'{0}' is a database entity - use a dedicated contract type as the message instead.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 

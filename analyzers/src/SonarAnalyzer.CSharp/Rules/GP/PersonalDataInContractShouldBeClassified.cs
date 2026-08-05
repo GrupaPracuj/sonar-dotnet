@@ -64,16 +64,27 @@ public sealed class PersonalDataInContractShouldBeClassified : ParametrizedDiagn
 
         // The classification counts whether it sits on the member itself or on the contract that declares it.
         return HasClassifyingAttribute(context, member, attributes)
+            || HasClassifyingAttributeOnGeneratedProperty(context, member, attributes)
             || (EnclosingType(member) is { } typeDeclaration && HasClassifyingAttribute(context, typeDeclaration, attributes))
             || EnclosingTypeImplements(context, member, interfaces);
     }
+
+    // On a positional record, "[property: PersonalData] string Email" puts the attribute on the generated property
+    // rather than on the parameter, so the parameter's own attribute list does not show it.
+    private static bool HasClassifyingAttributeOnGeneratedProperty(SonarSyntaxNodeReportingContext context, SyntaxNode member, string[] attributes) =>
+        member is ParameterSyntax { Identifier.ValueText: var name }
+        && EnclosingType(member) is { } typeDeclaration
+        && context.Model.GetDeclaredSymbol(typeDeclaration) is { } type
+        && type.GetMembers(name).OfType<IPropertySymbol>().Any(x => HasClassifyingAttribute(x, attributes));
 
     private static TypeDeclarationSyntax EnclosingType(SyntaxNode member) =>
         member.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
 
     private static bool HasClassifyingAttribute(SonarSyntaxNodeReportingContext context, SyntaxNode node, string[] attributes) =>
+        context.Model.GetDeclaredSymbol(node) is { } symbol && HasClassifyingAttribute(symbol, attributes);
+
+    private static bool HasClassifyingAttribute(ISymbol symbol, string[] attributes) =>
         attributes.Length > 0
-        && context.Model.GetDeclaredSymbol(node) is { } symbol
         && symbol.GetAttributes().Any(x => x.AttributeClass is { } attributeClass
                                            && Array.Exists(attributes, y => attributeClass.Name == y || attributeClass.Name == y + "Attribute"));
 

@@ -1,7 +1,12 @@
 <p>A message contract should carry a reference to binary content, not the bytes themselves.</p>
 <h2>Why is this an issue?</h2>
-<p>A broker is not a file store. Bytes on a message are held in memory by the broker, written to its disk, replicated to every subscriber's queue, and
-copied again into the error queue if a consumer fails - so a single 5 MB attachment sent to four consumers is not 5 MB of traffic, it is tens of megabytes
+<p>A broker is not a file store. Microsoft's Claim-Check guidance states the problem plainly:</p>
+<blockquote>
+  Traditional messaging systems are optimized to manage a high volume of small messages and often have restrictions on the message size they can handle.
+  Large messages not only risk exceeding these limits but can also degrade the performance of the entire system when the messaging system stores them.
+</blockquote>
+<p>Bytes on a message are held in memory by the broker, written to its disk, replicated to every subscriber's queue, and copied again into the error queue
+if a consumer fails - so a single 5 MB attachment sent to four consumers is not 5 MB of traffic, it is tens of megabytes
 of broker storage plus the same again on every redelivery. Transports also cap message size, and the failure arrives as a rejected publish long after the
 contract was designed.</p>
 <p>The knock-on effects are worse than the volume. Large messages slow down every other message behind them in the queue, redelivery re-transfers the whole
@@ -38,6 +43,7 @@ public sealed record DocumentUploadedContract(
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
-  <li>Enterprise Integration Patterns - <a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/ClaimCheck.html">Claim Check</a></li>
-  <li>MassTransit - <a href="https://masstransit.io/documentation/configuration/middleware/message-data">Message Data</a></li>
+  <li>Enterprise Integration Patterns - <a href="https://www.enterpriseintegrationpatterns.com/patterns/messaging/StoreInLibrary.html">Claim
+  Check</a>: "Store message data in a persistent store and pass a <em>Claim Check</em> to subsequent components."</li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/claim-check">Claim-Check pattern</a></li>
 </ul>

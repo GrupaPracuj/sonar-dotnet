@@ -54,7 +54,7 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
                 private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                 public System.Threading.Tasks.Task Accept(Order order) =>
-                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
             }
             """)
             .Verify();
@@ -80,7 +80,7 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
                 private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                 public System.Threading.Tasks.Task Accept(Order order) =>
-                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
             }
             """)
             .Verify();
@@ -96,7 +96,7 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
                 public int Id { get; set; }
             }
 
-            public class OrderConsumer : MassTransit.IConsumer<Order> // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+            public class OrderConsumer : MassTransit.IConsumer<Order> // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
             {
                 public System.Threading.Tasks.Task Consume(Order message) => System.Threading.Tasks.Task.CompletedTask;
             }
@@ -172,7 +172,7 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
                 private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                 public System.Threading.Tasks.Task Accept(MyCompany.Domain.Order order) =>
-                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
             }
             """)
             .Verify();
@@ -195,7 +195,7 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
                 private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                 public System.Threading.Tasks.Task Accept(Order order) =>
-                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - publish a dedicated contract type instead.}}
+                    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
             }
             """)
             .Verify();
