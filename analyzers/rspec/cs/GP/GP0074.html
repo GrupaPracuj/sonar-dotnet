@@ -1,0 +1,44 @@
+<p>A whole contract object should not be passed to a logger.</p>
+<h2>Why is this an issue?</h2>
+<p>Logging the object logs every field it has now, and every field anybody adds to it later. That is the problem: the decision about what ends up in the log
+is made once, by whoever wrote the log line, and then silently re-made by every future change to the contract. A field added months later for an unrelated
+reason - an email address, a national ID, a token - starts appearing in the log with no code change at that call site and no review of the consequence.</p>
+<p>MITRE describes the resulting weakness as "Insertion of Sensitive Information into Log File", and logs are a poor place to discover it: they are shipped to
+aggregation services, retained on a different schedule from the data itself, and readable by a wider group than the payload ever was.</p>
+<p>It is also worse diagnostically than it looks. A serialized contract in a message template produces one large unsearchable string rather than the few
+indexed fields the investigation actually needs.</p>
+<pre>
+_logger.LogInformation("Received {Message}", message);   // whatever the contract carries, now and later
+</pre>
+<p>The rule reports a logging argument whose type is a contract - the same naming convention the other contract rules use. Related but different concerns are
+covered elsewhere: GP0019 and GP0022 look at the <em>names</em> of individual values, and GP0030 at request input interpolated into the template.</p>
+<h2>How to fix it</h2>
+<p>Log the few fields the diagnosis needs, named as template placeholders so they stay queryable. An identifier and a status are usually enough to find the
+message itself if more is required.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Task Consume(ConsumeContext&lt;OrderAcceptedContract&gt; context)
+{
+    _logger.LogInformation("Received {Message}", context.Message); // Noncompliant {{Do not log the whole contract 'OrderAcceptedContract' - log the fields the diagnosis needs.}}
+    return Task.CompletedTask;
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task Consume(ConsumeContext&lt;OrderAcceptedContract&gt; context)
+{
+    _logger.LogInformation("Received order {OrderId} with status {Status}", context.Message.OrderId, context.Message.Status);
+    return Task.CompletedTask;
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude">Logging Cheat Sheet - Data to
+  exclude</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/532.html">CWE-532 - Insertion of Sensitive Information into Log File</a></li>
+</ul>

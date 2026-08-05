@@ -1,0 +1,40 @@
+<p>A published event should say which business object or process it is about.</p>
+<h2>Why is this an issue?</h2>
+<p>An event that carries data but no identifier tells a consumer that something happened without saying to what. That makes it unusable for the things
+consumers actually do with events: update their own copy of a record, correlate the fact with work already in progress, or decide whether a newer event has
+superseded an older one. All of those need a stable key, and none of them can use one that only exists inside the producer.</p>
+<p><code>MessageId</code> does not count, and neither does <code>CorrelationId</code>. They identify the <em>message</em>, not the thing the message is about:
+a redelivery produces a different <code>MessageId</code> for the same fact, and republishing through an outbox produces another one again. A consumer keyed
+on them cannot recognise that it has already seen this event, which is precisely the case idempotency depends on.</p>
+<pre>
+public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOffset OccurredAt);
+
+appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<p>A member counts as a business identifier when its name ends with <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code> or
+<code>Key</code> - configurable through <code>identifierSuffixes</code> - and is not one of the transport metadata names.</p>
+<h3>Exceptions</h3>
+<p>An event with no data members at all is not reported. A marker event such as <code>MaintenanceModeEnabled</code> is about the system rather than about a
+particular object, so there is no identifier for it to carry - and requiring one would only produce a field nobody fills in.</p>
+<h2>How to fix it</h2>
+<p>Add the identifier of the thing the event is about, named after that thing. Where the event is about a process rather than an entity, the process
+identifier is the right key.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOffset OccurredAt);
+
+appConfig.Publishes&lt;PaymentReceived&gt;(); // Noncompliant {{'PaymentReceived' carries no business identifier, so a consumer cannot tell what it is about.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency, DateTimeOffset OccurredAt);
+
+appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/multi-container-microservice-net-applications/integration-event-based-microservice-communications">Implementing
+  event-based communication between microservices (integration events)</a></li>
+</ul>

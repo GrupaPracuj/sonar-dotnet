@@ -1,0 +1,31 @@
+{
+  "title": "Whole contract objects should not be logged",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "logging",
+    "privacy",
+    "cwe"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0074",
+  "sqKey": "GP0074",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      532
+    ]
+  }
+}
