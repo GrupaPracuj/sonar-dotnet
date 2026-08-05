@@ -1,0 +1,25 @@
+{
+  "title": "Contracts should be declared with nullable reference types enabled",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "api"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0063",
+  "sqKey": "GP0063",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

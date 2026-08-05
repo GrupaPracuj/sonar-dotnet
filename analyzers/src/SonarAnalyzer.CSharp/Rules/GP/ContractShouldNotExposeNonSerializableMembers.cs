@@ -13,12 +13,25 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
     // trace which classes are actually reachable from a controller action or a message declaration.
     private static readonly string[] ContractNameSuffixes = { "Dto", "Request", "Response", "Contract" };
 
+    // Types that either carry no data at all once serialized, or drag a runtime object across a boundary where it
+    // means nothing: a process-local handle, a framework service, an ambient request object.
     private static readonly HashSet<string> BannedTypes = new(StringComparer.Ordinal)
     {
         "System.IO.Stream",
         "System.Threading.Tasks.Task",
         "System.IntPtr",
         "System.UIntPtr",
+        "System.Exception",
+        "System.Type",
+        "System.Delegate",
+        "System.Threading.CancellationToken",
+        "System.IServiceProvider",
+        "System.Security.Claims.ClaimsPrincipal",
+        "System.Data.DataTable",
+        "System.Data.DataSet",
+        "Microsoft.AspNetCore.Http.HttpContext",
+        "Microsoft.EntityFrameworkCore.DbContext",
+        "System.Data.Entity.DbContext",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -68,6 +81,22 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
 
     private static bool IsBannedType(ITypeSymbol type) =>
         BannedTypes.Contains(type.ToDisplayString())
+        || DerivesFromBannedType(type)
         || (type is INamedTypeSymbol { IsGenericType: true, Name: "Task" } named && named.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks")
-        || (type.TypeKind == TypeKind.Delegate && type.ContainingNamespace?.ToDisplayString() == "System");
+        // Any delegate, not only Action/Func: a custom delegate is just as much a method reference.
+        || type.TypeKind == TypeKind.Delegate;
+
+    // Exception and DbContext are almost always used through a derived type, so the base classes have to be walked.
+    private static bool DerivesFromBannedType(ITypeSymbol type)
+    {
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (BannedTypes.Contains(current.ToDisplayString()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

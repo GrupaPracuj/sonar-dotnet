@@ -1,0 +1,25 @@
+{
+  "title": "Contract types should not form a cycle",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "serialization"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0064",
+  "sqKey": "GP0064",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

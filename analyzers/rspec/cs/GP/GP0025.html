@@ -1,9 +1,11 @@
 <p>A wire contract (a request/response DTO, or a message contract) should not declare a property of a type that doesn't survive JSON
 serialization.</p>
 <h2>Why is this an issue?</h2>
-<p><code>System.Text.Json</code> and <code>Newtonsoft.Json</code> can only serialize data - a <code>Stream</code>, a <code>Task</code>, a delegate
-(<code>Action</code>/<code>Func&lt;...&gt;</code>) or an <code>IntPtr</code> describes a runtime operation or a process-local handle, not a value
-that means anything on the other side of an HTTP call or a message queue. Depending on the serializer and the exact type, this either throws at
+<p><code>System.Text.Json</code> and <code>Newtonsoft.Json</code> can only serialize data. A <code>Stream</code>, a <code>Task</code>, a delegate or an
+<code>IntPtr</code> describes a runtime operation or a process-local handle; an <code>Exception</code>, a <code>Type</code>, a
+<code>CancellationToken</code>, an <code>IServiceProvider</code>, a <code>ClaimsPrincipal</code>, an <code>HttpContext</code>, a <code>DbContext</code> or a
+<code>DataTable</code> is a live object belonging to the current process and request. None of them means anything on the other side of an HTTP call or a
+message queue. Depending on the serializer and the exact type, this either throws at
 serialization time or silently produces an empty object - both cases are usually discovered much later than when the property was added, once
 something on the receiving end unexpectedly gets a missing or malformed field.</p>
 <pre>
@@ -15,6 +17,8 @@ public class UploadRequest
 <p>The rule checks properties and public fields of classes and records whose own name ends with <code>Dto</code>, <code>Request</code>,
 <code>Response</code> or <code>Contract</code>. It does not trace whether a type is actually reachable from a controller action or a message
 declaration - it goes by name alone, so a contract named differently is not checked.</p>
+<p>Base classes are walked, so a type deriving from <code>Exception</code> or from <code>DbContext</code> is reported too - those are almost always used
+through a derived type.</p>
 <p>Public fields are included because the two serializers disagree about them: <code>Newtonsoft.Json</code> serializes public fields, while
 <code>System.Text.Json</code> ignores fields unless configured otherwise. A non-serializable field therefore either behaves like the property case or
 silently disappears depending on which serializer the endpoint happens to use - neither is a contract worth shipping. <code>static</code> and

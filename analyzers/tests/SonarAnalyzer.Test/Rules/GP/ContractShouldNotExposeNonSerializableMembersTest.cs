@@ -85,6 +85,46 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """)
             .VerifyNoIssues();
 
+    // The remaining CONTRACT004 types: live objects belonging to the current process and request.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForRuntimeObjects() =>
+        builder.AddSnippet(
+            """
+            public class OrderRequest
+            {
+                public System.Exception Failure { get; set; } // Noncompliant {{'Failure' has type 'System.Exception', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                public System.Type Kind { get; set; } // Noncompliant {{'Kind' has type 'System.Type', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                public System.Threading.CancellationToken Cancellation { get; set; } // Noncompliant {{'Cancellation' has type 'System.Threading.CancellationToken', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+            """)
+            .Verify();
+
+    // Exception is almost always used through a derived type, so base classes are walked.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForDerivedException() =>
+        builder.AddSnippet(
+            """
+            public class OrderRequest
+            {
+                public System.InvalidOperationException Failure { get; set; } // Noncompliant {{'Failure' has type 'System.InvalidOperationException', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+            """)
+            .Verify();
+
+    // Any delegate, not only Action and Func.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForCustomDelegate() =>
+        builder.AddSnippet(
+            """
+            public delegate void OrderHandler(int id);
+
+            public class OrderContract
+            {
+                public OrderHandler Handler { get; set; } // Noncompliant {{'Handler' has type 'OrderHandler', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+            """)
+            .Verify();
+
     [TestMethod]
     public void ContractShouldNotExposeNonSerializableMembers_CompliantForOrdinaryProperties() =>
         builder.AddSnippet(

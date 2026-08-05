@@ -1,0 +1,56 @@
+<p>A contract should not be able to reach itself through its own members.</p>
+<h2>Why is this an issue?</h2>
+<p>A cyclic type graph gives the payload no bounded size, and the serializer is what discovers that. Microsoft's guidance on
+<code>System.Text.Json</code> states the default behaviour:</p>
+<blockquote>
+  By default, circular references are detected and exceptions thrown.
+</blockquote>
+<p>So the publish does not fail when the contract is written, or in the tests where the cycle happens to be left open - it fails the first time real data
+closes the loop. At that point the exception comes from the serializer, in a producer that has already committed its database change, and nothing in the
+contract's declaration hints at why.</p>
+<p>Configuring the serializer to preserve references is worse for a contract than the exception. It changes the wire format to one carrying
+<code>$id</code>/<code>$ref</code> markers, which every consumer must then be configured to understand - a cross-service change made to accommodate a shape
+the contract did not need in the first place.</p>
+<pre>
+public sealed class OrderContract
+{
+    public IReadOnlyList&lt;OrderLineContract&gt; Lines { get; init; }
+}
+
+public sealed class OrderLineContract
+{
+    public OrderContract Order { get; init; }   // closes the cycle
+}
+</pre>
+<p>The issue is reported on the member through which the type reaches itself, because that is the edge to cut. Where two contracts point at each other, both
+members are reported - either one is a valid place to break the cycle, and the rule does not guess which side is the "parent". Cycles through collections and
+through single members are both found, and only contract-like types are followed, so a <code>string</code> or a <code>DateTimeOffset</code> is never part of
+a cycle.</p>
+<h2>How to fix it</h2>
+<p>Make the graph a tree. A child does not need a reference back to its parent on the wire: the consumer already has the parent, because that is what it
+deserialized. Where the back-reference carries real information, send an identifier instead of the object.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public sealed class OrderLineContract
+{
+    public string Sku { get; init; }
+    public OrderContract Order { get; init; } // Noncompliant {{'Order' lets 'OrderLineContract' reach itself - the serializer throws on a circular reference.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public sealed class OrderLineContract
+{
+    public string Sku { get; init; }
+    public Guid OrderId { get; init; }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/how-to">How to serialize JSON in
+  C#</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/preserve-references">Preserve references
+  and handle circular references</a></li>
+</ul>
