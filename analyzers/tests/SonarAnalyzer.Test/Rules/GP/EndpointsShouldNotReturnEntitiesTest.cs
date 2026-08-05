@@ -114,4 +114,54 @@ public class EndpointsShouldNotReturnEntitiesTest
             }
             """)
             .VerifyNoIssues();
+
+    private const string ConfiguredEntityStubs =
+        Stubs + """
+
+        public abstract class AggregateRoot { }
+
+        public sealed class Invoice : AggregateRoot { }
+
+        public class InvoicesController : Microsoft.AspNetCore.Mvc.ControllerBase
+        {
+            [Microsoft.AspNetCore.Mvc.HttpGet]
+            public Invoice Get(int id) => null; // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}
+        }
+        """;
+
+    // Paired with the test below: the entity carries none of the default signals, so the parameter is what makes the difference.
+    [TestMethod]
+    public void EndpointsShouldNotReturnEntities_NoncompliantForConfiguredEntityBaseType() =>
+        CreateBuilder(entityBaseTypes: "AggregateRoot")
+            .AddSnippet(ConfiguredEntityStubs)
+            .Verify();
+
+    [TestMethod]
+    public void EndpointsShouldNotReturnEntities_CompliantForSameCodeWithDefaultParameters() =>
+        builder.AddSnippet(ConfiguredEntityStubs.Replace(" // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}", string.Empty))
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void EndpointsShouldNotReturnEntities_NoncompliantForConfiguredDomainNamespace() =>
+        CreateBuilder(domainNamespaces: "Shop.Domain")
+            .AddSnippet(
+                Stubs + """
+
+                namespace Shop.Domain
+                {
+                    public sealed class Invoice { }
+                }
+
+                public class InvoicesController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpGet]
+                    public Shop.Domain.Invoice Get(int id) => null; // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}
+                }
+                """)
+            .Verify();
+
+    private static VerifierBuilder CreateBuilder(string entityBaseTypes = "", string domainNamespaces = "") =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.EndpointsShouldNotReturnEntities { EntityBaseTypes = entityBaseTypes, DomainNamespaces = domainNamespaces })
+            .WithOptions(LanguageOptions.CSharpLatest);
 }

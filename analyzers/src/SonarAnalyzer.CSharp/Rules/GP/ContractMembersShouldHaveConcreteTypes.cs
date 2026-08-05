@@ -31,7 +31,7 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
         "KnownTypeAttribute",
     };
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(InterfaceRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(InterfaceRule, AbstractRule);
 
     [RuleParameter("allowedInterfaces", PropertyType.String, "Comma-separated interfaces allowed as contract member types", DefaultAllowedInterfaces)]
     public string AllowedInterfaces { get; set; } = DefaultAllowedInterfaces;

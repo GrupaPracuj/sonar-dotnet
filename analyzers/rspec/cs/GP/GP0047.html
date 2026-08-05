@@ -15,8 +15,8 @@ var response = await _httpClient.GetStringAsync($"http://{address}/orders");
 <p>Registration and health checks are a separate matter: in a GP service they are configured by Juno's host, not written per service, so
 <code>AgentServiceRegistration</code> appearing in application code is itself the signal that something is being done twice.</p>
 <h3>Exceptions</h3>
-<p>Types under the <code>GP.Juno</code> namespaces are not reported - that is where the Consul client belongs, since Juno is what wraps it. Locking on
-Consul is covered separately by GP0040.</p>
+<p>Types under the <code>GP.Juno</code> namespaces are not reported - that is where the Consul client belongs, since Juno is what wraps it. Using Consul as a
+distributed lock is a different concern and is not reported here.</p>
 <h2>How to fix it</h2>
 <p>Name the service and let Juno resolve it.</p>
 <h3>Code examples</h3>
@@ -34,3 +34,10 @@ public async Task&lt;string&gt; GetOrders()
 public Task&lt;string&gt; GetOrders() =&gt;
     _builder.Service("orders").AddPath("orders").GetJson&lt;string&gt;();
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>docs/http-api-client/usage/service-discovery.md</code> describes how discovery is
+  enabled and configured (<code>localizeBy.discovery</code>, the optional <code>serviceName</code>, the instance conditions in
+  <code>addressRequest</code> and the <code>fallback.address</code>), all of which the HTTP client applies for you once the service is named.</li>
+</ul>

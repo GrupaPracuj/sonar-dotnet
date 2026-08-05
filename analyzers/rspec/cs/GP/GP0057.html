@@ -10,7 +10,7 @@ the contract can see it.</p>
   multiple microservices: microservices must be completely autonomous.
 </blockquote>
 <p>Inheriting a domain type does that implicitly - the contract drags the shared model in without anyone deciding to share it. It also re-creates the
-coupling GP0043 exists to prevent, through a door that is easier to miss. A change to the domain base class changes the published
+coupling that publishing a domain type would create, through a door that is easier to miss. A change to the domain base class changes the published
 message for every contract that derives from it, in a commit that never touched a contract. And because MassTransit derives publish topology from the type
 hierarchy, adding or changing a base type can change which consumers receive the message at all.</p>
 <pre>
@@ -19,7 +19,7 @@ public class OrderAcceptedContract : Order   // Order is an EF entity
     public DateTimeOffset OccurredAt { get; init; }
 }
 </pre>
-<p>A base type counts as domain on the same signals as GP0043: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
+<p>A base type counts as domain on any of these signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
 <code>entityBaseTypes</code> and <code>domainNamespaces</code>.</p>
 <h3>Exceptions</h3>
 <p>Inheriting from another contract, or implementing a marker interface, is not reported - only a base <em>class</em> that is a domain type.</p>

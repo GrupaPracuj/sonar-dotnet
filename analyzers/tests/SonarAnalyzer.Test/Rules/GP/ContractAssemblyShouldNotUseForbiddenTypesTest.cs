@@ -85,8 +85,50 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
             """)
             .VerifyNoIssues();
 
+    // A namespace the team wants kept out of its contracts is reported once it is named, even though it is not one of the defaults.
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForConfiguredNamespace() =>
+        CreateBuilder("Shop.Internals")
+            .AddSnippet(
+            Stubs + """
+
+            namespace Shop.Internals
+            {
+                public sealed class PricingEngine { }
+            }
+
+            public sealed class OrderAcceptedContract
+            {
+                public Shop.Internals.PricingEngine Pricing { get; init; } // Noncompliant {{'PricingEngine' comes from 'Shop.Internals', which a contract assembly should not depend on.}}
+            }
+            """)
+            .Verify();
+
+    // The parameter replaces the defaults, so the namespaces it does not name stop being reported.
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_CompliantForDefaultNamespaceWhenItIsNoLongerConfigured() =>
+        CreateBuilder("Shop.Internals")
+            .AddSnippet(
+            Stubs + """
+
+            public sealed class OrderAcceptedContract
+            {
+                public Microsoft.EntityFrameworkCore.DbContext Context { get; init; }
+            }
+            """)
+            .VerifyNoIssues();
+
     private static VerifierBuilder CreateBuilder() =>
         new VerifierBuilder()
             .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "project" })
+            .WithOptions(LanguageOptions.CSharpLatest);
+
+    private static VerifierBuilder CreateBuilder(string forbiddenNamespaces) =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes
+            {
+                ContractAssemblyNames = "project",
+                ForbiddenNamespaces = forbiddenNamespaces,
+            })
             .WithOptions(LanguageOptions.CSharpLatest);
 }

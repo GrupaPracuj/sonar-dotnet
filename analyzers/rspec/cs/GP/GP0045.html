@@ -11,8 +11,9 @@ serializer touches becomes a database query, which is how a single endpoint turn
 public async Task&lt;Order&gt; Get(int id) =&gt;
     await _context.Orders.FirstAsync(x =&gt; x.Id == id);
 </pre>
-<p>A type is treated as an entity on the same signals as GP0043: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
-base types and domain namespaces.</p>
+<p>A type is treated as an entity on any of these signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the base types and
+namespaces named by the <code>entityBaseTypes</code> and <code>domainNamespaces</code> parameters. Both default to the usual EF and domain shapes, so a
+project that keeps its entities elsewhere can point the rule at them instead of losing the check.</p>
 <h2>How to fix it</h2>
 <p>Return a response contract and map the entity onto it, choosing explicitly what the API exposes.</p>
 <h3>Code examples</h3>

@@ -41,3 +41,10 @@ public class FindOrder : IDbExecute&lt;Order&gt;
         dbConnection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id = _id }, dbTransaction);
 }
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows both shapes this rule points at:
+  <code>IAdoConnectionFactory</code> for a connection you use directly, and <code>IDbExecute</code> for work Juno runs with the ambient transaction
+  supplied.</li>
+</ul>

@@ -22,8 +22,8 @@ public async Task Accept(Order order, CancellationToken cancellationToken)
 <p>An outbox removes the second write. The message is stored in the same transaction as the data, so both land or neither does, and a separate process
 delivers it afterwards with at-least-once semantics.</p>
 <h3>Exceptions</h3>
-<p>A publish that happens <em>before</em> the commit is not reported here - that shape is GP0008's, which objects to holding a transaction open across a
-network call. This rule only reports a publish that follows a commit in the same method, so the two rules never fire on the same statement.</p>
+<p>A publish that happens <em>before</em> the commit is not reported here. That is a different defect - it holds the transaction open across a network call -
+and it is not what this rule looks for: only a publish that follows a commit in the same method is reported.</p>
 <p>Set the <code>outboxTypes</code> parameter to the types that mark an approved outbox - a company wrapper, a MassTransit outbox marker interface, a
 base class - and a method inside such a type is not reported. The parameter defaults to empty, so out of the box every commit-then-publish pair is
 reported.</p>

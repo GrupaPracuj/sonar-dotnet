@@ -119,8 +119,59 @@ public class DomainShouldNotDependOnTransportTest
             """)
             .VerifyNoIssues();
 
-    private static VerifierBuilder CreateBuilder(string domainNamespaces) =>
+    // Naming the assembly makes the whole of it domain code, so a namespace that was not listed is now in scope.
+    [TestMethod]
+    public void DomainShouldNotDependOnTransport_NoncompliantForConfiguredDomainAssembly() =>
+        CreateBuilder(domainAssemblyNames: "project")
+            .AddSnippet(
+            Stubs + """
+
+            namespace MyCompany.Orders.Application
+            {
+                public sealed class Order
+                {
+                    public void Accept(MassTransit.ConsumeContext<string> context) { } // Noncompliant {{'ConsumeContext' comes from 'MassTransit', which domain code should not depend on.}}
+                }
+            }
+            """)
+            .Verify();
+
+    // The forbidden list replaces the defaults: what it names is still reported, what it leaves out is not.
+    [TestMethod]
+    public void DomainShouldNotDependOnTransport_ForbiddenNamespacesReplacesTheDefaults() =>
+        CreateBuilder(domainNamespaces: "MyCompany.Orders.Domain", forbiddenNamespaces: "System.Net.Http")
+            .AddSnippet(
+            Stubs + """
+
+            namespace MyCompany.Orders.Domain
+            {
+                public sealed class Order
+                {
+                    public System.Net.Http.HttpResponseMessage LastResponse { get; set; } // Noncompliant {{'HttpResponseMessage' comes from 'System.Net.Http', which domain code should not depend on.}}
+
+                    public void Accept(MassTransit.ConsumeContext<string> context) { }
+                }
+            }
+            """)
+            .Verify();
+
+    // A null argument leaves that parameter at the rule's own default, so a test states only what it actually varies.
+    private static VerifierBuilder CreateBuilder(string domainNamespaces = "", string domainAssemblyNames = null, string forbiddenNamespaces = null) =>
         new VerifierBuilder()
-            .AddAnalyzer(() => new CS.DomainShouldNotDependOnTransport { DomainNamespaces = domainNamespaces })
+            .AddAnalyzer(() => CreateAnalyzer(domainNamespaces, domainAssemblyNames, forbiddenNamespaces))
             .WithOptions(LanguageOptions.CSharpLatest);
+
+    private static CS.DomainShouldNotDependOnTransport CreateAnalyzer(string domainNamespaces, string domainAssemblyNames, string forbiddenNamespaces)
+    {
+        var analyzer = new CS.DomainShouldNotDependOnTransport { DomainNamespaces = domainNamespaces };
+        if (domainAssemblyNames is not null)
+        {
+            analyzer.DomainAssemblyNames = domainAssemblyNames;
+        }
+        if (forbiddenNamespaces is not null)
+        {
+            analyzer.ForbiddenNamespaces = forbiddenNamespaces;
+        }
+        return analyzer;
+    }
 }

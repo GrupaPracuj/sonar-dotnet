@@ -4,9 +4,9 @@
 <code>private</code> contract cannot be referenced by the consuming service at all, so the agreement only holds as long as producer and consumer happen to
 be the same assembly. The first time the consumer moves out, the contract has to be made public anyway, and by then other code depends on its name and
 namespace.</p>
-<p>Serializers are also affected: the accessibility that keeps the type hidden from other assemblies keeps it hidden from reflection-based binding unless
-the serializer is specially configured, so the failure often shows up as a message that deserializes into empty properties rather than as a compile
-error.</p>
+<p>The usual workaround makes it worse. Since the consumer cannot reference the type, someone redeclares it on the other side - and the transport matches
+messages by the full type name including the namespace, so the copy has to sit in an identically named namespace or the message is not consumed at all.
+What was one agreement becomes two declarations kept in step by hand, and the day they drift apart nothing fails to compile.</p>
 <pre>
 internal sealed record OrderAccepted(Guid OrderId);
 
@@ -27,3 +27,11 @@ public sealed record OrderAccepted(Guid OrderId);
 
 await _publisher.Publish(new OrderAccepted(id));
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>MassTransit - <a href="https://masstransit.massient.com/documentation/concepts/messages">Messages</a> - "you'll define your message types as .NET
+  classes, records or interfaces - public, reference types with easily serializable properties", and "MassTransit uses the full type name, including the
+  namespace, for message contracts. When creating the same message type in two separate projects, the namespaces must match or the message will not be
+  consumed."</li>
+</ul>

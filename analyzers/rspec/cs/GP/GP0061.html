@@ -23,3 +23,10 @@ public sealed record OrderAccepted(Guid OrderId, Guid MessageId, DateTimeOffset 
 <pre data-diff-id="1" data-diff-type="compliant">
 public sealed record OrderAccepted(Guid OrderId, DateTimeOffset OccurredAt);
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>MassTransit - <a href="https://masstransit.massient.com/documentation/concepts/messages">Messages</a> - the transport "wraps that data in a rich
+  envelope that carries metadata (MessageId, CorrelationId, source, destination, message type, etc.)", with <code>MessageId</code> "Generated for each
+  message using NewId.NextGuid".</li>
+</ul>

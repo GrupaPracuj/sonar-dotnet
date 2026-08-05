@@ -1,7 +1,7 @@
 <p>A message contract should not double as a database entity.</p>
 <h2>Why is this an issue?</h2>
-<p>This is GP0043 seen from the other end. There the entity was used as the message; here the contract is used as the table. The coupling is the same and
-so is the consequence: one type now answers to two owners who change it for unrelated reasons and on different schedules.</p>
+<p>A contract is an agreement with other services about a wire format. A table is a private storage decision that nobody outside the service is entitled to
+see. Mapping one type to both makes it answer to two owners who change it for unrelated reasons and on different schedules.</p>
 <p>It is arguably worse in this direction, because the contract is the shared artefact. A column added for local storage - an <code>Id</code>, an
 <code>IsProcessed</code> flag, a <code>RowVersion</code> - becomes part of the published payload for every consumer, and a migration cannot be applied
 without changing what other services receive. Conversely, a consumer's request to rename a field turns into a database migration.</p>
@@ -45,3 +45,12 @@ public class ShopDbContext : DbContext
     public DbSet&lt;AcceptedOrderRecord&gt; AcceptedOrders { get; set; }
 }
 </pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/ef/core/modeling/keys">Keys - EF Core</a> - "A key serves as a unique identifier for each
+  entity instance", and "By convention, a property named <code>Id</code> or <code>&lt;type name&gt;Id</code> will be configured as the primary key of an
+  entity" - so a member the contract carries for its own reasons is silently claimed as the table's key.</li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/architect-microservice-container-applications/distributed-data-management">Challenges
+  and solutions for distributed data management</a></li>
+</ul>

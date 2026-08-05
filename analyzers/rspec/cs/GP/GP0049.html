@@ -10,7 +10,7 @@ contract by hand.</p>
 <pre>
 public sealed record CandidateRegistered(Guid CandidateId, string Email, string Pesel);
 </pre>
-<p>Members are matched by name, word by word, against the personal-data vocabulary shared with GP0022 - <code>email</code>, <code>pesel</code>,
+<p>Members are matched by name, word by word, against a personal-data vocabulary - <code>email</code>, <code>pesel</code>,
 <code>phone</code>, <code>iban</code>, <code>surname</code>, <code>firstname</code>, <code>lastname</code>, <code>birthdate</code>,
 <code>dateofbirth</code>, <code>creditcard</code>.</p>
 <h3>Exceptions</h3>

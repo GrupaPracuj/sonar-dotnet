@@ -10,8 +10,9 @@ indexed fields the investigation actually needs.</p>
 <pre>
 _logger.LogInformation("Received {Message}", message);   // whatever the contract carries, now and later
 </pre>
-<p>The rule reports a logging argument whose type is a contract - the same naming convention the other contract rules use. Related but different concerns are
-covered elsewhere: GP0019 and GP0022 look at the <em>names</em> of individual values, and GP0030 at request input interpolated into the template.</p>
+<p>The rule reports a logging argument whose type is a contract - the same naming convention the other contract rules use. It looks at the type of the whole
+argument, so passing individual fields is never reported no matter what those fields are called, and what gets interpolated into the message template is
+outside what this rule inspects.</p>
 <h2>How to fix it</h2>
 <p>Log the few fields the diagnosis needs, named as template placeholders so they stay queryable. An identifier and a status are usually enough to find the
 message itself if more is required.</p>

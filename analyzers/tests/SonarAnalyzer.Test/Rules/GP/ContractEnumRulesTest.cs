@@ -185,4 +185,40 @@ public class ContractEnumRulesTest
             }
             """)
             .VerifyNoIssues();
+
+    // A codebase that spells the fallback differently can say so; the parameter replaces the defaults rather than extending them.
+    [TestMethod]
+    public void ContractEnumShouldHaveUnknownValue_CompliantForConfiguredName() =>
+        CreateUnknownValueBuilder("NotSet")
+            .AddSnippet(
+                """
+                public enum OrderStatus
+                {
+                    NotSet = 0,
+                    Pending = 1,
+                }
+
+                public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractEnumShouldHaveUnknownValue_NoncompliantWhenDefaultNameIsNoLongerConfigured() =>
+        CreateUnknownValueBuilder("NotSet")
+            .AddSnippet(
+                """
+                public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract but has no zero value named NotSet - a consumer cannot represent a value it does not recognise.}}
+                {
+                    Unknown = 0,
+                    Pending = 1,
+                }
+
+                public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+                """)
+            .Verify();
+
+    private static VerifierBuilder CreateUnknownValueBuilder(string unknownValueNames) =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractEnumShouldHaveUnknownValue { UnknownValueNames = unknownValueNames })
+            .WithOptions(LanguageOptions.CSharpLatest);
 }

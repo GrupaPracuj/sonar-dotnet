@@ -109,6 +109,38 @@ public class ContractMembersShouldHaveConcreteTypesTest
             """)
             .VerifyNoIssues();
 
+    // An interface the team has decided to allow stops being reported, without switching the rule off for every other interface.
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_CompliantForConfiguredAllowedInterface() =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractMembersShouldHaveConcreteTypes { AllowedInterfaces = "IPaymentMethod" })
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+                Stubs + """
+
+                public sealed class OrderAcceptedContract
+                {
+                    public IPaymentMethod Payment { get; init; }
+                }
+                """)
+            .VerifyNoIssues();
+
+    // The parameter replaces the defaults rather than adding to them, so the read-only collections are no longer exempt.
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_NoncompliantForReadOnlyListWhenItIsNotAllowed() =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractMembersShouldHaveConcreteTypes { AllowedInterfaces = "IPaymentMethod" })
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+                Stubs + """
+
+                public sealed class OrderAcceptedContract
+                {
+                    public System.Collections.Generic.IReadOnlyList<string> Tags { get; init; } // Noncompliant {{'Tags' is declared as the interface 'IReadOnlyList', so a consumer cannot tell what to deserialize it into.}}
+                }
+                """)
+            .Verify();
+
     [TestMethod]
     public void ContractMembersShouldHaveConcreteTypes_CompliantForNonContractType() =>
         builder.AddSnippet(

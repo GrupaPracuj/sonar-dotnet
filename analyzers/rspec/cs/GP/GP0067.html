@@ -1,8 +1,8 @@
 <p>A contract should not be able to reach a domain type through its members, at any depth.</p>
 <h2>Why is this an issue?</h2>
-<p>GP0043 checks the type being published and GP0057 checks its base class, but neither looks inside. A contract whose own declaration is clean can still
-drag the domain onto the wire one level down - a <code>CustomerContract</code> holding a <code>Customer</code> entity publishes that entity, and every
-consumer now depends on it just as if it had been published directly.</p>
+<p>A contract can look entirely clean in its own declaration and still drag the domain onto the wire one level down. A <code>CustomerContract</code> holding a
+<code>Customer</code> entity publishes that entity, and every consumer now depends on it just as if it had been published directly - the indirection hides
+the decision without changing its effect.</p>
 <p>This is the version of the problem that survives review, because the offending type is not in the file being read. The contract looks deliberate; the
 coupling is two hops away, in a property whose type name reads like a contract until you check where it is declared.</p>
 <p>The consequence is the one integration contracts exist to prevent. Microsoft's guidance is explicit about why:</p>
@@ -16,7 +16,7 @@ public sealed record OrderAcceptedContract(Guid OrderId, CustomerSummary Custome
 public sealed record CustomerSummary(string Name, Customer Entity);   // Customer is an EF entity
 </pre>
 <p>The rule walks the contract's member graph - through single members and collection elements - and reports the member that first introduces a domain
-type. A type counts as domain on the same signals as GP0043: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
+type. A type counts as domain on any of these signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
 <code>entityBaseTypes</code> and <code>domainNamespaces</code>.</p>
 <h2>How to fix it</h2>
 <p>Replace the domain type with contract-owned data, or with the identifier the consumer needs to fetch it. The mapping belongs at the boundary that
