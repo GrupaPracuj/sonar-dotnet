@@ -1,0 +1,56 @@
+<p>An enum a contract puts on the wire should not be a flags enum.</p>
+<h2>Why is this an issue?</h2>
+<p>A flags enum travels as one combined number, and the receiving side has to decompose it against the members it knows. That is fine while both sides know
+the same members, and stops being fine the moment the producer adds a flag - the consumer receives bits it cannot name, and unlike a plain enum it has no
+way to say so. A plain enum can land on <code>Unknown</code>; a combined value cannot, because the bits it does recognise are still valid. The
+unrecognised part is simply dropped, and the consumer proceeds on a partial reading of the field with no error anywhere.</p>
+<p>Flags also make the contract's meaning implicit. <code>Permissions = 6</code> documents nothing on its own, so reading a message off the broker or out of
+the error queue requires the enum definition at the exact version the producer used. And combinations that are invalid in the domain are still
+representable, so the contract admits values the producer would never send and the consumer has to defend against.</p>
+<pre>
+[Flags]
+public enum NotificationChannels
+{
+    None = 0,
+    Email = 1,
+    Sms = 2,
+    Push = 4,     // a consumer built before this exists silently ignores it
+}
+</pre>
+<p>This is a convention rather than a framework rule - Microsoft's guidance covers how to design a flags enum correctly, not whether to put one in a
+contract. The objection here is specific to a service boundary, where the two sides are versioned independently.</p>
+<h3>Exceptions</h3>
+<p>Only enums a contract actually exposes are reported. A flags enum used inside the service is unaffected, which is where most of them belong.</p>
+<h2>How to fix it</h2>
+<p>Send the set explicitly - a read-only collection of a plain enum - so an unrecognised member is visible as a single value the consumer can handle, and
+the payload says what it means without the definition at hand.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[Flags]
+public enum NotificationChannels // Noncompliant {{'NotificationChannels' is a flags enum exposed by a contract - a combined value carries bits a consumer may not recognise, and it cannot report that.}}
+{
+    None = 0,
+    Email = 1,
+    Sms = 2,
+}
+
+public sealed record NotificationRequestedContract(Guid UserId, NotificationChannels Channels);
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public enum NotificationChannel
+{
+    Unknown = 0,
+    Email = 1,
+    Sms = 2,
+}
+
+public sealed record NotificationRequestedContract(Guid UserId, IReadOnlyList&lt;NotificationChannel&gt; Channels);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/enum">Enum Design - Framework Design
+  Guidelines</a></li>
+</ul>

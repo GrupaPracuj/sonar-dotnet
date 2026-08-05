@@ -1,0 +1,25 @@
+{
+  "title": "Enums used in contracts should not be flags enums",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "api"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0070",
+  "sqKey": "GP0070",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

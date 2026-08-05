@@ -1,0 +1,67 @@
+<p>An endpoint should not put an exception's message, stack trace or type into the response.</p>
+<h2>Why is this an issue?</h2>
+<p>Exception text is written for whoever is debugging the service, and it says what they need: the SQL that failed, the path on disk, the host name, the
+internal type that threw, sometimes the value being processed. Returning it hands all of that to the caller. MITRE describes the weakness as:</p>
+<blockquote>
+  The product generates an error message that includes sensitive information about its environment, users, or associated data.
+</blockquote>
+<p>The information is useful to an attacker precisely because it is accurate. A connection failure names the database server; a deserialization failure names
+internal types and namespaces; a constraint violation names tables and columns. None of that is guessable from the outside, and each response narrows down
+what the next probe should be. A stack trace also reveals the library versions in use, which turns a generic vulnerability advisory into a targeted one.</p>
+<p>It is not good for the caller either. An exception message is not a contract: it changes wording between framework versions and is often localised, so a
+client that parses it breaks silently on an upgrade.</p>
+<pre>
+catch (Exception ex)
+{
+    return StatusCode(500, ex.Message);
+}
+</pre>
+<p>The rule reports <code>Message</code>, <code>StackTrace</code>, <code>Source</code>, <code>InnerException</code> and <code>ToString()</code> on an
+exception, when the value reaches the response - returned from the action, or passed to a method that builds the body. Logging the same value is a different
+concern and is not reported: the log is where it belongs.</p>
+<h2>How to fix it</h2>
+<p>Log the exception with its detail, and return a response that carries a stable error code and nothing internal - <code>ProblemDetails</code> with a
+type and a title the client can act on. Where a correlation id is available, returning that gives support a way back to the logged exception without exposing
+it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet("{id}")]
+public IActionResult Get(int id)
+{
+    try
+    {
+        return Ok(_orders.Find(id));
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, ex.Message); // Noncompliant {{Do not put 'Exception.Message' in a response - return a ProblemDetails without internal details.}}
+    }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpGet("{id}")]
+public IActionResult Get(int id)
+{
+    try
+    {
+        return Ok(_orders.Find(id));
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to read order {OrderId}", id);
+        return Problem(title: "The order could not be read.", statusCode: 500);
+    }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/web-api/handle-errors">Handle errors in ASP.NET Core web APIs</a></li>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html">Error Handling Cheat Sheet</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/209.html">CWE-209 - Generation of Error Message Containing Sensitive Information</a></li>
+</ul>

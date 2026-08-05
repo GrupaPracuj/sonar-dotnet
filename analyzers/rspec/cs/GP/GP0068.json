@@ -1,0 +1,25 @@
+{
+  "title": "Enums used in contracts should have a zero value for unknown",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "api"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0068",
+  "sqKey": "GP0068",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

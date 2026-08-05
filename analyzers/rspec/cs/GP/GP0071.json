@@ -1,0 +1,31 @@
+{
+  "title": "Endpoints should not expose exception details",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "MEDIUM"
+    },
+    "attribute": "TRUSTWORTHY"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "api",
+    "security",
+    "cwe"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0071",
+  "sqKey": "GP0071",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      209
+    ]
+  }
+}
