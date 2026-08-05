@@ -10,13 +10,16 @@ public sealed class ContractShouldNotBePersistedAsEntity : SonarDiagnosticAnalyz
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
+    // Matched by fully-qualified name, not just the short attribute class name: a custom attribute that happens to
+    // be called TableAttribute or KeyAttribute but lives in the application's own namespace carries no EF mapping
+    // semantics and must not be mistaken for one of these.
     private static readonly HashSet<string> EntityMappingAttributes = new(StringComparer.Ordinal)
     {
-        "TableAttribute",
-        "KeyAttribute",
-        "ColumnAttribute",
-        "ForeignKeyAttribute",
-        "PrimaryKeyAttribute",
+        "System.ComponentModel.DataAnnotations.KeyAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.TableAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.ForeignKeyAttribute",
+        "Microsoft.EntityFrameworkCore.PrimaryKeyAttribute",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -68,5 +71,5 @@ public sealed class ContractShouldNotBePersistedAsEntity : SonarDiagnosticAnalyz
 
     private static bool HasEntityMappingAttribute(INamedTypeSymbol type) =>
         type.GetAttributes().Concat(type.GetMembers().OfType<IPropertySymbol>().SelectMany(x => x.GetAttributes()))
-            .Any(x => x.AttributeClass?.Name is { } name && EntityMappingAttributes.Contains(name));
+            .Any(x => x.AttributeClass?.ToDisplayString() is { } name && EntityMappingAttributes.Contains(name));
 }

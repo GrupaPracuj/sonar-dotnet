@@ -140,6 +140,30 @@ public class TypeShouldNotBeBothHttpAndMessageContractTest
             """)
             .VerifyNoIssues();
 
+    // Publishing through a same-named, unrelated own bus is not messaging, even for a type an HTTP action exchanges.
+    [TestMethod]
+    public void TypeShouldNotBeBothHttpAndMessageContract_CompliantForUnrelatedOwnPublish() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OwnBus
+            {
+                public System.Threading.Tasks.Task Publish<T>(T message) where T : class => System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public async System.Threading.Tasks.Task<Microsoft.AspNetCore.Mvc.IActionResult> Create(OrderRequest request)
+                {
+                    var bus = new OwnBus();
+                    await bus.Publish(request);
+                    return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
     // Publishing a type no endpoint exchanges is fine, whichever file the publish happens to be in.
     [TestMethod]
     public void TypeShouldNotBeBothHttpAndMessageContract_CompliantWithoutAnyController() =>

@@ -5,7 +5,8 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class ContractShouldNotExposeNonSerializableMembersTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ContractShouldNotExposeNonSerializableMembers>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ContractShouldNotExposeNonSerializableMembers>()
+        .WithOptions(LanguageOptions.CSharpLatest);
 
     [TestMethod]
     public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForStream() =>
@@ -149,4 +150,56 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             }
             """)
             .VerifyNoIssues();
+
+    // A positional record parameter is the idiomatic way to declare a contract, so it has to be reported like a property.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForRecordParameter() =>
+        builder.AddSnippet(
+            """
+            using System.IO;
+
+            public sealed record UploadRequest(string FileName, Stream Content); // Noncompliant@-0 {{'Content' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_CompliantForRecordParameterOfSerializableType() =>
+        builder.AddSnippet(
+            """
+            public sealed record UploadRequest(string FileName, byte[] Content);
+            """)
+            .VerifyNoIssues();
+
+    // A record struct is just as much a positional record as a record class, and must be checked the same way.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForRecordStructParameter() =>
+        builder.AddSnippet(
+            """
+            using System.IO;
+
+            public readonly record struct UploadRequest(string FileName, Stream Content); // Noncompliant@-0 {{'Content' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_CompliantForRecordStructParameterOfSerializableType() =>
+        builder.AddSnippet(
+            """
+            public readonly record struct UploadRequest(string FileName, byte[] Content);
+            """)
+            .VerifyNoIssues();
+
+    // An event or a command is as much a contract as a request is, so the same member is reported there too.
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForEventNamedContract() =>
+        builder.AddSnippet(
+            """
+            using System.IO;
+
+            public sealed class OrderAcceptedEvent
+            {
+                public Stream Payload { get; set; } // Noncompliant {{'Payload' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+            """)
+            .Verify();
 }

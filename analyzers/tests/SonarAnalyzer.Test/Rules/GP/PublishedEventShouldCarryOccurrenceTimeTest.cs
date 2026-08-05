@@ -8,11 +8,24 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.PublishedEventShouldCarryOccurrenceTime>()
         .WithOptions(LanguageOptions.CSharpLatest);
 
+    // Shaped after GP.Juno's real registration surface (GP.Juno.Configuration.AppConfig, extended by
+    // GP.Juno.EventStream.Api.AppConfigMessageDeclarationExtensions.Publishes<T>), so the rule is exercised through
+    // the same reduced-extension-method call shape the real API uses.
     private const string Stubs =
         """
-        public class AppConfig
+        using GP.Juno.EventStream.Api;
+
+        namespace GP.Juno.Configuration
         {
-            public AppConfig Publishes<T>() => this;
+            public interface AppConfig { }
+        }
+
+        namespace GP.Juno.EventStream.Api
+        {
+            public static class AppConfigMessageDeclarationExtensions
+            {
+                public static GP.Juno.Configuration.AppConfig Publishes<T>(this GP.Juno.Configuration.AppConfig appConfig) => appConfig;
+            }
         }
 
         namespace GP.Juno.Abstractions.EventStream
@@ -21,6 +34,12 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             {
                 System.Threading.Tasks.Task Publish<T>(T @event) where T : class;
             }
+        }
+
+        // An unrelated bus with a same-named registration method - not GP.Juno, so it must never be treated as one.
+        public class OwnAppConfig
+        {
+            public OwnAppConfig Publishes<T>() => this;
         }
         """;
 
@@ -33,11 +52,27 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
             }
             """)
             .Verify();
+
+    // A same-named Publishes<T> on an unrelated, non-GP.Juno registration surface is not messaging.
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantForUnrelatedOwnPublishes() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount);
+
+            public static class Startup
+            {
+                public static OwnAppConfig Register(OwnAppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForPublishCall() =>
@@ -65,7 +100,7 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>();
             }
             """)
@@ -81,7 +116,7 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
             }
             """)
@@ -97,7 +132,7 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>();
             }
             """)

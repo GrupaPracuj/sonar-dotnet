@@ -5,7 +5,8 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class DoNotUseUnsafeDeserializationTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DoNotUseUnsafeDeserialization>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DoNotUseUnsafeDeserialization>()
+        .WithOptions(LanguageOptions.CSharpLatest);
 
     private const string Stubs =
         """
@@ -67,6 +68,39 @@ public class DoNotUseUnsafeDeserializationTest
             {
                 public object Read(System.IO.Stream stream) =>
                     new System.Runtime.Serialization.NetDataContractSerializer().ReadObject(stream); // Noncompliant {{'NetDataContractSerializer' lets the payload decide which types to instantiate - use a serializer that deserializes into a known type.}}
+            }
+            """)
+            .Verify();
+
+    // The target-typed form instantiates exactly the same serializer, so the syntax it is written in cannot matter.
+    [TestMethod]
+    public void DoNotUseUnsafeDeserialization_NoncompliantForTargetTypedNew() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderReader
+            {
+                public object Read(System.IO.Stream stream)
+                {
+                    System.Runtime.Serialization.Formatters.Binary.BinaryFormatter formatter = new(); // Noncompliant {{'BinaryFormatter' lets the payload decide which types to instantiate - use a serializer that deserializes into a known type.}}
+                    return formatter.Deserialize(stream);
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotUseUnsafeDeserialization_NoncompliantForTypeNameHandlingInTargetTypedInitializer() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class SerializerFactory
+            {
+                public Newtonsoft.Json.JsonSerializerSettings Create() =>
+                    new()
+                    {
+                        TypeNameHandling = Newtonsoft.Json.TypeNameHandling.All // Noncompliant {{'TypeNameHandling.All' lets the payload decide which types to instantiate - use a serializer that deserializes into a known type.}}
+                    };
             }
             """)
             .Verify();

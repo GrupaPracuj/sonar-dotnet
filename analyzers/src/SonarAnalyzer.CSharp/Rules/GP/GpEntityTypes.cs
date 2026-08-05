@@ -6,8 +6,9 @@ namespace SonarAnalyzer.CSharp.Rules;
 // DbSet<T> anywhere in the compilation, and carrying EF mapping attributes. The other two encode a per-solution
 // convention (base types, namespaces) and are therefore driven by rule parameters rather than hardcoded.
 //
-// The DbSet scan walks every type in the assembly, so it is done once per compilation through Create and the result
-// reused, rather than repeated at each call site being analyzed.
+// The DbSet scan walks every type in the compilation's own assembly plus every non-framework referenced assembly
+// (a DbContext frequently lives in a separate persistence project), so it is done once per compilation through
+// Create and the result reused, rather than repeated at each call site being analyzed.
 internal sealed class GpEntityTypes
 {
     private static readonly HashSet<string> EntityAttributes = new(StringComparer.Ordinal)
@@ -76,23 +77,49 @@ internal sealed class GpEntityTypes
 
     // A type mapped by EF is reachable as DbSet<T> on some DbContext in the compilation. Looking at the contexts
     // rather than the type itself catches entities configured purely through Fluent API, which carry no attributes.
+    //
+    // The DbContext commonly lives in a referenced persistence project rather than in the assembly being analyzed
+    // (a typical layered solution has the API/contract assembly reference a separate data-access assembly), so every
+    // referenced assembly is scanned as well - except framework assemblies (BCL, "System.*", "Microsoft.*"), which
+    // are numerous, large, and never declare a solution's own DbContext, so walking their types would be wasted work.
     private static HashSet<string> DbSetElementTypes(Compilation compilation)
     {
         var result = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var context in DbContextTypes(compilation.Assembly.GlobalNamespace))
+        foreach (var assembly in RelevantAssemblies(compilation))
         {
-            foreach (var property in context.GetMembers().OfType<IPropertySymbol>())
+            foreach (var context in DbContextTypes(assembly.GlobalNamespace))
             {
-                if (property.Type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } dbSet
-                    && dbSet.ConstructedFrom.Is(KnownType.Microsoft_EntityFrameworkCore_DbSet_TEntity))
+                foreach (var property in context.GetMembers().OfType<IPropertySymbol>())
                 {
-                    result.Add(dbSet.TypeArguments[0].OriginalDefinition.ToDisplayString());
+                    if (property.Type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } dbSet
+                        && dbSet.ConstructedFrom.Is(KnownType.Microsoft_EntityFrameworkCore_DbSet_TEntity))
+                    {
+                        result.Add(dbSet.TypeArguments[0].OriginalDefinition.ToDisplayString());
+                    }
                 }
             }
         }
 
         return result;
     }
+
+    private static IEnumerable<IAssemblySymbol> RelevantAssemblies(Compilation compilation)
+    {
+        yield return compilation.Assembly;
+
+        foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            if (!IsFrameworkAssembly(reference))
+            {
+                yield return reference;
+            }
+        }
+    }
+
+    private static bool IsFrameworkAssembly(IAssemblySymbol assembly) =>
+        assembly.Name is "mscorlib" or "netstandard" or "WindowsBase"
+        || assembly.Name.StartsWith("System", StringComparison.Ordinal)
+        || assembly.Name.StartsWith("Microsoft.", StringComparison.Ordinal);
 
     private static IEnumerable<INamedTypeSymbol> DbContextTypes(INamespaceSymbol root)
     {

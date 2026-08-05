@@ -43,6 +43,7 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !PublishMethods.Contains(method.Name)
+            || !GpMessageContracts.IsMessagingMethod(method)
             || MessageType(context.Model, invocation, method) is not { } messageType
             || !entities.IsEntity(messageType))
         {
@@ -62,7 +63,7 @@ public sealed class EntitiesShouldNotBeUsedAsMessages : ParametrizedDiagnosticAn
         }
 
         foreach (var consumed in type.AllInterfaces
-            .Where(x => x is { Name: "IConsumer", IsGenericType: true, TypeArguments.Length: 1 })
+            .Where(GpMessageContracts.IsConsumerInterface)
             .Select(x => x.TypeArguments[0])
             .Where(entities.IsEntity))
         {

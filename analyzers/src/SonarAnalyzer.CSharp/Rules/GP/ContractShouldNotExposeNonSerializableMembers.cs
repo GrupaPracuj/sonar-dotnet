@@ -9,10 +9,6 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
-    // Only types whose own name ends with one of these are treated as wire contracts - this rule does not try to
-    // trace which classes are actually reachable from a controller action or a message declaration.
-    private static readonly string[] ContractNameSuffixes = { "Dto", "Request", "Response", "Contract" };
-
     // Types that either carry no data at all once serialized, or drag a runtime object across a boundary where it
     // means nothing: a process-local handle, a framework service, an ambient request object.
     private static readonly HashSet<string> BannedTypes = new(StringComparer.Ordinal)
@@ -40,22 +36,43 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
     {
         context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
         context.RegisterNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
+        context.RegisterNodeAction(AnalyzeRecordParameters, SyntaxKindEx.RecordDeclaration, SyntaxKindEx.RecordStructDeclaration);
     }
 
     private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (IsContractMember(declaration)
+        if (GpMessageContracts.IsContractMember(declaration)
             && BannedType(context.Model, declaration.Type) is { } typeName)
         {
             context.ReportIssue(Rule, declaration, declaration.Identifier.ValueText, typeName);
         }
     }
 
+    // A positional parameter of a record - class or struct - is a public member of the serialized instance just as much as a property is.
+    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context)
+    {
+        if (context.Node is not TypeDeclarationSyntax { Identifier.ValueText: var typeName } declaration
+            || !GpMessageContracts.HasContractName(typeName)
+            || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
+            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+        {
+            return;
+        }
+
+        foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
+        {
+            if (BannedType(context.Model, parameter.Type) is { } bannedType)
+            {
+                context.ReportIssue(Rule, parameter, parameter.Identifier.ValueText, bannedType);
+            }
+        }
+    }
+
     private static void AnalyzeField(SonarSyntaxNodeReportingContext context)
     {
         var declaration = (FieldDeclarationSyntax)context.Node;
-        if (!IsContractMember(declaration)
+        if (!GpMessageContracts.IsContractMember(declaration)
             || declaration.Modifiers.All(x => !x.IsKind(SyntaxKind.PublicKeyword))
             // A static or const field is not part of the serialized instance, so it is not part of the contract.
             || declaration.Modifiers.Any(x => x.IsKind(SyntaxKind.StaticKeyword) || x.IsKind(SyntaxKind.ConstKeyword))
@@ -69,10 +86,6 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
             context.ReportIssue(Rule, variable, variable.Identifier.ValueText, typeName);
         }
     }
-
-    private static bool IsContractMember(MemberDeclarationSyntax member) =>
-        member.Parent is TypeDeclarationSyntax { Identifier.ValueText: var typeName }
-        && Array.Exists(ContractNameSuffixes, x => typeName.EndsWith(x, StringComparison.Ordinal));
 
     private static string BannedType(SemanticModel model, TypeSyntax typeSyntax) =>
         model.GetTypeInfo(typeSyntax).Type is { } type && IsBannedType(type)

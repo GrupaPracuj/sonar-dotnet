@@ -46,7 +46,13 @@ public sealed class ContractShouldStayWithinComplexityLimits : ParametrizedDiagn
         }
 
         var reachable = new HashSet<string>(StringComparer.Ordinal);
-        var depth = Depth(type, reachable, new HashSet<string>(StringComparer.Ordinal), 0);
+        var depth = Depth(
+            type,
+            reachable,
+            new HashSet<string>(StringComparer.Ordinal),
+            new Dictionary<(string Type, int RemainingDepth), int>(),
+            MaxDepth + 1,
+            out _);
         if (depth > MaxDepth)
         {
             Report(context, identifier, type.Name, $"contract types nested {depth} levels deep, above the limit of {MaxDepth}");
@@ -60,22 +66,56 @@ public sealed class ContractShouldStayWithinComplexityLimits : ParametrizedDiagn
     private static void Report(SonarSyntaxNodeReportingContext context, SyntaxToken identifier, string typeName, string detail) =>
         context.ReportIssue(Rule, identifier, typeName, detail);
 
-    // Depth follows contract-like members only and stops at BCL types, so a string or a DateTimeOffset is never a
-    // level. The visited set keeps a self-referencing type from recursing forever.
-    private int Depth(INamedTypeSymbol type, HashSet<string> reachable, HashSet<string> visited, int current)
+    // Depth follows contract-like members only and stops at BCL types. The current-path set breaks cycles, while the
+    // cache prevents a shared subtype from being traversed once per path. Remaining depth is part of the cache key
+    // because the walk only needs to distinguish compliant depth from MaxDepth + 1.
+    private static int Depth(
+        INamedTypeSymbol type,
+        HashSet<string> reachable,
+        HashSet<string> currentPath,
+        Dictionary<(string Type, int RemainingDepth), int> cache,
+        int remainingDepth,
+        out bool cacheable)
     {
-        if (current > MaxDepth + 1 || !visited.Add(type.ToDisplayString()))
+        var key = type.ToDisplayString();
+        if (remainingDepth == 0)
         {
-            return current;
+            cacheable = true;
+            return 0;
         }
 
-        var deepest = current;
-        foreach (var nested in GpMessageContracts.DataMembers(type).Select(x => ContractType(x.Type)).Where(x => x is not null))
+        if (!currentPath.Add(key))
+        {
+            cacheable = false;
+            return 0;
+        }
+
+        if (cache.TryGetValue((key, remainingDepth), out var cached))
+        {
+            currentPath.Remove(key);
+            cacheable = true;
+            return cached;
+        }
+
+        var deepest = 0;
+        cacheable = true;
+        foreach (var nested in GpMessageContracts.DataMembers(type)
+                     .Select(x => ContractType(x.Type))
+                     .Where(x => x is not null)
+                     .GroupBy(x => x.ToDisplayString(), StringComparer.Ordinal)
+                     .Select(x => x.First()))
         {
             reachable.Add(nested.ToDisplayString());
-            deepest = Math.Max(deepest, Depth(nested, reachable, visited, current + 1));
+            var nestedDepth = Depth(nested, reachable, currentPath, cache, remainingDepth - 1, out var nestedCacheable);
+            deepest = Math.Max(deepest, 1 + nestedDepth);
+            cacheable &= nestedCacheable;
         }
 
+        currentPath.Remove(key);
+        if (cacheable)
+        {
+            cache[(key, remainingDepth)] = deepest;
+        }
         return deepest;
     }
 

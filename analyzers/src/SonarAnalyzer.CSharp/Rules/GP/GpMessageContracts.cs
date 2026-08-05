@@ -17,9 +17,33 @@ internal static class GpMessageContracts
         "PublishBatch",
     };
 
+    // Publish/Send/Consume only carry real messaging semantics when they come from GP.Juno or MassTransit - the same
+    // namespace-based test CommitAndPublishShouldNotBeADualWrite (GP0048) and PublishedMessageShouldHaveExplicitContract
+    // (GP0055) already rely on, so a same-named member on an unrelated type (MediatR, Prism, Rx, a hand-rolled bus,
+    // AppConfig.Publishes<T> for some other config surface) is never mistaken for one of these APIs.
+    internal static bool IsMessagingType(ITypeSymbol type) =>
+        type?.ContainingNamespace?.ToDisplayString() is { } containingNamespace
+        && (IsWithinNamespace(containingNamespace, "GP.Juno") || IsWithinNamespace(containingNamespace, "MassTransit"));
+
+    private static bool IsWithinNamespace(string containingNamespace, string root) =>
+        containingNamespace == root || containingNamespace.StartsWith(root + ".", StringComparison.Ordinal);
+
+    // True when the method itself is declared by GP.Juno/MassTransit, when it is inherited through an interface a
+    // wrapper type implements (a class implementing IPublisher or IConsumer<T> directly), or when it is a reduced
+    // extension method whose receiver is one of these types (AppConfig.Publishes<T>() reduces to an extension on
+    // GP.Juno's AppConfig, so the receiver - not the static class hosting the extension - is what has to be checked).
+    internal static bool IsMessagingMethod(IMethodSymbol method) =>
+        method is not null
+        && (IsMessagingType(method.ContainingType)
+            || (method.ContainingType?.AllInterfaces.Any(IsMessagingType) ?? false)
+            || (method.IsExtensionMethod && IsMessagingType(method.ReceiverType))
+            || (method.IsExtensionMethod && (method.ReceiverType?.AllInterfaces.Any(IsMessagingType) ?? false)));
+
+    internal static bool IsConsumerInterface(INamedTypeSymbol @interface) =>
+        @interface is { Name: "IConsumer", IsGenericType: true, TypeArguments.Length: 1 } && IsMessagingType(@interface);
+
     internal static bool IsConsumeMethod(IMethodSymbol method) =>
-        method is { Name: "Consume" }
-        && method.ContainingType.AllInterfaces.Any(x => x is { Name: "IConsumer", IsGenericType: true });
+        method is { Name: "Consume" } && method.ContainingType.AllInterfaces.Any(IsConsumerInterface);
 
     internal static bool IsInsideConsumer(SemanticModel model, SyntaxNode node) =>
         node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is { } methodDeclaration
@@ -35,7 +59,9 @@ internal static class GpMessageContracts
     // The type an event-publishing call publishes, taken from the generic argument or the first argument.
     internal static INamedTypeSymbol PublishedType(SemanticModel model, InvocationExpressionSyntax invocation)
     {
-        if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method || !PublishMethods.Contains(method.Name))
+        if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !PublishMethods.Contains(method.Name)
+            || !IsMessagingMethod(method))
         {
             return null;
         }

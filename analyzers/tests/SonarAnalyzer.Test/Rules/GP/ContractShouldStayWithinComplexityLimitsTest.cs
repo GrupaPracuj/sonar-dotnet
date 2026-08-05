@@ -80,6 +80,112 @@ public class ContractShouldStayWithinComplexityLimitsTest
             """)
             .VerifyNoIssues();
 
+    // A shared subtype must be walked to its full depth on every path that reaches it, not just the first (possibly
+    // shallower) one: BranchOne reaches Shared at depth 2, BranchTwo reaches the very same Shared at depth 3 and Shared
+    // itself goes one level deeper through Deep, so the true nesting depth is 4 and must be reported even though the
+    // first path to see Shared stops at 3.
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_NoncompliantWhenSharedSubtypeIsReachedDeeperOnASecondPath() =>
+        CreateBuilder(maxDepth: 3)
+            .AddSnippet(
+            """
+            public sealed class Deep
+            {
+                public string Value { get; init; }
+            }
+
+            public sealed class Shared
+            {
+                public Deep Next { get; init; }
+            }
+
+            public sealed class BranchOne
+            {
+                public Shared Next { get; init; }
+            }
+
+            public sealed class MidBranchTwo
+            {
+                public Shared Next { get; init; }
+            }
+
+            public sealed class BranchTwo
+            {
+                public MidBranchTwo Next { get; init; }
+            }
+
+            public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: contract types nested 4 levels deep, above the limit of 3.}}
+            {
+                public BranchOne First { get; init; }
+                public BranchTwo Second { get; init; }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_CompliantForRepeatedSharedSubtype() =>
+        CreateBuilder(maxDepth: 5)
+            .AddSnippet(
+            """
+            public sealed class Leaf
+            {
+                public string Value { get; init; }
+            }
+
+            public sealed class Shared
+            {
+                public Leaf One { get; init; }
+                public Leaf Two { get; init; }
+                public Leaf Three { get; init; }
+                public Leaf Four { get; init; }
+                public Leaf Five { get; init; }
+            }
+
+            public sealed class OrderAcceptedContract
+            {
+                public Shared One { get; init; }
+                public Shared Two { get; init; }
+                public Shared Three { get; init; }
+                public Shared Four { get; init; }
+                public Shared Five { get; init; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_NoncompliantWhenCachedPathContainsCycle() =>
+        CreateBuilder(maxDepth: 3)
+            .AddSnippet(
+            """
+            public sealed class Extra
+            {
+                public string Value { get; init; }
+            }
+
+            public sealed class X
+            {
+                public Shared Shared { get; init; }
+                public Extra Extra { get; init; }
+            }
+
+            public sealed class Shared
+            {
+                public X Back { get; init; }
+            }
+
+            public sealed class Y
+            {
+                public Shared Shared { get; init; }
+            }
+
+            public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: contract types nested 4 levels deep, above the limit of 3.}}
+            {
+                public X First { get; init; }
+                public Y Second { get; init; }
+            }
+            """)
+            .Verify();
+
     // A self-referencing contract must not send the depth walk into infinite recursion.
     [TestMethod]
     public void ContractShouldStayWithinComplexityLimits_CompliantForSelfReferencingContract() =>

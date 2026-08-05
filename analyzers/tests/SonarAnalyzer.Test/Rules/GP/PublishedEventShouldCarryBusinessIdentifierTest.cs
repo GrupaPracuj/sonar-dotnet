@@ -8,11 +8,38 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.PublishedEventShouldCarryBusinessIdentifier>()
         .WithOptions(LanguageOptions.CSharpLatest);
 
+    // Shaped after GP.Juno's real registration surface (GP.Juno.Configuration.AppConfig, extended by
+    // GP.Juno.EventStream.Api.AppConfigMessageDeclarationExtensions.Publishes<T>), so the rule is exercised through
+    // the same reduced-extension-method call shape the real API uses.
     private const string Stubs =
         """
-        public class AppConfig
+        using GP.Juno.EventStream.Api;
+
+        namespace GP.Juno.Configuration
         {
-            public AppConfig Publishes<T>() => this;
+            public interface AppConfig { }
+        }
+
+        namespace GP.Juno.EventStream.Api
+        {
+            public static class AppConfigMessageDeclarationExtensions
+            {
+                public static GP.Juno.Configuration.AppConfig Publishes<T>(this GP.Juno.Configuration.AppConfig appConfig) => appConfig;
+            }
+        }
+
+        // An unrelated bus with a same-named registration method - not GP.Juno, so it must never be treated as one.
+        public class OwnAppConfig
+        {
+            public OwnAppConfig Publishes<T>() => this;
+        }
+
+        namespace MassTransitSupport
+        {
+            public class AppConfig
+            {
+                public AppConfig Publishes<T>() => this;
+            }
         }
         """;
 
@@ -25,7 +52,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' carries no business identifier, so a consumer cannot tell what it is about.}}
             }
             """)
@@ -41,7 +68,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' carries no business identifier, so a consumer cannot tell what it is about.}}
             }
             """)
@@ -56,7 +83,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>();
             }
             """)
@@ -71,7 +98,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>();
             }
             """)
@@ -87,7 +114,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
             public static class Startup
             {
-                public static AppConfig Register(AppConfig appConfig) =>
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                     appConfig.Publishes<MaintenanceModeEnabled>();
             }
             """)
@@ -102,6 +129,37 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
             """)
             .VerifyNoIssues();
 
+    // A same-named Publishes<T> on an unrelated, non-GP.Juno registration surface is not messaging.
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantForUnrelatedOwnPublishes() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(decimal Amount);
+
+            public static class Startup
+            {
+                public static OwnAppConfig Register(OwnAppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantForNamespacePrefixLookAlike() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(decimal Amount);
+
+            public static class Startup
+            {
+                public static MassTransitSupport.AppConfig Register(MassTransitSupport.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
+
     // A team that names its keys differently can say so; the parameter replaces the defaults rather than extending them.
     [TestMethod]
     public void PublishedEventShouldCarryBusinessIdentifier_CompliantForConfiguredSuffix() =>
@@ -113,7 +171,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
                 public static class Startup
                 {
-                    public static AppConfig Register(AppConfig appConfig) =>
+                    public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                         appConfig.Publishes<PaymentReceived>();
                 }
                 """)
@@ -129,7 +187,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
                 public static class Startup
                 {
-                    public static AppConfig Register(AppConfig appConfig) =>
+                    public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                         appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' carries no business identifier, so a consumer cannot tell what it is about.}}
                 }
                 """)
@@ -146,7 +204,7 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
 
                 public static class Startup
                 {
-                    public static AppConfig Register(AppConfig appConfig) =>
+                    public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
                         appConfig.Publishes<PaymentReceived>();
                 }
                 """)

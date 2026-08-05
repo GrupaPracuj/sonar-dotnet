@@ -89,6 +89,43 @@ public class ContractShouldNotInheritDomainTypeTest
             """)
             .VerifyNoIssues();
 
+    // A DbContext frequently lives in a separate persistence project rather than in the assembly being analyzed, so
+    // the DbSet scan that recognises an entity has to reach into referenced assemblies too, not just the compilation
+    // that is being analyzed.
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_NoncompliantForEntityDeclaredInReferencedAssembly()
+    {
+        var persistenceAssembly = new SnippetCompiler(
+            """
+            namespace Microsoft.EntityFrameworkCore
+            {
+                public class DbSet<TEntity> { }
+
+                public class DbContext { }
+            }
+
+            public class Order
+            {
+                public int Id { get; set; }
+            }
+
+            public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
+            {
+                public Microsoft.EntityFrameworkCore.DbSet<Order> Orders { get; set; }
+            }
+            """).Compilation.ToMetadataReference();
+
+        builder
+            .AddReferences([persistenceAssembly])
+            .AddSnippet(
+            """
+            public class OrderAcceptedContract : Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+            {
+            }
+            """)
+            .Verify();
+    }
+
     private static VerifierBuilder CreateBuilderWithConfiguration(string entityBaseTypes = "", string domainNamespaces = "") =>
         new VerifierBuilder()
             .AddAnalyzer(() => new CS.ContractShouldNotInheritDomainType { EntityBaseTypes = entityBaseTypes, DomainNamespaces = domainNamespaces })

@@ -19,6 +19,33 @@ public class HttpCallShouldPropagateCancellationTokenTest
         }
         """;
 
+    // Mirrors the real GP.Juno fluent HTTP API shape (namespaces, types and member signatures verified against the
+    // submodules/juno source): IHttpClientBuilder.Service(string) returns a HttpRequestProperties, whose extension
+    // methods (e.g. GetJson<T>) are the only way to actually send the request. None of these members has an overload
+    // accepting a CancellationToken - as is the case for IHttpClient.Send, HttpRequestProperties.Get(Json)/Post(Json)/...
+    // and every other member of this fluent chain in the real submodule.
+    private const string JunoHttpClientStubs =
+        """
+        namespace GP.Juno.HttpClient
+        {
+            public interface IHttpClientBuilder
+            {
+            }
+
+            public class HttpRequestProperties
+            {
+                public HttpRequestProperties(IHttpClientBuilder builder) { }
+            }
+
+            public static class HttpClientBuilderExtensions
+            {
+                public static HttpRequestProperties Service(this IHttpClientBuilder builder, string name) => new HttpRequestProperties(builder);
+
+                public static System.Threading.Tasks.Task<string> GetJson<T>(this HttpRequestProperties requestProps) => null;
+            }
+        }
+        """;
+
     [TestMethod]
     public void HttpCallShouldPropagateCancellationToken_NoncompliantWhenTokenIsAvailableButNotPassed() =>
         builder.AddSnippet(
@@ -60,6 +87,24 @@ public class HttpCallShouldPropagateCancellationTokenTest
 
                 public System.Threading.Tasks.Task<string> GetOrder(string id) =>
                     _httpClient.GetStringAsync("/orders/" + id);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_CompliantForJunoFluentBuilderWithoutCancellationTokenOverload() =>
+        builder.AddSnippet(
+            """
+            using GP.Juno.HttpClient;
+
+            """ + JunoHttpClientStubs + """
+
+            public class OrderClient
+            {
+                private readonly IHttpClientBuilder _builder;
+
+                public System.Threading.Tasks.Task<string> GetOrder(string id, System.Threading.CancellationToken cancellationToken) =>
+                    _builder.Service("orders").GetJson<string>();
             }
             """)
             .VerifyNoIssues();

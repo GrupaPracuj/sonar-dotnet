@@ -10,7 +10,7 @@ public class ContractShouldNotBePersistedAsEntityTest
 
     private const string Stubs =
         """
-        namespace System.ComponentModel.DataAnnotations
+        namespace System.ComponentModel.DataAnnotations.Schema
         {
             public class TableAttribute : System.Attribute
             {
@@ -69,7 +69,7 @@ public class ContractShouldNotBePersistedAsEntityTest
         builder.AddSnippet(
             Stubs + """
 
-            [System.ComponentModel.DataAnnotations.Table("accepted_orders")]
+            [System.ComponentModel.DataAnnotations.Schema.Table("accepted_orders")]
             public sealed class OrderAcceptedEvent // Noncompliant {{'OrderAcceptedEvent' is a message contract - persisting it makes the wire format and the schema the same thing.}}
             {
                 public System.Guid OrderId { get; set; }
@@ -85,6 +85,29 @@ public class ContractShouldNotBePersistedAsEntityTest
             public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
             {
                 public Microsoft.EntityFrameworkCore.DbSet<AcceptedOrderRecord> AcceptedOrders { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A custom attribute that happens to share a name with an EF mapping attribute (Table, Key, Column, ForeignKey,
+    // PrimaryKey) but lives in a different namespace carries no EF semantics and must not trigger the rule.
+    [TestMethod]
+    public void ContractShouldNotBePersistedAsEntity_CompliantForLookAlikeAttributeInDifferentNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace MyCompany.Annotations
+            {
+                public class TableAttribute : System.Attribute
+                {
+                    public TableAttribute(string name) { }
+                }
+            }
+
+            [MyCompany.Annotations.Table("accepted_orders")]
+            public sealed class OrderAcceptedEvent
+            {
+                public System.Guid OrderId { get; set; }
             }
             """)
             .VerifyNoIssues();

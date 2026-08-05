@@ -77,6 +77,50 @@ public class MessageContractMustBePublicTest
             """)
             .VerifyNoIssues();
 
+    // A same-named IConsumer<T> outside MassTransit is not messaging, so an internal contract consumed through it
+    // is not this rule's business.
+    [TestMethod]
+    public void MessageContractMustBePublic_CompliantForUnrelatedOwnConsumerOfInternalContract() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface IConsumer<T> where T : class
+            {
+                System.Threading.Tasks.Task Consume(T message);
+            }
+
+            internal sealed record OrderAccepted(System.Guid OrderId);
+
+            internal class OrderConsumer : IConsumer<OrderAccepted>
+            {
+                public System.Threading.Tasks.Task Consume(OrderAccepted message) => System.Threading.Tasks.Task.CompletedTask;
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A same-named Publish on an unrelated, hand-rolled bus is not messaging either.
+    [TestMethod]
+    public void MessageContractMustBePublic_CompliantForUnrelatedOwnPublishOfInternalContract() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OwnBus
+            {
+                public System.Threading.Tasks.Task Publish<T>(T message) where T : class => System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            internal sealed record OrderAccepted(System.Guid OrderId);
+
+            public class OrderService
+            {
+                private readonly OwnBus _bus;
+
+                public System.Threading.Tasks.Task Accept(System.Guid id) =>
+                    _bus.Publish(new OrderAccepted(id));
+            }
+            """)
+            .VerifyNoIssues();
+
     // A private nested contract is just as unreachable as an internal one.
     [TestMethod]
     public void MessageContractMustBePublic_NoncompliantForPrivateNestedContract() =>

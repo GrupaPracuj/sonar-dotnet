@@ -17,6 +17,26 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
     {
         context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
         context.RegisterNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
+        context.RegisterNodeAction(AnalyzeRecordParameters, SyntaxKindEx.RecordDeclaration, SyntaxKindEx.RecordStructDeclaration);
+    }
+
+    // A positional parameter of a record - class or struct - declares a public member, so the name reaches every consumer the same way.
+    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context)
+    {
+        if (context.Node is not TypeDeclarationSyntax declaration
+            || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
+            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+        {
+            return;
+        }
+
+        foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
+        {
+            if (IsDateOnlyType(context.Model.GetTypeInfo(parameter.Type).Type) && GpIdentifierWords.ContainsWord(parameter.Identifier.ValueText, "Utc"))
+            {
+                context.ReportIssue(Rule, parameter.Identifier, parameter.Identifier.ValueText);
+            }
+        }
     }
 
     private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context)

@@ -32,6 +32,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !MessagingMethods.Contains(method.Name)
+            || !GpMessageContracts.IsMessagingMethod(method)
             || MessageType(context.Model, invocation, method) is not { } messageType
             || !IsDeclaredInThisAssembly(messageType, context.Compilation)
             || messageType.DeclaredAccessibility == Accessibility.Public)
@@ -51,7 +52,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
         }
 
         foreach (var consumed in type.AllInterfaces
-            .Where(x => x is { Name: "IConsumer", IsGenericType: true, TypeArguments.Length: 1 })
+            .Where(GpMessageContracts.IsConsumerInterface)
             .Select(x => x.TypeArguments[0])
             .Where(x => IsDeclaredInThisAssembly(x, context.Compilation) && x.DeclaredAccessibility != Accessibility.Public))
         {

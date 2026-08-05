@@ -14,8 +14,9 @@ public class UploadRequest
     public Stream File { get; set; }
 }
 </pre>
-<p>The rule checks properties and public fields of classes and records whose own name ends with <code>Dto</code>, <code>Request</code>,
-<code>Response</code> or <code>Contract</code>. It does not trace whether a type is actually reachable from a controller action or a message
+<p>The rule checks properties, public fields, and positional members (record and record struct primary constructor parameters) of classes, records, and
+record structs whose own name ends with <code>Dto</code>, <code>Request</code>, <code>Response</code>, <code>Contract</code>, <code>Event</code>,
+<code>Command</code> or <code>Message</code>. It does not trace whether a type is actually reachable from a controller action or a message
 declaration - it goes by name alone, so a contract named differently is not checked.</p>
 <p>Base classes are walked, so a type deriving from <code>Exception</code> or from <code>DbContext</code> is reported too - those are almost always used
 through a derived type.</p>

@@ -23,16 +23,18 @@ public sealed class DoNotUseUnsafeDeserialization : SonarDiagnosticAnalyzer
 
     protected override void Initialize(SonarAnalysisContext context)
     {
-        context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression);
+        context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression, SyntaxKindEx.ImplicitObjectCreationExpression);
         context.RegisterNodeAction(AnalyzeTypeNameHandling, SyntaxKind.SimpleAssignmentExpression);
     }
 
+    // Target-typed 'new()' is included: 'BinaryFormatter formatter = new();' instantiates the same serializer.
     private static void AnalyzeObjectCreation(SonarSyntaxNodeReportingContext context)
     {
-        var creation = (ObjectCreationExpressionSyntax)context.Node;
-        if (context.Model.GetTypeInfo(creation).Type is { } type && UnsafeSerializers.Contains(type.ToDisplayString()))
+        if (ObjectCreationFactory.TryCreate(context.Node, out var creation)
+            && creation.TypeSymbol(context.Model) is { } type
+            && UnsafeSerializers.Contains(type.ToDisplayString()))
         {
-            context.ReportIssue(Rule, creation, type.Name);
+            context.ReportIssue(Rule, creation.Expression, type.Name);
         }
     }
 

@@ -75,6 +75,7 @@ public sealed class TypeShouldNotBeBothHttpAndMessageContract : SonarDiagnosticA
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !MessagingMethods.Contains(method.Name)
+            || !GpMessageContracts.IsMessagingMethod(method)
             || MessageType(context.Model, invocation, method) is not { } messageType
             || !httpContracts.Contains(messageType.ToDisplayString()))
         {

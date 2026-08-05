@@ -103,6 +103,58 @@ public class EntitiesShouldNotBeUsedAsMessagesTest
             """)
             .Verify();
 
+    // A same-named IConsumer<T> outside MassTransit (e.g. a MediatR-style handler interface) is not messaging, so
+    // consuming an entity through it is not this rule's business.
+    [TestMethod]
+    public void EntitiesShouldNotBeUsedAsMessages_CompliantForUnrelatedOwnConsumerOfEntity() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface IConsumer<T> where T : class
+            {
+                System.Threading.Tasks.Task Consume(T message);
+            }
+
+            public class Order
+            {
+                [System.ComponentModel.DataAnnotations.Key]
+                public int Id { get; set; }
+            }
+
+            public class OrderConsumer : IConsumer<Order>
+            {
+                public System.Threading.Tasks.Task Consume(Order message) => System.Threading.Tasks.Task.CompletedTask;
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A same-named Publish on an unrelated, hand-rolled bus is not messaging either.
+    [TestMethod]
+    public void EntitiesShouldNotBeUsedAsMessages_CompliantForUnrelatedOwnPublishOfEntity() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OwnBus
+            {
+                public System.Threading.Tasks.Task Publish<T>(T message) where T : class => System.Threading.Tasks.Task.CompletedTask;
+            }
+
+            public class Order
+            {
+                [System.ComponentModel.DataAnnotations.Key]
+                public int Id { get; set; }
+            }
+
+            public class OrderService
+            {
+                private readonly OwnBus _bus;
+
+                public System.Threading.Tasks.Task Accept(Order order) =>
+                    _bus.Publish(order);
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void EntitiesShouldNotBeUsedAsMessages_CompliantForContractType() =>
         builder.AddSnippet(
