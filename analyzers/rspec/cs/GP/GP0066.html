@@ -1,0 +1,47 @@
+<p>A message contract should not double as a database entity.</p>
+<h2>Why is this an issue?</h2>
+<p>This is GP0043 seen from the other end. There the entity was used as the message; here the contract is used as the table. The coupling is the same and
+so is the consequence: one type now answers to two owners who change it for unrelated reasons and on different schedules.</p>
+<p>It is arguably worse in this direction, because the contract is the shared artefact. A column added for local storage - an <code>Id</code>, an
+<code>IsProcessed</code> flag, a <code>RowVersion</code> - becomes part of the published payload for every consumer, and a migration cannot be applied
+without changing what other services receive. Conversely, a consumer's request to rename a field turns into a database migration.</p>
+<p>The shapes also pull apart in practice. A contract wants immutable members and no surrogate key; an entity wants a key, change tracking and navigation
+properties. Making one type satisfy both ends with a type that is bad at each.</p>
+<pre>
+public sealed record OrderAcceptedContract(Guid OrderId, DateTimeOffset OccurredAt);
+
+public class ShopDbContext : DbContext
+{
+    public DbSet&lt;OrderAcceptedContract&gt; AcceptedOrders { get; set; }  // now also a table
+}
+</pre>
+<p>The rule reports a contract-named type appearing as the element of a <code>DbSet&lt;T&gt;</code>, configured through
+<code>modelBuilder.Entity&lt;T&gt;()</code>, or carrying EF mapping attributes.</p>
+<h3>Exceptions</h3>
+<p>An outbox or inbox table that stores messages is a legitimate case of persisting a contract - but it stores the serialized payload alongside its own
+columns rather than mapping the contract type itself, so it does not match this shape.</p>
+<h2>How to fix it</h2>
+<p>Declare a separate entity for storage and map between the two. Where the intent is an outbox, store the serialized message in a column of a table you
+own.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class ShopDbContext : DbContext
+{
+    public DbSet&lt;OrderAcceptedContract&gt; AcceptedOrders { get; set; } // Noncompliant {{'OrderAcceptedContract' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class AcceptedOrderRecord
+{
+    public int Id { get; set; }
+    public Guid OrderId { get; set; }
+    public DateTimeOffset OccurredAt { get; set; }
+}
+
+public class ShopDbContext : DbContext
+{
+    public DbSet&lt;AcceptedOrderRecord&gt; AcceptedOrders { get; set; }
+}
+</pre>

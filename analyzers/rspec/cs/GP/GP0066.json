@@ -1,0 +1,25 @@
+{
+  "title": "Message contracts should not be persisted as database entities",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "1h"
+  },
+  "tags": [
+    "gp",
+    "messaging",
+    "sql"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0066",
+  "sqKey": "GP0066",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

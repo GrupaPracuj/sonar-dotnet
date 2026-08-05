@@ -1,0 +1,56 @@
+<p>Domain code should not reference the message bus, HTTP or the web framework.</p>
+<h2>Why is this an issue?</h2>
+<p>The domain is the part of the service that should still make sense if the transport changed. Once a domain type mentions
+<code>ConsumeContext</code>, <code>IPublishEndpoint</code>, <code>HttpResponseMessage</code> or <code>HttpContext</code>, that stops being true: the rules
+of the business can no longer be read, tested or reused without a broker and a web host in scope.</p>
+<p>The practical cost shows up first in tests. A domain method that takes a transport type needs that type constructed to be exercised at all, so the
+cheapest tests in the codebase - the ones over business rules - acquire the slowest dependencies. It shows up next in change: a transport upgrade now
+touches domain files, and a domain refactor now has to keep the transport compiling.</p>
+<p>Microsoft's layering guidance puts the dependency in the opposite direction, and states the goal for the model plainly:</p>
+<blockquote>
+  Clean architecture puts the business logic and application model at the center of the application. Instead of having business logic depend on data access
+  or other infrastructure concerns, this dependency is inverted.
+</blockquote>
+<pre>
+namespace MyCompany.Orders.Domain;
+
+public sealed class Order
+{
+    public void Accept(ConsumeContext&lt;OrderRequested&gt; context) { /* ... */ }
+}
+</pre>
+<h3>Exceptions</h3>
+<p>The rule reports code whose namespace matches <code>domainNamespaces</code> or whose assembly name matches
+<code>domainAssemblyNames</code> (default <code>Domain</code>), so it stays out of application and infrastructure code, where these types belong. The
+<code>forbiddenNamespaces</code> parameter defaults to the transport and web namespaces - <code>MassTransit</code>, <code>RabbitMQ.Client</code>,
+<code>Microsoft.AspNetCore</code>, <code>System.Net.Http</code> and Juno's messaging and HTTP abstractions.</p>
+<h2>How to fix it</h2>
+<p>Keep the transport out of the signature. Let the consumer or the controller unpack the message and call the domain with plain values, and have the
+domain return a result the caller translates back.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+namespace MyCompany.Orders.Domain;
+
+public sealed class Order
+{
+    public void Accept(ConsumeContext&lt;OrderRequested&gt; context) { } // Noncompliant {{'ConsumeContext' comes from 'MassTransit', which domain code should not depend on.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+namespace MyCompany.Orders.Domain;
+
+public sealed class Order
+{
+    public void Accept(Guid customerId, DateTimeOffset acceptedAt) { }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/common-web-application-architectures">Common
+  web application architectures</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/multi-container-microservice-net-applications/integration-event-based-microservice-communications">Implementing
+  event-based communication between microservices (integration events)</a></li>
+</ul>
