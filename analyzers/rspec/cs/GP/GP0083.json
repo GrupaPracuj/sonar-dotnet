@@ -1,0 +1,24 @@
+{
+  "title": "Collection and dictionary initializers should not contain duplicate keys or values",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "suspicious"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0083",
+  "sqKey": "GP0083",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

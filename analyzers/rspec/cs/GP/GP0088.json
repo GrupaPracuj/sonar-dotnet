@@ -1,0 +1,25 @@
+{
+  "title": "A loop should not capture its own mutated control variable in a lambda passed to deferred execution",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "concurrency",
+    "control-flow"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0088",
+  "sqKey": "GP0088",
+  "scope": "Main",
+  "quickfix": "targeted"
+}

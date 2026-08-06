@@ -1,0 +1,49 @@
+<p>A collection or dictionary initializer should not add the same compile-time constant twice.</p>
+<h2>Why is this an issue?</h2>
+<p>A collection initializer such as <code>new Dictionary&lt;string, int&gt; { {"a", 1}, {"a", 2} }</code> desugars into one <code>Add</code> call per
+element, executed in source order. For a dictionary, the second <code>Add("a", 2)</code> call fails at the moment it runs, because the key is already
+present - the object never finishes constructing, and the failure is a plain <code>ArgumentException</code> with a message that says nothing about which
+of possibly many initializers caused it. This is not a style preference: the code is guaranteed to throw the first time that line executes, on every run,
+regardless of input.</p>
+<p>A set-like initializer, e.g. <code>new HashSet&lt;string&gt; { "x", "x" }</code>, does not throw - <code>Add</code> on a type built around uniqueness
+usually just returns <code>false</code> for the repeat - but the duplicate is still dead code: it does not do anything, and its presence usually means a
+copy-paste mistake rather than an intentional no-op.</p>
+<pre>
+var statusByCode = new Dictionary&lt;int, string&gt;
+{
+    { 200, "OK" },
+    { 404, "Not Found" },
+    { 200, "Success" }, // never reached - the dictionary already threw on the line above
+};
+</pre>
+<h3>Exceptions</h3>
+<p>Only elements whose key (or value, for a plain set-style element) is a compile-time constant are ever compared. A key that is a local variable, a
+method call, or any other non-constant expression is never flagged, even if it happens to be equal to another element at run time - there is no way to
+know that without executing the program, so the rule stays silent rather than guessing.</p>
+<h2>How to fix it</h2>
+<p>Remove the duplicate, or fix the copy-paste mistake that produced two entries with the same key when two different keys were intended.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+var statusByCode = new Dictionary&lt;int, string&gt;
+{
+    { 200, "OK" },
+    { 404, "Not Found" },
+    { 200, "Success" }, // Noncompliant {{Duplicate key '200' in dictionary initializer - the second 'Add' call throws ArgumentException at runtime.}}
+};
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+var statusByCode = new Dictionary&lt;int, string&gt;
+{
+    { 200, "OK" },
+    { 404, "Not Found" },
+};
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/object-and-collection-initializers">Object
+  and Collection Initializers</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.argumentexception">ArgumentException</a></li>
+</ul>

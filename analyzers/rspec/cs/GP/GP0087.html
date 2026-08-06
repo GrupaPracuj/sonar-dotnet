@@ -1,0 +1,66 @@
+<p>A value typed as <code>IEnumerable&lt;T&gt;</code> or <code>IQueryable&lt;T&gt;</code> should not be enumerated more than once.</p>
+<h2>Why is this an issue?</h2>
+<p>A local variable or parameter declared as the interface <code>IEnumerable&lt;T&gt;</code> or <code>IQueryable&lt;T&gt;</code> - as opposed to an
+already-materialized collection such as <code>List&lt;T&gt;</code> or an array - may represent a lazy, re-executable pipeline: a LINQ query, a
+<code>yield</code>-based iterator, or, worst of all, an Entity Framework Core <code>IQueryable&lt;T&gt;</code> that sends an actual SQL query to the
+database every single time it is enumerated.</p>
+<p>Enumerating such a value a second time - a second <code>foreach</code>, or a LINQ terminal call such as <code>.ToList()</code>, <code>.Count()</code>
+or <code>.Any()</code> after an earlier enumeration - does not reuse the results of the first pass. It silently re-runs the whole pipeline from
+scratch. If the underlying source has side effects, reads from something that changes between calls, or is simply expensive, the second enumeration
+can return different data, run side effects twice, or double the number of round-trips to the database - and none of this is visible at the call
+site.</p>
+<pre>
+IEnumerable&lt;Order&gt; PendingOrders(DbContext db) =&gt;
+    db.Orders.Where(o =&gt; o.Status == OrderStatus.Pending);
+
+void Process(DbContext db)
+{
+    var orders = PendingOrders(db);
+    foreach (var order in orders)
+    {
+        Console.WriteLine(order.Id);
+    }
+
+    var total = orders.Sum(o =&gt; o.Amount); // runs the query against the database again
+}
+</pre>
+<p>The rule only tracks local variables and parameters whose declared type is exactly the <code>IEnumerable&lt;T&gt;</code> or
+<code>IQueryable&lt;T&gt;</code> interface. A variable declared as <code>List&lt;T&gt;</code>, an array, or any other concrete collection type is not
+flagged, even though it also implements <code>IEnumerable&lt;T&gt;</code>: once materialized, repeated enumeration is safe and cheap, so the declared
+type is what actually tells you whether re-enumerating is a concern.</p>
+<h2>How to fix it</h2>
+<p>If the value is needed more than once, materialize it a single time - typically with <code>.ToList()</code> or <code>.ToArray()</code> - and reuse
+the materialized collection for every subsequent enumeration. Which one to use depends on how the result is used afterwards, so this rule does not
+offer an automatic fix.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+void Process(IEnumerable&lt;int&gt; source)
+{
+    foreach (var x in source)
+    {
+        Console.WriteLine(x);
+    }
+
+    var total = source.Sum(); // Noncompliant {{'source' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+void Process(IEnumerable&lt;int&gt; source)
+{
+    var materialized = source.ToList();
+    foreach (var x in materialized)
+    {
+        Console.WriteLine(x);
+    }
+
+    var total = materialized.Sum();
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable&lt;T&gt; Interface</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.linq.iqueryable-1">IQueryable&lt;T&gt; Interface</a></li>
+</ul>

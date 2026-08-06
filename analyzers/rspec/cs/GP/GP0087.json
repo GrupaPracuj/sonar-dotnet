@@ -1,0 +1,25 @@
+{
+  "title": "A lazy sequence should not be enumerated more than once",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "EFFICIENT"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "linq",
+    "performance"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0087",
+  "sqKey": "GP0087",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

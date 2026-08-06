@@ -1,0 +1,24 @@
+{
+  "title": "Database-only functions should only be called inside a query expression",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "entity-framework"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0086",
+  "sqKey": "GP0086",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

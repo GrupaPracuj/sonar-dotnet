@@ -1,0 +1,25 @@
+{
+  "title": "Default struct equality should not be relied on for comparison or hashing",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM",
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "performance"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0085",
+  "sqKey": "GP0085",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

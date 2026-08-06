@@ -1,0 +1,158 @@
+using CS = SonarAnalyzer.CSharp.Rules;
+
+namespace SonarAnalyzer.Test.Rules.GP;
+
+[TestClass]
+public class CollectionInitializerShouldNotHaveDuplicateKeysTest
+{
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.CollectionInitializerShouldNotHaveDuplicateKeys>()
+        .WithOptions(LanguageOptions.CSharpLatest);
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForDuplicateDictionaryKey() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int> { { "a", 1 }, { "a", 2 } }; // Noncompliant {{Duplicate key 'a' in dictionary initializer - the second 'Add' call throws ArgumentException at runtime.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForDifferentDictionaryKeys() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int> { { "a", 1 }, { "b", 2 } };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantWhenSecondKeyIsNotConstant() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int> { { "a", 1 }, { GetKey(), 2 } };
+                }
+
+                private string GetKey() => "a";
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForDuplicateSetValue() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var s = new HashSet<string> { "x", "x" }; // Noncompliant {{Duplicate value 'x' in this collection initializer is redundant - 'Add' silently ignores it (or throws, for a type that disallows duplicates).}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForDifferentSetValues() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var s = new HashSet<string> { "x", "y" };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // Both keys resolve to the same constant value "a" even though the second is written as a reference to a const.
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantWhenSecondKeyIsAConstReference() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                private const string K = "a";
+
+                public void M()
+                {
+                    var d = new Dictionary<string, int> { { "a", 1 }, { K, 2 } }; // Noncompliant {{Duplicate key 'a' in dictionary initializer - the second 'Add' call throws ArgumentException at runtime.}}
+                }
+            }
+            """)
+            .Verify();
+
+    // A two-argument Add-style initializer on a type that is not a dictionary must not be flagged as a dictionary
+    // key duplicate: the interface guard on the "{key, value}" shape exists precisely to avoid this misfire.
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForNonDictionaryTwoElementInitializer() =>
+        builder.AddSnippet(
+            """
+            using System.Collections;
+            using System.Collections.Generic;
+
+            public class Pair : IEnumerable
+            {
+                public void Add(string a, int b) { }
+
+                public IEnumerator GetEnumerator() => throw new System.NotImplementedException();
+            }
+
+            public class C
+            {
+                public void M()
+                {
+                    var p = new Pair { { "a", 1 }, { "a", 2 } };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForThreeDuplicates() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int>
+                    {
+                        { "a", 1 }, // Fine, the first occurrence
+                        { "a", 2 }, // Noncompliant
+                        { "a", 3 }, // Noncompliant
+                    };
+                }
+            }
+            """)
+            .Verify();
+}

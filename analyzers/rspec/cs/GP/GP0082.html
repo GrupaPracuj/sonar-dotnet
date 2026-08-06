@@ -1,0 +1,39 @@
+<p>A dictionary lookup that checks <code>ContainsKey</code> before calling <code>Add</code> should use <code>TryAdd</code> instead.</p>
+<h2>Why is this an issue?</h2>
+<p>The pattern <code>if (!dict.ContainsKey(key)) dict.Add(key, value);</code> hashes the key and walks the bucket twice: once inside
+<code>ContainsKey</code>, and again inside <code>Add</code> if the check passes. <code>Dictionary&lt;TKey, TValue&gt;.TryAdd</code> does the same job with
+a single lookup - it adds the entry and returns <code>true</code> when the key is absent, or does nothing and returns <code>false</code> when it is
+already present. The two-step version is not just slower; it also invites a subtle race in code that looks single-threaded but is not, since another
+thread can insert the key in the gap between the check and the add.</p>
+<pre>
+if (!cache.ContainsKey(key))
+{
+    cache.Add(key, value);
+}
+</pre>
+<h3>Exceptions</h3>
+<p>The rule only fires when the two calls target the exact same expression and the exact same key, the <code>if</code> has no <code>else</code>, and the
+receiver's type implements <code>IDictionary&lt;TKey, TValue&gt;</code>. The same-looking pattern on <code>List&lt;T&gt;</code>,
+<code>HashSet&lt;T&gt;</code> or any other <code>ICollection&lt;T&gt;</code> is a different, valid idiom - those types have no <code>TryAdd</code> to fall
+back to - and is left untouched. A negated check with an <code>else</code> branch is also left alone, since the two branches together carry more meaning
+than the rewrite could preserve.</p>
+<h2>How to fix it</h2>
+<p>Replace the whole <code>if</code> with a single call to <code>TryAdd</code>.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+if (!cache.ContainsKey(key)) // Noncompliant {{Use 'TryAdd' instead of checking 'ContainsKey' before 'Add' - it does the lookup once instead of twice.}}
+{
+    cache.Add(key, value);
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+cache.TryAdd(key, value);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a
+  href="https://learn.microsoft.com/en-us/dotnet/api/system.collections.generic.dictionary-2.tryadd">Dictionary&lt;TKey,TValue&gt;.TryAdd(TKey, TValue)</a></li>
+</ul>

@@ -1,0 +1,24 @@
+{
+  "title": "A 'using' should not initialize its resource via an object initializer that can throw",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "resource-leak"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0089",
+  "sqKey": "GP0089",
+  "scope": "Main",
+  "quickfix": "targeted"
+}

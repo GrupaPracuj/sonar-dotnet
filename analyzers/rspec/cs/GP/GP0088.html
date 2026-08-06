@@ -1,0 +1,49 @@
+<p>A <code>for</code> loop should not capture its own control variable in a lambda or anonymous method that is added to a collection, scheduled to run
+later, or subscribed to an event.</p>
+<h2>Why is this an issue?</h2>
+<p>A lambda captures variables by reference, not by value. When a lambda created inside a <code>for</code> loop captures the loop's own control
+variable, every lambda created across every iteration shares the exact same variable. If the lambda does not run immediately - it is stored, scheduled,
+or subscribed instead - it only runs after the loop has already finished mutating that variable, so every deferred call sees whatever value the
+variable ended up with, typically the value that made the loop condition false.</p>
+<pre>
+var tasks = new List&lt;Action&gt;();
+for (int i = 0; i &lt; 10; i++)
+{
+    tasks.Add(() =&gt; Use(i)); // every task added here calls Use(10), never Use(0), Use(1), ...
+}
+</pre>
+<p><code>foreach</code> is not affected by this rule: since C# 5, the compiler creates a fresh iteration variable for every pass through a
+<code>foreach</code> loop, so each lambda captures its own distinct copy. A hand-written <code>for</code> or <code>while</code> loop gets no such
+help - the loop variable is one single variable for the entire loop, mutated in place by the loop's own increment/condition.</p>
+<h2>How to fix it</h2>
+<p>Copy the loop variable to a new local variable declared inside the loop body, before the lambda is created, and capture that copy instead. Because
+the copy is a fresh variable on every iteration, each lambda captures a different one.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+var tasks = new List&lt;Action&gt;();
+for (int i = 0; i &lt; 10; i++)
+{
+    tasks.Add(() =&gt; Use(i)); // Noncompliant {{'i' is captured by reference and mutated by this loop - every deferred use of this lambda will see the SAME final value, not the value at each iteration. Copy it to a local variable inside the loop body first.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+var tasks = new List&lt;Action&gt;();
+for (int i = 0; i &lt; 10; i++)
+{
+    var iCopy = i;
+    tasks.Add(() =&gt; Use(iCopy));
+}
+</pre>
+<h3>Exceptions</h3>
+<p>Only lambdas passed to a fixed list of recognizable "runs later" sinks are reported: an argument to a method named <code>Add</code>,
+<code>Enqueue</code> or <code>Push</code>; an argument to <code>Task.Run</code>, <code>Task.Factory.StartNew</code>, <code>ContinueWith</code> or
+<code>ThreadPool.QueueUserWorkItem</code>; an argument to the <code>Thread</code> constructor; or the right-hand side of a <code>+=</code> event
+subscription. A lambda that is consumed synchronously within the same statement - for example fully enumerated by a LINQ chain that runs before the
+next iteration - is not reported, since the loop variable it captures still has the value from the current iteration when the lambda actually runs.</p>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/types/delegates-lambdas">Lambda expressions, delegates, and events - how captured variables behave</a></li>
+</ul>

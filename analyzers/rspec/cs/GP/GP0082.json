@@ -1,0 +1,24 @@
+{
+  "title": "Dictionary lookups should use 'TryAdd' instead of 'ContainsKey' followed by 'Add'",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "EFFICIENT"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "performance"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0082",
+  "sqKey": "GP0082",
+  "scope": "Main",
+  "quickfix": "covered"
+}

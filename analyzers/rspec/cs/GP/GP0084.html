@@ -1,0 +1,43 @@
+<p><code>[ThreadStatic]</code> has no effect unless the field it decorates is also <code>static</code>.</p>
+<h2>Why is this an issue?</h2>
+<p><code>ThreadStaticAttribute</code> only changes the storage of a <em>static</em> field, giving each thread its own independent copy instead of one
+copy shared by all threads. The CLR ignores it entirely on an instance field: an instance field already has one copy per object, so there is nothing for
+the attribute to change, and the field goes on behaving as an ordinary shared-per-instance field. The result is code that reads as if it were designed
+for per-thread isolation - the attribute is right there - but actually is not, and the mismatch is invisible until two threads that happen to share the
+same instance start stepping on each other's value.</p>
+<pre>
+public class RequestContext
+{
+    [ThreadStatic]
+    private int _requestId; // does nothing: every thread that touches this instance shares the same field
+}
+</pre>
+<h2>How to fix it</h2>
+<p>Decide what was actually intended, since the two fixes lead to different behavior:</p>
+<ul>
+  <li>Add <code>static</code> to get genuine per-thread storage. Every instance of the type then shares that one field, one copy per thread - which is
+  usually what "thread-static" is meant to provide.</li>
+  <li>Remove the attribute to keep the current, working, per-instance behavior, if per-thread isolation was never actually needed.</li>
+</ul>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class RequestContext
+{
+    [ThreadStatic]
+    private int _requestId; // Noncompliant {{'_requestId' has 'System.ThreadStaticAttribute' but is not static - the attribute has no effect on instance fields.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class RequestContext
+{
+    [ThreadStatic]
+    private static int _requestId;
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.threadstaticattribute">ThreadStaticAttribute Class</a></li>
+</ul>

@@ -1,0 +1,24 @@
+{
+  "title": "'[ThreadStatic]' should not be used on non-static fields",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "multi-threading"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0084",
+  "sqKey": "GP0084",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

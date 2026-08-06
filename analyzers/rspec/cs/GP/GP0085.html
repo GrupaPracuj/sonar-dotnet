@@ -1,0 +1,69 @@
+<p>A struct that has not overridden <code>Equals(object)</code> (and correspondingly <code>GetHashCode()</code>) should not be compared, hashed, or used
+as a dictionary/set key based on that default behavior.</p>
+<h2>Why is this an issue?</h2>
+<p>Every <code>struct</code> inherits <code>Equals(object)</code> and <code>GetHashCode()</code> from <code>System.ValueType</code> unless it overrides
+them itself. <code>ValueType</code>'s versions use reflection to enumerate and compare every field - this is slow, and for a struct that contains a
+reference-type field, it compares that field by <b>reference</b>, not by value. Two structs that clearly represent the same value can therefore compare as
+unequal, or end up in different hash buckets, simply because their reference-type fields happen to point at different (but equal) instances.</p>
+<pre>
+public struct OrderLine
+{
+    public int Quantity;
+    public string ProductCode; // a reference-type field
+}
+
+var a = new OrderLine { Quantity = 1, ProductCode = "SKU-1" };
+var b = new OrderLine { Quantity = 1, ProductCode = "SKU-1" };
+bool same = a.Equals(b); // may be false: ProductCode is compared by reference, not by content
+</pre>
+<p>The rule reports three ways this default falls back into production code:</p>
+<ul>
+  <li>Comparing two structs with <code>==</code> when neither side has overloaded the operator itself - so whatever ends up running is not the fast,
+  correct comparison the code likely intended.</li>
+  <li><code>.Equals()</code> resolving to the inherited <code>ValueType.Equals</code> because the struct never overrode it.</li>
+  <li>A struct without an <code>Equals</code>/<code>GetHashCode</code> override used as the key type of a <code>Dictionary&lt;TKey, TValue&gt;</code> or
+  the element type of a <code>HashSet&lt;T&gt;</code> - every lookup then pays the reflection cost and risks the reference-comparison bug above.</li>
+</ul>
+<h3>Exceptions</h3>
+<p><code>record struct</code> types are never reported: the compiler synthesizes a correct, fast, field-by-field <code>Equals</code>,
+<code>GetHashCode</code>, <code>==</code> and <code>!=</code> for them. Plain <code>enum</code> types are a different <code>TypeKind</code> entirely and
+always use the built-in, fast comparison - they are not a concern here at all.</p>
+<p>This rule also flags usage sites, not only declarations - including struct types that come from a third-party library outside your control, where
+adding <code>IEquatable&lt;T&gt;</code> or overriding <code>Equals</code>/<code>GetHashCode</code> yourself is not an option.</p>
+<h2>How to fix it</h2>
+<p>Override <code>Equals(object)</code> and <code>GetHashCode()</code> on the struct (and, ideally, implement <code>IEquatable&lt;T&gt;</code> and overload
+<code>operator==</code>/<code>operator!=</code>) so comparisons are explicit, fast, and based on the fields that actually define the struct's value. When
+the struct belongs to a third-party library and cannot be changed, avoid relying on its default equality: compare the fields you care about explicitly, or
+supply an explicit <code>IEqualityComparer&lt;T&gt;</code> to the dictionary or set instead of depending on the default one.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public struct OrderLine
+{
+    public int Quantity;
+    public string ProductCode;
+}
+
+var lines = new Dictionary&lt;OrderLine, decimal&gt;(); // Noncompliant {{'OrderLine' is used as a Dictionary/HashSet key but does not override Equals/GetHashCode - lookups will use slow, reflection-based comparison.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public struct OrderLine : IEquatable&lt;OrderLine&gt;
+{
+    public int Quantity;
+    public string ProductCode;
+
+    public override bool Equals(object obj) => obj is OrderLine other &amp;&amp; Equals(other);
+    public bool Equals(OrderLine other) => Quantity == other.Quantity &amp;&amp; ProductCode == other.ProductCode;
+    public override int GetHashCode() => (Quantity, ProductCode).GetHashCode();
+}
+
+var lines = new Dictionary&lt;OrderLine, decimal&gt;();
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.valuetype.equals">ValueType.Equals(Object)</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/statements-expressions-operators/how-to-define-value-equality-for-a-type">How to define value equality for a type</a></li>
+  <li>Sonar Rule - <a href="https://rules.sonarsource.com/csharp/RSPEC-3898">S3898 - Value types should implement "IEquatable&lt;T&gt;"</a></li>
+</ul>

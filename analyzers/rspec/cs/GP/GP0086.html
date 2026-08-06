@@ -1,0 +1,43 @@
+<p>A database-only function - <code>Microsoft.EntityFrameworkCore.EF.Functions</code> members such as <code>Like</code>, or any method marked with
+<code>[DbFunction]</code> - must only be called from inside a query expression that Entity Framework Core translates to SQL.</p>
+<h2>Why is this an issue?</h2>
+<p><code>EF.Functions</code> exposes methods that exist purely to be recognized by EF Core's query translator and turned into SQL constructs - they have
+no real .NET implementation. The same is true of any method decorated with <code>[DbFunction]</code>: it stands in for a function that lives in the
+database, not in managed code. Calling either as an ordinary C# method - outside a LINQ expression tree that gets translated - throws
+<code>System.NotSupportedException</code> immediately and unconditionally. There is no code path where it can succeed; it is not a matter of bad input or
+an edge case, every single call fails the same way.</p>
+<pre>
+var isMatch = EF.Functions.Like(customer.Name, "%acme%"); // throws NotSupportedException every time
+</pre>
+<p>This most often happens when a call is copied out of a <code>Where</code>/<code>Select</code> lambda into a helper method, or is written inside a
+lambda that looks query-like but actually converts to a plain <code>Func&lt;&gt;</code>/<code>Action&lt;&gt;</code> - for instance because it is passed to
+<code>List&lt;T&gt;.Where</code> (LINQ to Objects) instead of <code>IQueryable&lt;T&gt;.Where</code> (LINQ to Entities), or wrapped in
+<code>new Func&lt;bool&gt;(...)</code>. In both cases nothing marks the call as being inside a query, so EF Core never gets a chance to translate it.</p>
+<h3>Exceptions</h3>
+<p>The rule only reports a call once it has checked every lambda enclosing it, at every nesting level: as long as any one of them converts to
+<code>System.Linq.Expressions.Expression&lt;TDelegate&gt;</code> - which is what <code>IQueryable&lt;T&gt;</code>'s LINQ operators expect - the call sits
+inside a context EF Core can translate, and is not reported.</p>
+<h2>How to fix it</h2>
+<p>Move the call inside a lambda that is actually passed to an <code>IQueryable&lt;T&gt;</code> LINQ operator (<code>Where</code>, <code>Select</code>,
+<code>OrderBy</code>, ...), so it becomes part of the expression tree EF Core translates to SQL. If the surrounding collection is not an
+<code>IQueryable&lt;T&gt;</code> - for example it is already an in-memory <code>List&lt;T&gt;</code> - the comparison has to be rewritten using ordinary
+.NET APIs (such as pattern matching for a <code>LIKE</code>-style check) instead of a database-only function.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+bool MatchesPattern(string name) =>
+    EF.Functions.Like(name, "%acme%"); // Noncompliant {{'Like' is only meaningful inside a query expression translated to SQL - calling it here throws NotSupportedException at runtime.}}
+
+var matches = customers.Where(c => MatchesPattern(c.Name)).ToList(); // MatchesPattern's body runs as ordinary code, not as part of the translated query
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+var matches = customers.Where(c => EF.Functions.Like(c.Name, "%acme%")).ToList(); // the lambda converts to Expression&lt;Func&lt;Customer, bool&gt;&gt;
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/microsoft.entityframeworkcore.dbfunctionsextensions.like">DbFunctionsExtensions.Like</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/ef/core/querying/database-functions">Database functions</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.linq.expressions.expression-1">Expression&lt;TDelegate&gt;</a></li>
+</ul>
