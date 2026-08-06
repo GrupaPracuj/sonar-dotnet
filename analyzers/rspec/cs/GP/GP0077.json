@@ -1,0 +1,24 @@
+{
+  "title": "Types deriving from Stream or implementing IDictionary should carry a matching suffix",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0077",
+  "sqKey": "GP0077",
+  "scope": "Main",
+  "quickfix": "covered"
+}

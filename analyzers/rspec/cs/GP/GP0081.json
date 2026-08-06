@@ -1,0 +1,24 @@
+{
+  "title": "Protected instance fields should be avoided",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0081",
+  "sqKey": "GP0081",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

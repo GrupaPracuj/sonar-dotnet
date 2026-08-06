@@ -1,0 +1,44 @@
+<p>A namespace should not use the same name as a type declared directly inside it.</p>
+<h2>Why is this an issue?</h2>
+<p>When a namespace and a type share the same name, the last segment of the namespace and the type become indistinguishable by name alone. Several
+compilers - and human readers - then need the type to be fully qualified everywhere, because the short name is ambiguous between "the namespace" and
+"the type in it". <code>Fabrikam.Debug</code> could be the namespace itself or the <code>Debug</code> class declared inside it, and only a fully
+qualified reference such as <code>Fabrikam.Debug.Debug</code> resolves the ambiguity.</p>
+<pre>
+namespace Fabrikam
+{
+    namespace Debug
+    {
+        public class Debug
+        {
+        }
+    }
+}
+</pre>
+<h2>How to fix it</h2>
+<p>Rename either the namespace or the type so the two no longer collide. Which one to rename is a judgment call the rule does not make for you: it
+depends on which name better describes the namespace's purpose versus the type's role.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+namespace Fabrikam.Debug // Noncompliant {{Namespace 'Debug' should not share a name with the type 'Debug' declared inside it.}}
+{
+    public class Debug
+    {
+    }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+namespace Fabrikam.Diagnostics
+{
+    public class Debug
+    {
+    }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/names-of-namespaces">Names of Namespaces</a></li>
+</ul>

@@ -1,0 +1,25 @@
+{
+  "title": "Identifiers should use the standard spelling for common compound words",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "2min"
+  },
+  "tags": [
+    "gp",
+    "convention",
+    "naming"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0075",
+  "sqKey": "GP0075",
+  "scope": "All",
+  "quickfix": "covered"
+}

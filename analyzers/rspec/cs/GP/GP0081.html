@@ -1,0 +1,55 @@
+<p>An instance field should not have <code>protected</code> accessibility.</p>
+<h2>Why is this an issue?</h2>
+<p>A <code>protected</code> field is visible to every derived type, in every assembly that can define one - exactly the same reach a <code>public</code>
+field has, just restricted to one particular audience instead of everyone. Sonar's own <code>S1104</code> already flags <code>public</code> instance
+fields for this reason: additional behavior (validation, change notification) cannot be added later, the internal representation is exposed and locked
+in, and the value can be changed from any of those derived types without the declaring type having any say in it. Every one of those disadvantages
+applies just as much to a <code>protected</code> field as to a <code>public</code> one - the only difference is who is affected.</p>
+<pre>
+public class Order
+{
+    protected decimal Total; // any derived type can read and overwrite Total directly, bypassing any validation
+}
+</pre>
+<h3>Exceptions</h3>
+<p>This rule mirrors <code>S1104</code>'s exact exception list:</p>
+<ul>
+  <li>Fields marked <code>readonly</code> or <code>const</code> are ignored - both close off the "changed from anywhere" concern.</li>
+  <li>Fields inside a type annotated with <code>[StructLayout]</code> are ignored - the field's exact shape is part of an intentional, explicit memory
+  layout.</li>
+  <li>Fields inside a type annotated with <code>[Serializable]</code> are ignored, unless the field itself is annotated <code>[NonSerialized]</code> - a
+  field that opts back out of serialization is treated the same as if the type were not <code>[Serializable]</code> at all.</li>
+</ul>
+<p>Only instance fields are checked. A <code>protected static</code> field is a different, less contested case that this guideline does not cover.
+<code>protected internal</code> and <code>private protected</code> fields are also out of scope - each is a distinct accessibility level, not the plain
+<code>protected</code> this rule targets.</p>
+<h2>How to fix it</h2>
+<p>Make the field <code>private</code> and expose a <code>protected</code> property in its place. This keeps the same audience able to read and write the
+value, while leaving room to add validation, change the internal representation, or observe writes later without breaking derived types.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class Order
+{
+    protected decimal Total; // Noncompliant {{'Total' should not have protected accessibility - use a protected property instead.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class Order
+{
+    private decimal total;
+
+    protected decimal Total
+    {
+        get => total;
+        set => total = value;
+    }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/field">Field Design</a></li>
+  <li>Sonar Rule - <a href="https://rules.sonarsource.com/csharp/RSPEC-1104">S1104 - Fields should not have public accessibility</a></li>
+</ul>

@@ -1,0 +1,62 @@
+<p>A static constructor should not throw an exception.</p>
+<h2>Why is this an issue?</h2>
+<p>A static constructor runs once, the first time its type is used, and it is the CLR - not application code - that decides exactly when. If it throws,
+the CLR wraps the exception in a <code>TypeInitializationException</code> and marks the type as permanently unusable for the rest of the process: every
+later attempt to use the type, from anywhere, fails with the same wrapped exception, even in code paths that have nothing to do with whatever went wrong
+the first time.</p>
+<p>This is a much worse failure mode than an ordinary exception. An exception thrown from a regular method fails one call; the caller can retry, catch it,
+or work around it. A static constructor failure poisons the type for the lifetime of the application domain - there is no retrying, because the type
+initializer never runs again.</p>
+<pre>
+public class ConfigurationCache
+{
+    private static readonly string ConnectionString = LoadFromEnvironment(); // throws if the variable is missing
+
+    static ConfigurationCache()
+    {
+        if (ConnectionString is null)
+        {
+            throw new InvalidOperationException("Missing connection string."); // poisons ConfigurationCache forever
+        }
+    }
+}
+</pre>
+<h3>Exceptions</h3>
+<p>Only static constructors are checked. Instance constructors are free to throw - the guideline this rule is based on explicitly allows it, since a
+failed instance construction only affects that one instance, not the type itself.</p>
+<p>A <code>throw</code> that only runs inside a local function or a lambda that the static constructor merely declares - without calling it synchronously
+during initialization - is not reported: it does not run while the type is being initialized, so it cannot poison the type.</p>
+<h2>How to fix it</h2>
+<p>Move the validation out of the static constructor. A common alternative is lazy validation: defer the check to the first place the value is actually
+used, so a bad configuration fails that one call instead of taking the whole type down. If initialization can genuinely fail, prefer a static factory
+method that returns a result (or throws from an explicit "initialize" call the caller controls) over a static constructor that runs implicitly and
+unpredictably from the CLR's point of view.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class ConfigurationCache
+{
+    private static readonly string ConnectionString;
+
+    static ConfigurationCache() // Noncompliant {{Static constructors should not throw - it permanently poisons 'ConfigurationCache' for the rest of the process.}}
+    {
+        ConnectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing connection string.");
+    }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class ConfigurationCache
+{
+    private static readonly string ConnectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+
+    public static string GetConnectionString() =>
+        ConnectionString ?? throw new InvalidOperationException("Missing connection string.");
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/constructor">Constructor Design</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.typeinitializationexception">TypeInitializationException</a></li>
+</ul>

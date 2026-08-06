@@ -1,0 +1,43 @@
+<p>An identifier should use the standard spelling for well-known compound words and terms, as documented in Microsoft's own naming guidelines.</p>
+<h2>Why is this an issue?</h2>
+<p>The .NET Framework Design Guidelines maintain a
+<a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/capitalization-conventions">"Capitalizing Compound Words and Common Terms"</a>
+table that fixes, once and for all, how a specific set of frequently misspelled compound words should be written. A name can follow every casing rule -
+PascalCase for a type, camelCase for a parameter - and still get one of these words wrong, because casing style and word spelling are two independent
+concerns. <code>EndPoint</code> is valid PascalCase, but the standard spelling is the single word <code>Endpoint</code>. <code>Filename</code> is valid
+PascalCase too, but the standard spelling splits it into two words, <code>FileName</code>. Neither mistake is caught by an analyzer that only checks
+casing style (such as the naming-convention rules driven by <code>dotnet_naming_rule</code> entries), because both wrong spellings are, casing-wise,
+perfectly fine.</p>
+<p>This rule checks identifiers against a small, fixed dictionary taken directly from Microsoft's table - not a general-purpose spell checker - so it
+only ever fires on one of these specific, well-known terms, and false positives on unrelated words are effectively impossible.</p>
+<h3>Exceptions</h3>
+<p>A method or property is not flagged when its name is not the author's free choice to make: an <code>override</code> of a base member, or a member
+that implements an interface member (explicitly, or implicitly by matching name and signature) by name, must keep the name it was given. Renaming it
+would either fail to override the base member, or - for an implicit interface implementation - silently stop implementing the interface. Fields,
+parameters, enum members, and type names have no such constraint and are always checked.</p>
+<h2>How to fix it</h2>
+<p>Rename the identifier to the standard spelling shown in the issue message.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class HttpClientOptions
+{
+    public string EndPoint { get; set; } // Noncompliant {{Rename 'EndPoint' to 'Endpoint' - that is the standard spelling for this compound word.}}
+    public string Filename { get; set; } // Noncompliant {{Rename 'Filename' to 'FileName' - that is the standard spelling for this compound word.}}
+    public int OrderID { get; set; } // Noncompliant {{Rename 'OrderID' to 'OrderId' - that is the standard spelling for this compound word.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class HttpClientOptions
+{
+    public string Endpoint { get; set; }
+    public string FileName { get; set; }
+    public int OrderId { get; set; }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/capitalization-conventions">Capitalization Conventions</a></li>
+</ul>

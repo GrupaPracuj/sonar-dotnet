@@ -1,0 +1,24 @@
+{
+  "title": "A property's setter should not be more accessible than its getter",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0079",
+  "sqKey": "GP0079",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

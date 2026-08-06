@@ -1,0 +1,24 @@
+{
+  "title": "Static constructors should not throw exceptions",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "20min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0078",
+  "sqKey": "GP0078",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

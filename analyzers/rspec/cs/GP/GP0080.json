@@ -1,0 +1,24 @@
+{
+  "title": "Raising an event should not pass null as the sender or the event data",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0080",
+  "sqKey": "GP0080",
+  "scope": "Main",
+  "quickfix": "targeted"
+}

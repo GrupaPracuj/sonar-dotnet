@@ -1,0 +1,61 @@
+<p>Raising an event should not pass <code>null</code> as the sender or as the event data.</p>
+<h2>Why is this an issue?</h2>
+<p>Event handler signatures reserve two parameters - the sender and the event data - and subscribers are entitled to assume both are usable without a
+null check. The .NET Framework Design Guidelines are explicit about both:</p>
+<ul>
+  <li>Do not pass <code>null</code> as the sender when raising a nonstatic event - subscribers rely on the sender to know which instance raised the
+  event, especially when the same handler is attached to several instances.</li>
+  <li>Do not pass <code>null</code> as the event data parameter - pass <code>EventArgs.Empty</code> when there is no data to carry, so subscribers can
+  dereference the argument without a null check.</li>
+</ul>
+<pre>
+public class Order
+{
+    public event EventHandler Shipped;
+
+    public void Ship()
+    {
+        Shipped?.Invoke(null, null); // subscribers cannot tell who raised this, and cannot use the event data without checking for null first
+    }
+}
+</pre>
+<p>The rule reports both the direct invocation syntax legal only inside the type that declares the event (<code>MyEvent(sender, args)</code>) and the
+explicit form (<code>MyEvent.Invoke(...)</code> / <code>MyEvent?.Invoke(...)</code>), since both raise the event the same way.</p>
+<h3>Exceptions</h3>
+<p>Passing <code>null</code> as the sender of a <em>static</em> event is not reported - there is no single instance to point to, and the guideline's
+advice for that case is more contested, so it is left out of scope here.</p>
+<h2>How to fix it</h2>
+<p>Pass <code>this</code> (or whichever instance is actually raising the event) as the sender, and <code>EventArgs.Empty</code> instead of
+<code>null</code> when there is no event data to carry.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class Order
+{
+    public event EventHandler Shipped;
+
+    public void Ship()
+    {
+        Shipped?.Invoke(null, null); // Noncompliant {{Do not pass null as the sender - use 'this' (or the actual raising instance) so subscribers know who raised 'Shipped'.}}
+                                      // Noncompliant@-1 {{Do not pass null as the event data for 'Shipped' - pass EventArgs.Empty instead, callers expect a non-null value.}}
+    }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class Order
+{
+    public event EventHandler Shipped;
+
+    public void Ship()
+    {
+        Shipped?.Invoke(this, EventArgs.Empty);
+    }
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/event">Event Design</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/api/system.eventargs.empty">EventArgs.Empty</a></li>
+</ul>

@@ -90,4 +90,115 @@ internal static class GpIdentifierWords
 
         yield return identifier.Substring(start).Trim('_');
     }
+
+    // Exact wrong->right spellings from the "Capitalizing Compound Words and Common Terms" table at
+    // https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/capitalization-conventions -
+    // deliberately a small fixed list, not a general spell-checker, so it can never produce a false positive
+    // on an unrelated word.
+    private static readonly Dictionary<string, string> SingleWordFixes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Cancelled"] = "Canceled",
+        ["EMail"] = "Email",
+        ["ID"] = "Id",
+        ["OK"] = "Ok",
+        ["PI"] = "Pi",
+        ["Writeable"] = "Writable",
+    };
+
+    // A single (wrongly merged or wrongly left merged) word that should be split into two words.
+    private static readonly Dictionary<string, (string First, string Second)> SplitWordFixes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Bitflag"] = ("Bit", "Flag"),
+        ["Filename"] = ("File", "Name"),
+        ["Username"] = ("User", "Name"),
+        ["Whitespace"] = ("White", "Space"),
+    };
+
+    // Two adjacent words that should be merged into one.
+    private static readonly Dictionary<(string First, string Second), string> MergeWordFixes = new()
+    {
+        [("Call", "Back")] = "Callback",
+        [("End", "Point")] = "Endpoint",
+        [("Grid", "Line")] = "Gridline",
+        [("Hash", "Table")] = "Hashtable",
+        [("Meta", "Data")] = "Metadata",
+        [("Multi", "Panel")] = "Multipanel",
+        [("Multi", "View")] = "Multiview",
+        [("Name", "Space")] = "Namespace",
+        [("Place", "Holder")] = "Placeholder",
+    };
+
+    /// <summary>
+    /// Looks for exactly one of a small set of well-known wrong compound-word spellings (Microsoft's own
+    /// "Capitalizing Compound Words and Common Terms" table) inside <paramref name="identifier"/>. Returns true
+    /// and the corrected identifier if found; the corrected identifier always differs from the original.
+    /// </summary>
+    internal static bool TryFixCompoundWord(string identifier, out string suggested)
+    {
+        var words = SplitWords(identifier).ToList();
+        var normalized = words.Select(Capitalize).ToList();
+
+        for (var i = 0; i < normalized.Count - 1; i++)
+        {
+            if (MergeWordFixes.TryGetValue((normalized[i], normalized[i + 1]), out var merged))
+            {
+                var newWords = new List<string>(words);
+                newWords[i] = merged;
+                newWords.RemoveAt(i + 1);
+                if (TryBuildIdentifier(newWords, identifier, out suggested))
+                {
+                    return true;
+                }
+            }
+        }
+
+        for (var i = 0; i < normalized.Count; i++)
+        {
+            if (SingleWordFixes.TryGetValue(normalized[i], out var fixedWord))
+            {
+                var newWords = new List<string>(words);
+                newWords[i] = fixedWord;
+                if (TryBuildIdentifier(newWords, identifier, out suggested))
+                {
+                    return true;
+                }
+            }
+        }
+
+        for (var i = 0; i < normalized.Count; i++)
+        {
+            if (SplitWordFixes.TryGetValue(normalized[i], out var pair))
+            {
+                var newWords = new List<string>(words);
+                newWords.RemoveAt(i);
+                newWords.Insert(i, pair.Second);
+                newWords.Insert(i, pair.First);
+                if (TryBuildIdentifier(newWords, identifier, out suggested))
+                {
+                    return true;
+                }
+            }
+        }
+
+        suggested = null;
+        return false;
+    }
+
+    private static string Capitalize(string word) =>
+        word.Length == 0 ? word : char.ToUpperInvariant(word[0]) + word.Substring(1);
+
+    // False only if, after reassembly, the "fix" would be a no-op (e.g. a dictionary lookup matched
+    // case-insensitively but the identifier already had the correct casing) - guards against ever reporting
+    // an issue whose suggested fix is identical to the original name.
+    private static bool TryBuildIdentifier(List<string> words, string originalIdentifier, out string result)
+    {
+        var candidate = string.Concat(words.Select(Capitalize));
+        if (originalIdentifier.Length > 0 && char.IsLower(originalIdentifier[0]) && candidate.Length > 0)
+        {
+            candidate = char.ToLowerInvariant(candidate[0]) + candidate.Substring(1);
+        }
+
+        result = candidate;
+        return !string.Equals(candidate, originalIdentifier, StringComparison.Ordinal);
+    }
 }

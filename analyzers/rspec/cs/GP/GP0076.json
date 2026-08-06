@@ -1,0 +1,24 @@
+{
+  "title": "Namespace should not share a name with a type declared inside it",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "IDENTIFIABLE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0076",
+  "sqKey": "GP0076",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}
