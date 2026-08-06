@@ -21,7 +21,7 @@
   "ruleSpecification": "GP-0031",
   "sqKey": "GP0031",
   "scope": "Main",
-  "quickfix": "unknown",
+  "quickfix": "covered",
   "securityStandards": {
     "CWE": [
       601

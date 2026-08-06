@@ -48,7 +48,23 @@ public class DateOnlyPropertyShouldNotBeNamedUtcTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("DateOnlyPropertyShouldNotBeNamedUtc.cs")
+            .WithCodeFix<CS.DateOnlyPropertyShouldNotBeNamedUtcCodeFix>()
+            .WithCodeFixedPaths("DateOnlyPropertyShouldNotBeNamedUtc.Fixed.cs")
+            .VerifyCodeFix();
+
 #endif
+
+    [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_FieldCodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("DateOnlyPropertyShouldNotBeNamedUtc_Field.cs")
+            .WithCodeFix<CS.DateOnlyPropertyShouldNotBeNamedUtcCodeFix>()
+            .WithCodeFixedPaths("DateOnlyPropertyShouldNotBeNamedUtc_Field.Fixed.cs")
+            .VerifyCodeFix();
 
     [TestMethod]
     public void DateOnlyPropertyShouldNotBeNamedUtc_NoncompliantForJunoLocalDateField() =>

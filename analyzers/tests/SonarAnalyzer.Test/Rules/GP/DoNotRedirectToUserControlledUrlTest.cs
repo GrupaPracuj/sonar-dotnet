@@ -120,4 +120,12 @@ public class DoNotRedirectToUserControlledUrlTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("DoNotRedirectToUserControlledUrl.cs")
+            .WithCodeFix<CS.DoNotRedirectToUserControlledUrlCodeFix>()
+            .WithCodeFixedPaths("DoNotRedirectToUserControlledUrl.Fixed.cs")
+            .VerifyCodeFix();
 }

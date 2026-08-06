@@ -108,4 +108,12 @@ public class HttpCallShouldPropagateCancellationTokenTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("HttpCallShouldPropagateCancellationToken.cs")
+            .WithCodeFix<CS.HttpCallShouldPropagateCancellationTokenCodeFix>()
+            .WithCodeFixedPaths("HttpCallShouldPropagateCancellationToken.Fixed.cs")
+            .VerifyCodeFix();
 }

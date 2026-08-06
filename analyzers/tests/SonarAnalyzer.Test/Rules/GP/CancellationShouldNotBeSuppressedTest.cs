@@ -152,6 +152,14 @@ public class CancellationShouldNotBeSuppressedTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("CancellationShouldNotBeSuppressed.cs")
+            .WithCodeFix<CS.CancellationShouldNotBeSuppressedCodeFix>()
+            .WithCodeFixedPaths("CancellationShouldNotBeSuppressed.Fixed.cs")
+            .VerifyCodeFix();
+
     // A throw inside a lambda exits the lambda, not the catch block, so it does not count as rethrowing.
     [TestMethod]
     public void CancellationShouldNotBeSuppressed_NoncompliantWhenOnlyALambdaThrows() =>

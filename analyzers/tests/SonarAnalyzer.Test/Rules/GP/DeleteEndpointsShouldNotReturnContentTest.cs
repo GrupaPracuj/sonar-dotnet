@@ -78,4 +78,12 @@ public class DeleteEndpointsShouldNotReturnContentTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DeleteEndpointsShouldNotReturnContent_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("DeleteEndpointsShouldNotReturnContent.cs")
+            .WithCodeFix<CS.DeleteEndpointsShouldNotReturnContentCodeFix>()
+            .WithCodeFixedPaths("DeleteEndpointsShouldNotReturnContent.Fixed.cs")
+            .VerifyCodeFix();
 }

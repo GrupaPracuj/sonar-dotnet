@@ -21,5 +21,5 @@
   "ruleSpecification": "GP-0010",
   "sqKey": "GP0010",
   "scope": "Main",
-  "quickfix": "unknown"
+  "quickfix": "covered"
 }

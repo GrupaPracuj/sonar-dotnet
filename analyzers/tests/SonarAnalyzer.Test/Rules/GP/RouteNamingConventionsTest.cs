@@ -207,6 +207,22 @@ public class RouteNamingConventionsTest
             .Verify();
 
     [TestMethod]
+    public void RouteNamingConventions_KebabCase_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("RouteNamingConventions_KebabCase.cs")
+            .WithCodeFix<CS.RouteSegmentShouldBeKebabCaseCodeFix>()
+            .WithCodeFixedPaths("RouteNamingConventions_KebabCase.Fixed.cs")
+            .VerifyCodeFix();
+
+    [TestMethod]
+    public void RouteNamingConventions_TrailingSlash_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("RouteNamingConventions_TrailingSlash.cs")
+            .WithCodeFix<CS.RouteShouldNotHaveTrailingSlashCodeFix>()
+            .WithCodeFixedPaths("RouteNamingConventions_TrailingSlash.Fixed.cs")
+            .VerifyCodeFix();
+
+    [TestMethod]
     public void RouteNamingConventions_NoncompliantOnClassLevelAttribute() =>
         builder.AddSnippet(
             """

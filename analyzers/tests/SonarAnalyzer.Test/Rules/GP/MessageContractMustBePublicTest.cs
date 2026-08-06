@@ -138,4 +138,12 @@ public class MessageContractMustBePublicTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void MessageContractMustBePublic_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("MessageContractMustBePublic.cs")
+            .WithCodeFix<CS.MessageContractMustBePublicCodeFix>()
+            .WithCodeFixedPaths("MessageContractMustBePublic.Fixed.cs")
+            .VerifyCodeFix();
 }

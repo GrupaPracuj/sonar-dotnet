@@ -59,4 +59,12 @@ public class ContractShouldEnableNullableReferenceTypesTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldEnableNullableReferenceTypes_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("ContractShouldEnableNullableReferenceTypes.cs")
+            .WithCodeFix<CS.ContractShouldEnableNullableReferenceTypesCodeFix>()
+            .WithCodeFixedPaths("ContractShouldEnableNullableReferenceTypes.Fixed.cs")
+            .VerifyCodeFix();
 }

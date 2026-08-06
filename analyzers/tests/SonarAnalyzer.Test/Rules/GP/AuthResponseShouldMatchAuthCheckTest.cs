@@ -328,4 +328,12 @@ public class AuthResponseShouldMatchAuthCheckTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("AuthResponseShouldMatchAuthCheck.cs")
+            .WithCodeFix<CS.AuthResponseShouldMatchAuthCheckCodeFix>()
+            .WithCodeFixedPaths("AuthResponseShouldMatchAuthCheck.Fixed.cs")
+            .VerifyCodeFix();
 }

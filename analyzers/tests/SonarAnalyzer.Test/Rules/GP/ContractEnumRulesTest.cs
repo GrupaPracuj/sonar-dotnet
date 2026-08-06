@@ -123,6 +123,14 @@ public class ContractEnumRulesTest
             .Verify();
 
     [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_CodeFix() =>
+        explicitValues.WithBasePath("GP")
+            .AddPaths("ContractEnumShouldAssignExplicitValues.cs")
+            .WithCodeFix<CS.ContractEnumShouldAssignExplicitValuesCodeFix>()
+            .WithCodeFixedPaths("ContractEnumShouldAssignExplicitValues.Fixed.cs")
+            .VerifyCodeFix();
+
+    [TestMethod]
     public void ContractEnumShouldAssignExplicitValues_CompliantForExplicitValues() =>
         explicitValues.AddSnippet(
             """

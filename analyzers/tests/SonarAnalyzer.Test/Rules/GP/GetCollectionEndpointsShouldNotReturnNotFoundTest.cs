@@ -340,4 +340,12 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CodeFix() =>
+        builder.WithBasePath("GP")
+            .AddPaths("GetCollectionEndpointsShouldNotReturnNotFound.cs")
+            .WithCodeFix<CS.GetCollectionEndpointsShouldNotReturnNotFoundCodeFix>()
+            .WithCodeFixedPaths("GetCollectionEndpointsShouldNotReturnNotFound.Fixed.cs")
+            .VerifyCodeFix();
 }

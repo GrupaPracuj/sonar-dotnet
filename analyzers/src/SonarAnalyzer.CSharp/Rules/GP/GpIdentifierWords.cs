@@ -76,7 +76,7 @@ internal static class GpIdentifierWords
     private static bool IsPointerToSecret(string identifier) =>
         SplitWords(identifier).LastOrDefault() is { } last && PointerQualifiers.Contains(last);
 
-    private static IEnumerable<string> SplitWords(string identifier)
+    internal static IEnumerable<string> SplitWords(string identifier)
     {
         var start = 0;
         for (var i = 1; i < identifier.Length; i++)

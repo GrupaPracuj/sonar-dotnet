@@ -119,4 +119,12 @@ public class TestMethodShouldHaveTestAttributeTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void TestMethodShouldHaveTestAttribute_CodeFix() =>
+        msTest.WithBasePath("GP")
+            .AddPaths("TestMethodShouldHaveTestAttribute.cs")
+            .WithCodeFix<CS.TestMethodShouldHaveTestAttributeCodeFix>()
+            .WithCodeFixedPaths("TestMethodShouldHaveTestAttribute.Fixed.cs")
+            .VerifyCodeFix();
 }
