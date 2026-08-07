@@ -54,7 +54,25 @@ public class DoNotCreateDatabaseConnectionTest
                 private readonly string _connectionString;
 
                 public System.Data.Common.DbConnection Open() =>
-                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of constructing 'SqlConnection'.}}
+                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of creating it directly with 'SqlConnection'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_NoncompliantForProviderFactory() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ProviderFactory : System.Data.Common.DbProviderFactory
+            {
+                public override System.Data.Common.DbConnection CreateConnection() => null;
+            }
+
+            public class OrderRepository
+            {
+                public System.Data.Common.DbConnection Open(ProviderFactory factory) =>
+                    factory.CreateConnection(); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of creating it directly with 'ProviderFactory.CreateConnection'.}}
             }
             """)
             .Verify();
@@ -73,6 +91,48 @@ public class DoNotCreateDatabaseConnectionTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_CompliantForProviderFactoryInsideJuno() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.Juno.Ado
+            {
+                public class ProviderFactory : System.Data.Common.DbProviderFactory
+                {
+                    public override System.Data.Common.DbConnection CreateConnection() => null;
+                }
+
+                public class ConnectionFactory
+                {
+                    public System.Data.Common.DbConnection Open(ProviderFactory factory) =>
+                        factory.CreateConnection();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_NoncompliantForJunoSiblingNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.JunoConsumer
+            {
+                public class ProviderFactory : System.Data.Common.DbProviderFactory
+                {
+                    public override System.Data.Common.DbConnection CreateConnection() => null;
+                }
+
+                public class ConnectionFactory
+                {
+                    public System.Data.Common.DbConnection Open(ProviderFactory factory) =>
+                        factory.CreateConnection(); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of creating it directly with 'ProviderFactory.CreateConnection'.}}
+                }
+            }
+            """)
+            .Verify();
 
     // Dapper on a connection Juno handed out is the sanctioned pattern, so nothing about using a connection is
     // reported - only producing one outside Juno.

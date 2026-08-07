@@ -1,5 +1,5 @@
 {
-  "title": "Contract assemblies should not use forbidden infrastructure types",
+  "title": "Public APIs should expose dictionary interfaces",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
@@ -10,16 +10,15 @@
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "2h"
+    "constantCost": "10min"
   },
   "tags": [
     "gp",
-    "messaging",
-    "design"
+    "api-design"
   ],
-  "defaultSeverity": "Blocker",
-  "ruleSpecification": "GP-0059",
-  "sqKey": "GP0059",
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0091",
+  "sqKey": "GP0091",
   "scope": "Main",
   "quickfix": "unknown"
 }

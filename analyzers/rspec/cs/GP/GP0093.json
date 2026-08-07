@@ -1,0 +1,24 @@
+{
+  "title": "Exception filters should not throw explicitly",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "exceptions"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0093",
+  "sqKey": "GP0093",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

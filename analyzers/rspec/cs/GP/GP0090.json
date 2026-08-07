@@ -1,0 +1,25 @@
+{
+  "title": "HTTP clients registered with Juno should have an explicit name",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "http"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0090",
+  "sqKey": "GP0090",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

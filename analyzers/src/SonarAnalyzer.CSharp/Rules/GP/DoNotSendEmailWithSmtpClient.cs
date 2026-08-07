@@ -15,10 +15,25 @@ public sealed class DoNotSendEmailWithSmtpClient : SonarDiagnosticAnalyzer
         "System.Web.Mail.SmtpMail",
     };
 
+    private static readonly HashSet<string> SendMethods = new(StringComparer.Ordinal)
+    {
+        "Send",
+        "SendAsync",
+        "SendMailAsync",
+    };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
-        context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression, SyntaxKindEx.ImplicitObjectCreationExpression);
+        context.RegisterNodeAction(
+            c =>
+            {
+                AnalyzeObjectCreation(c);
+                AnalyzeInvocation(c);
+            },
+            SyntaxKind.ObjectCreationExpression,
+            SyntaxKindEx.ImplicitObjectCreationExpression,
+            SyntaxKind.InvocationExpression);
 
     private static void AnalyzeObjectCreation(SonarSyntaxNodeReportingContext context)
     {
@@ -28,5 +43,36 @@ public sealed class DoNotSendEmailWithSmtpClient : SonarDiagnosticAnalyzer
         {
             context.ReportIssue(Rule, creation.Expression, type.Name);
         }
+    }
+
+    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
+    {
+        if (context.Node is not InvocationExpressionSyntax invocation
+            || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !SendMethods.Contains(method.Name)
+            || !SmtpTypes.Contains(method.ContainingType?.ToDisplayString() ?? string.Empty)
+            || invocation.Expression is MemberAccessExpressionSyntax memberAccess
+               && IsAlreadyReportedConstruction(memberAccess.Expression, context.Model))
+        {
+            return;
+        }
+
+        context.ReportIssue(Rule, invocation, method.ContainingType.Name);
+    }
+
+    private static bool IsAlreadyReportedConstruction(ExpressionSyntax receiver, SemanticModel model)
+    {
+        receiver = (ExpressionSyntax)receiver.RemoveParentheses();
+        if (receiver is ObjectCreationExpressionSyntax)
+        {
+            return true;
+        }
+
+        return model.GetSymbolInfo(receiver).Symbol is ILocalSymbol or IFieldSymbol
+               && model.GetSymbolInfo(receiver).Symbol.DeclaringSyntaxReferences
+                   .Select(x => x.GetSyntax())
+                   .OfType<VariableDeclaratorSyntax>()
+                   .Any(x => x.Initializer?.Value.RemoveParentheses() is ObjectCreationExpressionSyntax creation
+                             && SmtpTypes.Contains(model.GetTypeInfo(creation).Type?.ToDisplayString() ?? string.Empty));
     }
 }

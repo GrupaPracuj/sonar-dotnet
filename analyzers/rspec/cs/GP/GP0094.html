@@ -1,0 +1,32 @@
+<p>ASP.NET GET and HEAD actions should not bind parameters from the request body.</p>
+<h2>Why is this an issue?</h2>
+<p>HTTP does not define generally applicable request-body semantics for GET or HEAD. Clients, proxies, caches, and servers can reject or ignore such a
+body, so an action that requires it is not reliably callable across the HTTP ecosystem.</p>
+<h2>How to fix it</h2>
+<p>Move search or filter values into route or query parameters. If the operation requires a structured request body, expose it through a method such as
+POST whose request content has defined semantics.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet]
+public IActionResult Search([FromBody] SearchRequest request) =&gt; // Noncompliant {{Remove '[FromBody]' from this GET action; request-body semantics are not defined for this HTTP method.}}
+    Ok(_search.Find(request));
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpGet]
+public IActionResult Search([FromQuery] SearchRequest request) =&gt;
+    Ok(_search.Find(request));
+</pre>
+<h3>Exceptions</h3>
+<p>The rule reports only an explicit ASP.NET <code>FromBodyAttribute</code>. It does not infer binding sources from parameter complexity and deliberately
+does not cover DELETE, whose request-content handling varies between API conventions.</p>
+<h2>Resources</h2>
+<ul>
+  <li>Microsoft Azure Architecture Center - <a href="https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design">Web API design
+  best practices</a></li>
+  <li>Microsoft Engineering Playbook - <a href="https://microsoft.github.io/code-with-engineering-playbook/design/design-patterns/rest-api-design-guidance/">REST
+  API design guidance</a></li>
+  <li>Zalando RESTful API Guidelines - <a href="https://github.com/zalando/restful-api-guidelines/blob/main/chapters/http-requests.adoc">HTTP
+  requests</a></li>
+</ul>

@@ -1,0 +1,24 @@
+<p>An HTTP client registered in an application using Juno HttpApiClient should have an explicit name.</p>
+<h2>Why is this an issue?</h2>
+<p>Juno HttpApiClient applies its configuration and policies to named or typed clients. Registering the default client with
+<code>AddHttpClient()</code> leaves Juno without a client identity and causes application startup to fail.</p>
+<h2>How to fix it</h2>
+<p>Register a named client with <code>AddHttpClient("service-name")</code>, or use a typed client.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+services.AddHttpClient(); // Noncompliant {{Give this HTTP client an explicit name; Juno does not support the default client registration.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+services.AddHttpClient("orders");
+</pre>
+<h3>Exceptions</h3>
+<p>The rule is enabled only when Juno HttpApiClient is referenced. Standard .NET applications that do not use Juno may legitimately register the
+default client.</p>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno HttpApiClient</a> - the HttpApiClient documentation requires every configured HTTP client
+  to have an explicit name.</li>
+</ul>

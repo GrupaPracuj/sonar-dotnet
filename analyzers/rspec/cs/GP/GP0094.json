@@ -1,0 +1,25 @@
+{
+  "title": "GET and HEAD actions should not bind request bodies",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "http",
+    "aspnet"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0094",
+  "sqKey": "GP0094",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

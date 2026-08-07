@@ -1,0 +1,54 @@
+namespace SonarAnalyzer.CSharp.Rules;
+
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public sealed class GetOrHeadActionShouldNotBindRequestBody : SonarDiagnosticAnalyzer
+{
+    internal const string RuleId = "GP0094";
+
+    private const string MessageFormat = "Remove '[FromBody]' from this {0} action; request-body semantics are not defined for this HTTP method.";
+    private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
+
+    private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
+
+    protected override void Initialize(SonarAnalysisContext context) =>
+        context.RegisterNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+
+    private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context)
+    {
+        if (context.Node is not MethodDeclarationSyntax declaration
+            || context.Model.GetDeclaredSymbol(declaration) is not { } method
+            || !method.IsControllerActionMethod()
+            || HttpMethod(method) is not { } httpMethod)
+        {
+            return;
+        }
+
+        for (var i = 0; i < Math.Min(method.Parameters.Length, declaration.ParameterList.Parameters.Count); i++)
+        {
+            if (method.Parameters[i].GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == FromBodyAttribute))
+            {
+                context.ReportIssue(Rule, declaration.ParameterList.Parameters[i], httpMethod);
+            }
+        }
+    }
+
+    private static string HttpMethod(IMethodSymbol method)
+    {
+        foreach (var attribute in method.GetAttributes())
+        {
+            if (attribute.AttributeClass.Is(KnownType.Microsoft_AspNetCore_Mvc_HttpGetAttribute))
+            {
+                return "GET";
+            }
+
+            if (attribute.AttributeClass.Is(KnownType.Microsoft_AspNetCore_Mvc_HttpHeadAttribute))
+            {
+                return "HEAD";
+            }
+        }
+
+        return null;
+    }
+}

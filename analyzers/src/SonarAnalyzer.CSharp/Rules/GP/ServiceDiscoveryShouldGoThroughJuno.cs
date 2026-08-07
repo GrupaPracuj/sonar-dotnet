@@ -9,36 +9,40 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
-    private const string ConsulNamespace = "Consul";
-
-    // Locking on Consul is GP0040's job, so those members are left to it rather than reported twice.
-    private static readonly HashSet<string> LockMembers = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> AgentDiscoveryMethods = new(StringComparer.Ordinal)
     {
-        "AcquireLock",
-        "CreateLock",
-        "ExecuteLocked",
+        "CheckDeregister",
+        "CheckRegister",
+        "ServiceDeregister",
+        "ServiceRegister",
+    };
+
+    private static readonly HashSet<string> DiscoveryRegistrationTypes = new(StringComparer.Ordinal)
+    {
+        "Consul.AgentCheckRegistration",
+        "Consul.AgentServiceCheck",
+        "Consul.AgentServiceRegistration",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context)
     {
-        context.RegisterNodeAction(AnalyzeMemberAccess, SyntaxKind.SimpleMemberAccessExpression);
+        context.RegisterNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
         context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression, SyntaxKindEx.ImplicitObjectCreationExpression);
     }
 
-    private static void AnalyzeMemberAccess(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
     {
-        var memberAccess = (MemberAccessExpressionSyntax)context.Node;
-        if (LockMembers.Contains(memberAccess.Name.Identifier.ValueText)
-            || IsInsideJuno(context)
-            || context.Model.GetTypeInfo(memberAccess.Expression).Type is not { } type
-            || !IsConsulType(type))
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        if (IsInsideJuno(context)
+            || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !IsDiscoveryMethod(method))
         {
             return;
         }
 
-        context.ReportIssue(Rule, memberAccess, type.Name);
+        context.ReportIssue(Rule, invocation, method.ContainingType.Name);
     }
 
     private static void AnalyzeObjectCreation(SonarSyntaxNodeReportingContext context)
@@ -46,15 +50,25 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
         if (!IsInsideJuno(context)
             && ObjectCreationFactory.TryCreate(context.Node, out var creation)
             && creation.TypeSymbol(context.Model) is { } type
-            && IsConsulType(type))
+            && DiscoveryRegistrationTypes.Contains(type.ToDisplayString())
+            && !IsPartOfReportedDiscoveryInvocation(context))
         {
             context.ReportIssue(Rule, creation.Expression, type.Name);
         }
     }
 
-    private static bool IsConsulType(ITypeSymbol type) =>
-        (type.ContainingNamespace?.ToDisplayString() ?? string.Empty) is var containing
-        && (containing == ConsulNamespace || containing.StartsWith(ConsulNamespace + ".", StringComparison.Ordinal));
+    private static bool IsPartOfReportedDiscoveryInvocation(SonarSyntaxNodeReportingContext context) =>
+        context.Node.Ancestors()
+            .OfType<InvocationExpressionSyntax>()
+            .Select(x => context.Model.GetSymbolInfo(x).Symbol)
+            .OfType<IMethodSymbol>()
+            .Any(IsDiscoveryMethod);
+
+    private static bool IsDiscoveryMethod(IMethodSymbol method) =>
+        GpJunoTypes.Implements(method.ContainingType, "Consul.ICatalogEndpoint")
+        || GpJunoTypes.Implements(method.ContainingType, "Consul.IHealthEndpoint")
+        || (GpJunoTypes.Implements(method.ContainingType, "Consul.IAgentEndpoint")
+            && AgentDiscoveryMethods.Contains(method.Name));
 
     // Juno is the layer that is supposed to wrap Consul, so its own code is not reported.
     private static bool IsInsideJuno(SonarSyntaxNodeReportingContext context) =>

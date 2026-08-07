@@ -12,11 +12,11 @@ var services = await _consul.Catalog.Service("orders");
 var address = services.Response[0].ServiceAddress;
 var response = await _httpClient.GetStringAsync($"http://{address}/orders");
 </pre>
-<p>Registration and health checks are a separate matter: in a GP service they are configured by Juno's host, not written per service, so
+<p>Registration and health checks are configured by Juno's host, not written per service, so
 <code>AgentServiceRegistration</code> appearing in application code is itself the signal that something is being done twice.</p>
 <h3>Exceptions</h3>
 <p>Types under the <code>GP.Juno</code> namespaces are not reported - that is where the Consul client belongs, since Juno is what wraps it. Using Consul as a
-distributed lock is a different concern and is not reported here.</p>
+distributed lock, key-value store, or another non-discovery feature is a different concern and is not reported here.</p>
 <h2>How to fix it</h2>
 <p>Name the service and let Juno resolve it.</p>
 <h3>Code examples</h3>
@@ -24,7 +24,7 @@ distributed lock is a different concern and is not reported here.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public async Task&lt;string&gt; GetOrders()
 {
-    var services = await _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'IConsulClient' directly.}}
+    var services = await _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
     var address = services.Response[0].ServiceAddress;
     return await _httpClient.GetStringAsync($"http://{address}/orders");
 }

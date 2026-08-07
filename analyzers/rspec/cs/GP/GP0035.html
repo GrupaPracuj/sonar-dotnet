@@ -1,5 +1,5 @@
-<p>A database connection should be obtained from Juno, not constructed with <code>new SqlConnection(...)</code> or any other
-<code>DbConnection</code>.</p>
+<p>A database connection should be obtained from Juno, not created with <code>new SqlConnection(...)</code> or directly through a
+<code>DbProviderFactory</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>Constructing the connection yourself means supplying the connection string yourself, which is the actual problem: the address, credentials, failover
 target and pooling settings stop coming from the service's configured data source and start coming from whatever string is in scope at that point. It
@@ -24,7 +24,7 @@ in the connection and the ambient transaction.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public async Task&lt;Order&gt; Find(int id)
 {
-    using var connection = new SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of constructing 'SqlConnection'.}}
+    using var connection = new SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of creating it directly with 'SqlConnection'.}}
     return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
 </pre>

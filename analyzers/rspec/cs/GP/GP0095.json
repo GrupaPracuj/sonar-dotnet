@@ -1,0 +1,32 @@
+{
+  "title": "CORS policies should not allow the null origin",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "cors",
+    "cwe"
+  ],
+  "defaultSeverity": "Critical",
+  "ruleSpecification": "GP-0095",
+  "sqKey": "GP0095",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      346,
+      942
+    ]
+  }
+}

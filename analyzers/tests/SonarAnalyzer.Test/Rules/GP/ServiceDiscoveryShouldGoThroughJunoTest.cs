@@ -22,15 +22,32 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
                 System.Threading.Tasks.Task<ServiceEntry[]> Service(string name);
             }
 
+            public interface IHealthEndpoint
+            {
+                System.Threading.Tasks.Task<ServiceEntry[]> Service(string name);
+            }
+
+            public interface IAgentEndpoint
+            {
+                System.Threading.Tasks.Task ServiceRegister(AgentServiceRegistration registration);
+            }
+
+            public interface IKVEndpoint
+            {
+                System.Threading.Tasks.Task Get(string key);
+            }
+
             public interface IConsulClient
             {
                 ICatalogEndpoint Catalog { get; }
+                IKVEndpoint KV { get; }
                 System.Threading.Tasks.Task AcquireLock(string key);
             }
 
             public class ConsulClient : IConsulClient
             {
                 public ICatalogEndpoint Catalog => null;
+                public IKVEndpoint KV => null;
                 public System.Threading.Tasks.Task AcquireLock(string key) => null;
             }
 
@@ -48,23 +65,22 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
                 private readonly Consul.IConsulClient _consul;
 
                 public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
-                    _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'IConsulClient' directly.}}
-                                                       // Noncompliant@-1 {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                    _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
             }
             """)
             .Verify();
 
     [TestMethod]
-    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantForClientConstruction() =>
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantForClientConstructionAlone() =>
         builder.AddSnippet(
             Stubs + """
 
             public class OrderClient
             {
-                public Consul.IConsulClient Create() => new Consul.ConsulClient(); // Noncompliant {{Resolve the service through Juno instead of querying 'ConsulClient' directly.}}
+                public Consul.IConsulClient Create() => new Consul.ConsulClient();
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantForRegistration() =>
@@ -77,6 +93,35 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantForAgentRegistration() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Startup
+            {
+                private readonly Consul.IAgentEndpoint _agent;
+
+                public System.Threading.Tasks.Task Register() =>
+                    _agent.ServiceRegister(new Consul.AgentServiceRegistration()); // Noncompliant {{Resolve the service through Juno instead of querying 'IAgentEndpoint' directly.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantForConsulKeyValueAccess() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Settings
+            {
+                private readonly Consul.IConsulClient _consul;
+
+                public System.Threading.Tasks.Task Read() => _consul.KV.Get("settings");
+            }
+            """)
+            .VerifyNoIssues();
 
     // Locking on Consul belongs to GP0040, so it is not reported twice.
     [TestMethod]

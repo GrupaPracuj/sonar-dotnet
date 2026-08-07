@@ -1,17 +1,16 @@
-<p>An assembly that holds message contracts should not use domain, ORM, web or transport types.</p>
+<p>An assembly that holds message contracts should not use forbidden ORM, web, transport or other infrastructure types.</p>
 <h2>Why is this an issue?</h2>
 <p>Contracts are the one thing several independently deployed services agree on, which is why they are usually packaged on their own and referenced by
-everybody. The moment a contract assembly uses a type from Entity Framework, ASP.NET Core, MassTransit or the domain, every consumer of the contracts
+everybody. The moment a contract assembly uses a type from Entity Framework, ASP.NET Core, MassTransit or another configured infrastructure namespace,
+every consumer of the contracts
 inherits that dependency - and inherits the version of it the producer happened to build against. A consumer that only wanted to read a message now has to
 resolve an ORM.</p>
-<p>It also drags the coupling the contracts were meant to prevent back in. A domain type reachable from a contract means a change in one service's model is
-a change to the shared package, so the package cannot be versioned independently of either side.</p>
 <p>The rule reports the use of a forbidden type inside a contract assembly rather than the project reference itself, because that points at the code to
 change instead of at the csproj.</p>
 <h3>Exceptions</h3>
 <p>The rule only runs when the assembly's name matches <code>contractAssemblyNames</code>, which defaults to <code>Contracts</code> - so ordinary service
 projects are never reported. <code>forbiddenNamespaces</code> defaults to the ORM, web and transport namespaces; add the domain namespaces to it to cover
-those as well.</p>
+domain dependencies as an explicit project policy.</p>
 <h2>How to fix it</h2>
 <p>Keep contracts on the BCL. Move anything that needs an ORM, a web framework or the bus into the service that owns it, and map to the contract at the
 boundary.</p>

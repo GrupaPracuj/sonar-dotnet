@@ -1,0 +1,25 @@
+<p>An exception filter should not contain an explicit <code>throw</code> expression.</p>
+<h2>Why is this an issue?</h2>
+<p>When an exception filter throws, the CLR catches that exception and treats the filter as if it returned false. The new exception is silently lost,
+making the behavior difficult to distinguish from an intentional rejection by the filter.</p>
+<h2>How to fix it</h2>
+<p>Make the filter return a boolean without throwing. Move work that can fail into the catch body or execute it before entering the guarded operation.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+catch (Exception) when (canHandle ? true : throw new InvalidOperationException()) // Noncompliant {{Remove this throw from the exception filter; the CLR silently treats the filter as false when it throws.}}
+{
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+catch (Exception) when (canHandle)
+{
+}
+</pre>
+<h3>Exceptions</h3>
+<p>A throw inside a lambda declared in a filter is not reported because the lambda can be evaluated later, outside filter execution.</p>
+<h2>Resources</h2>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/exception-throwing">Exception throwing</a></li>
+</ul>

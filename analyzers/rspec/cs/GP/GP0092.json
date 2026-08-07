@@ -1,0 +1,24 @@
+{
+  "title": "Flags enums should not be validated with Enum.IsDefined",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "enum"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0092",
+  "sqKey": "GP0092",
+  "scope": "Main",
+  "quickfix": "unknown"
+}
