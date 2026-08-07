@@ -20,6 +20,10 @@ record structs whose own name ends with <code>Dto</code>, <code>Request</code>, 
 declaration - it goes by name alone, so a contract named differently is not checked.</p>
 <p>Base classes are walked, so a type deriving from <code>Exception</code> or from <code>DbContext</code> is reported too - those are almost always used
 through a derived type.</p>
+<p>The complete banned-type list is <code>System.IO.Stream</code>, <code>Task</code> (including <code>Task&lt;T&gt;</code>),
+<code>IntPtr</code>, <code>UIntPtr</code>, <code>Exception</code> and derived exceptions, <code>Type</code>, <code>Delegate</code> and custom
+delegates, <code>CancellationToken</code>, <code>IServiceProvider</code>, <code>ClaimsPrincipal</code>, <code>DataTable</code>,
+<code>DataSet</code>, <code>HttpContext</code>, and <code>DbContext</code> from either Entity Framework Core or Entity Framework 6.</p>
 <p>Public fields are included because the two serializers disagree about them: <code>Newtonsoft.Json</code> serializes public fields, while
 <code>System.Text.Json</code> ignores fields unless configured otherwise. A non-serializable field therefore either behaves like the property case or
 silently disappears depending on which serializer the endpoint happens to use - neither is a contract worth shipping. <code>static</code> and

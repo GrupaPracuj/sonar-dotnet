@@ -3,9 +3,10 @@
 <p>An event that carries data but no identifier tells a consumer that something happened without saying to what. That makes it unusable for the things
 consumers actually do with events: update their own copy of a record, correlate the fact with work already in progress, or decide whether a newer event has
 superseded an older one. All of those need a stable key, and none of them can use one that only exists inside the producer.</p>
-<p><code>MessageId</code> does not count, and neither does <code>CorrelationId</code>. They identify the <em>message</em>, not the thing the message is about:
-a redelivery produces a different <code>MessageId</code> for the same fact, and republishing through an outbox produces another one again. A consumer keyed
-on them cannot recognise that it has already seen this event, which is precisely the case idempotency depends on.</p>
+<p><code>MessageId</code>, <code>CorrelationId</code>, <code>ConversationId</code>, <code>RequestId</code> and <code>InitiatorId</code> do not count.
+They identify the <em>message</em>, not the thing the message is about: a redelivery produces a different <code>MessageId</code> for the same fact, and
+republishing through an outbox produces another one again. A consumer keyed on transport identifiers cannot recognise that it has already seen this
+event, which is precisely the case idempotency depends on.</p>
 <pre>
 public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOffset OccurredAt);
 

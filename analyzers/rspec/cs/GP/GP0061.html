@@ -1,7 +1,7 @@
 <p>A contract should not carry a copy of the transport's own metadata.</p>
 <h2>Why is this an issue?</h2>
-<p><code>MessageId</code>, <code>ConversationId</code>, <code>CorrelationId</code>, <code>SentTime</code>, <code>SourceAddress</code> and the like are set
-and maintained by the transport, and a consumer reads them from the message context. Copying them into the payload creates a second version of the same
+<p>Transport metadata is set and maintained by the transport, and a consumer reads it from the message context. Copying it into the payload creates a
+second version of the same
 fact that nothing keeps in sync: on a redelivery the transport's value changes while the payload's stays as it was, and now two fields disagree about the
 same message. Whichever one a consumer happens to read becomes a coin toss.</p>
 <p>It also hides which of the two is authoritative. Code that correlates on the payload copy silently stops working when a message is republished by an
@@ -9,6 +9,9 @@ outbox or a retry, because the copy was taken before that happened.</p>
 <pre>
 public sealed record OrderAccepted(Guid OrderId, Guid MessageId, DateTimeOffset SentTime);
 </pre>
+<p>The rule checks these exact, case-sensitive member names: <code>MessageId</code>, <code>ConversationId</code>, <code>CorrelationId</code>,
+<code>RequestId</code>, <code>InitiatorId</code>, <code>SentTime</code>, <code>SourceAddress</code>, <code>DestinationAddress</code>,
+<code>ResponseAddress</code>, <code>FaultAddress</code> and <code>HostInfo</code>.</p>
 <h3>Exceptions</h3>
 <p>A field with a genuinely separate business meaning is not the same thing as a copy of the metadata - if the value is the identifier of something in the
 domain, name it after that (<code>OrderId</code>, <code>ProcessId</code>) and the rule will not match it.</p>

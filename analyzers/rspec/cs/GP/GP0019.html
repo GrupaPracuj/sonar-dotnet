@@ -10,6 +10,15 @@ _logger.LogInformation("User authenticated with {Password}", password);
 <code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
 each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not trace
 where the value itself originally came from.</p>
+<p>The complete list of secret words is: <code>password</code>, <code>pwd</code>, <code>secret</code>, <code>token</code>, <code>apiKey</code>,
+<code>credential</code>, <code>credentials</code>, <code>privateKey</code>, <code>connectionString</code>, <code>bearer</code> and
+<code>sessionId</code>. Matching is case-insensitive and joins up to three adjacent camel-case, Pascal-case or underscore-separated words, so names
+such as <code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</code> and <code>ConnectionString</code> are covered.</p>
+<h3>Exceptions</h3>
+<p>A trailing <code>Id</code>, <code>Ids</code>, <code>Reference</code>, <code>References</code>, <code>Ref</code>, <code>Name</code>,
+<code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
+name points at, or describes, a secret rather than containing it. For example, <code>ApiKeyId</code>, <code>CredentialReference</code>,
+<code>SecretUri</code> and <code>PasswordLength</code> are not reported.</p>
 <h2>How to fix it</h2>
 <p>Remove the secret from the log call entirely, or replace it with a non-reversible indicator (for example whether a value was present, or its
 length) if that is genuinely useful for diagnostics.</p>

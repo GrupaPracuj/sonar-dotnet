@@ -20,9 +20,12 @@ public async Task&lt;IActionResult&gt; Confirm(int id)
     return Ok();
 }
 </pre>
-<p>The rule reports calls that persist (<code>SaveChanges</code>, <code>SaveChangesAsync</code>, <code>Add</code>, <code>Update</code>,
-<code>Remove</code>, <code>ExecuteDelete</code>, <code>ExecuteUpdate</code> on an EF context or set) and calls that publish or send a message, made
-directly in the body of an action annotated with <code>[HttpGet]</code>.</p>
+<p>The rule reports these EF Core or EF6 persistence calls on a context, set or EF extension type: <code>SaveChanges</code>,
+<code>SaveChangesAsync</code>, <code>Add</code>, <code>AddAsync</code>, <code>AddRange</code>, <code>AddRangeAsync</code>, <code>Update</code>,
+<code>UpdateRange</code>, <code>Remove</code>, <code>RemoveRange</code>, <code>ExecuteDelete</code>, <code>ExecuteDeleteAsync</code>,
+<code>ExecuteUpdate</code> and <code>ExecuteUpdateAsync</code>. It also reports GP.Juno or MassTransit calls to <code>Publish</code>,
+<code>PublishBatch</code>, <code>Send</code> and <code>RespondAsync</code>. Only calls made directly in an action annotated with
+<code>[HttpGet]</code> are checked.</p>
 <h3>Exceptions</h3>
 <p>Work reached through a service the action calls is not reported - the rule does not follow the call graph, so it sees only what the action does
 itself. An issue here is therefore reliable, but its absence is not proof that the endpoint is read-only.</p>

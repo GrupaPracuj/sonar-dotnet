@@ -11,6 +11,10 @@ _logger.LogInformation("New user registered with {Email}", email);
 <code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
 each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not know
 whether logging this particular field is actually required for audit purposes in your context.</p>
+<p>The complete, case-insensitive list is <code>email</code>, <code>pesel</code>, <code>phone</code>, <code>iban</code>, <code>surname</code>,
+<code>firstName</code>, <code>lastName</code>, <code>birthDate</code>, <code>dateOfBirth</code> and <code>creditCard</code>. Up to three adjacent
+camel-case, Pascal-case or underscore-separated words are joined before matching, so <code>DateOfBirth</code>, <code>dateOfBirth</code> and
+<code>date_of_birth</code> all match. Short abbreviations such as <code>dob</code> are deliberately excluded to avoid unrelated matches.</p>
 <h2>How to fix it</h2>
 <p>Log an identifier that isn't personal data on its own (for example a user ID) instead of the personal data itself, or mask/truncate the value if
 some of it is genuinely needed for support.</p>

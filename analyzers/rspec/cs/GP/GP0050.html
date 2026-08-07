@@ -19,7 +19,9 @@ public sealed record DocumentUploadedContract(Guid DocumentId, byte[] FileConten
 <h3>Exceptions</h3>
 <p><code>Stream</code> members are not reported here: a stream does not serialize meaningfully at all rather than merely serializing badly, which is a
 different defect with a different fix. This rule covers <code>byte[]</code>, other byte collections, and members whose name says they hold content
-(<code>FileContent</code>, <code>AttachmentContent</code>, <code>BinaryData</code>, <code>FileBytes</code>).</p>
+(<code>FileContent</code>, <code>AttachmentContent</code>, <code>BinaryData</code>, <code>FileBytes</code>, <code>ContentBytes</code> or
+<code>RawContent</code>). The name-based check applies regardless of the declared type, so it also catches a base64 payload stored in a
+<code>string</code>.</p>
 <p>A small fixed-size byte array is not distinguishable from a large one by type alone, so a checksum or a hash stored as <code>byte[]</code> is
 reported too. Where that is intended, name it for what it is (<code>Checksum</code> as a string, or <code>ContentHash</code>) or suppress the issue on
 that member.</p>

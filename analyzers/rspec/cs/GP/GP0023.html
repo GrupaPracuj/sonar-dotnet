@@ -9,9 +9,15 @@ strong hint that a value meant to stay confidential is being passed exactly wher
 public IActionResult GetByToken(string token) { /* ... */ }
 </pre>
 <p>Only route <em>parameters</em> (<code>{name}</code>) are checked, not literal path segments - a fixed segment like <code>/api-keys</code> is just
-a resource name, it doesn't carry a caller-supplied value. A name that only points at a secret rather than holding one is not reported either:
-a trailing <code>Id</code>, <code>Reference</code>, <code>Name</code>, <code>Uri</code>, <code>Path</code>, <code>Type</code>, <code>Count</code> or
-<code>Length</code> makes <code>{apiKeyId}</code> and <code>{credentialReference}</code> compliant.</p>
+a resource name, it doesn't carry a caller-supplied value.</p>
+<p>The complete list of secret words is: <code>password</code>, <code>pwd</code>, <code>secret</code>, <code>token</code>, <code>apiKey</code>,
+<code>credential</code>, <code>credentials</code>, <code>privateKey</code>, <code>connectionString</code>, <code>bearer</code> and
+<code>sessionId</code>. Matching is case-insensitive and joins up to three adjacent camel-case, Pascal-case or underscore-separated words.</p>
+<h3>Exceptions</h3>
+<p>A trailing <code>Id</code>, <code>Ids</code>, <code>Reference</code>, <code>References</code>, <code>Ref</code>, <code>Name</code>,
+<code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
+parameter points at, or describes, a secret rather than containing it. For example, <code>{apiKeyId}</code>,
+<code>{credentialReference}</code> and <code>{passwordLength}</code> are not reported.</p>
 <h2>How to fix it</h2>
 <p>Pass the value in the request body, in an <code>Authorization</code> header, or as a short-lived opaque identifier instead of a path segment.</p>
 <h3>Code examples</h3>

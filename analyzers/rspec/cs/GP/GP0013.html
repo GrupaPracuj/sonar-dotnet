@@ -8,6 +8,22 @@ HTTP method - for example <code>[HttpPost("get-order")]</code> - it actively mis
 [HttpGet("get-orders")]
 public void GetAll() { }
 </pre>
+<h3>Checked verbs</h3>
+<p>The fixed, case-insensitive list is:</p>
+<ul>
+  <li>CRUD and HTTP operations: <code>get</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>remove</code>,
+  <code>add</code>, <code>fetch</code>, <code>list</code>, <code>edit</code>, <code>modify</code>, <code>set</code>, <code>retrieve</code>,
+  <code>save</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>insert</code>.</li>
+  <li>Queries: <code>find</code>, <code>search</code>, <code>query</code>, <code>load</code>, <code>read</code>.</li>
+  <li>Validation: <code>verify</code>, <code>check</code>.</li>
+  <li>Workflow: <code>cancel</code>, <code>approve</code>, <code>reject</code>, <code>confirm</code>, <code>activate</code>,
+  <code>deactivate</code>, <code>enable</code>, <code>disable</code>, <code>start</code>, <code>stop</code>, <code>assign</code>,
+  <code>register</code>.</li>
+  <li>Transfer and notification: <code>upload</code>, <code>download</code>, <code>send</code>, <code>submit</code>, <code>notify</code>,
+  <code>sync</code>, <code>refresh</code>.</li>
+  <li>Generic actions: <code>execute</code>, <code>run</code>, <code>perform</code>, <code>process</code>, <code>generate</code>,
+  <code>calculate</code>.</li>
+</ul>
 <h3>Exceptions</h3>
 <p>A word that merely starts with the same letters as a verb, without a real word boundary (<code>-</code>, <code>_</code>, or an uppercase letter)
 after it, is not flagged: <code>addresses</code> is compliant even though it starts with <code>add</code>, and so are <code>checks</code>,

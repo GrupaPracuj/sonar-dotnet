@@ -10,6 +10,19 @@ casing style (such as the naming-convention rules driven by <code>dotnet_naming_
 perfectly fine.</p>
 <p>This rule checks identifiers against a small, fixed dictionary taken directly from Microsoft's table - not a general-purpose spell checker - so it
 only ever fires on one of these specific, well-known terms, and false positives on unrelated words are effectively impossible.</p>
+<h3>Checked spellings</h3>
+<p>The complete set of corrections is:</p>
+<ul>
+  <li>Single-word fixes: <code>Cancelled</code> to <code>Canceled</code>, <code>EMail</code> to <code>Email</code>, <code>ID</code> to
+  <code>Id</code>, <code>OK</code> to <code>Ok</code>, <code>PI</code> to <code>Pi</code>, and <code>Writeable</code> to
+  <code>Writable</code>.</li>
+  <li>Words that should be split: <code>Bitflag</code> to <code>BitFlag</code>, <code>Filename</code> to <code>FileName</code>,
+  <code>Username</code> to <code>UserName</code>, and <code>Whitespace</code> to <code>WhiteSpace</code>.</li>
+  <li>Words that should be joined: <code>CallBack</code> to <code>Callback</code>, <code>EndPoint</code> to <code>Endpoint</code>,
+  <code>GridLine</code> to <code>Gridline</code>, <code>HashTable</code> to <code>Hashtable</code>, <code>MetaData</code> to
+  <code>Metadata</code>, <code>MultiPanel</code> to <code>Multipanel</code>, <code>MultiView</code> to <code>Multiview</code>,
+  <code>NameSpace</code> to <code>Namespace</code>, and <code>PlaceHolder</code> to <code>Placeholder</code>.</li>
+</ul>
 <h3>Exceptions</h3>
 <p>A method or property is not flagged when its name is not the author's free choice to make: an <code>override</code> of a base member, or a member
 that implements an interface member (explicitly, or implicitly by matching name and signature) by name, must keep the name it was given. Renaming it

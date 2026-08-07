@@ -9,14 +9,18 @@ change for every consumer that already reads it.</p>
 <pre>
 public sealed record ServiceRegistered(string ServiceName, string ApiKey);
 </pre>
-<p>Names are matched word by word, so <code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</code> and <code>ConnectionString</code> all
-match. A name that only points at a secret rather than holding one does not: a trailing <code>Id</code>, <code>Reference</code>, <code>Name</code>,
-<code>Uri</code>, <code>Path</code>, <code>Type</code>, <code>Count</code> or <code>Length</code> makes <code>ApiKeyId</code>,
-<code>CredentialReference</code> and <code>SecretUri</code> compliant - which matters, because those are exactly the shapes this rule recommends as the
-fix.</p>
+<p>The complete list of secret words is: <code>password</code>, <code>pwd</code>, <code>secret</code>, <code>token</code>, <code>apiKey</code>,
+<code>credential</code>, <code>credentials</code>, <code>privateKey</code>, <code>connectionString</code>, <code>bearer</code> and
+<code>sessionId</code>. Matching is case-insensitive and joins up to three adjacent camel-case, Pascal-case or underscore-separated words, so
+<code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</code> and <code>ConnectionString</code> all match.</p>
 <h3>Exceptions</h3>
+<p>A trailing <code>Id</code>, <code>Ids</code>, <code>Reference</code>, <code>References</code>, <code>Ref</code>, <code>Name</code>,
+<code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
+name points at, or describes, a secret rather than containing it. For example, <code>ApiKeyId</code>, <code>CredentialReference</code>,
+<code>SecretUri</code> and <code>PasswordLength</code> are not reported.</p>
 <p>Only types whose own name ends with one of the contract suffixes are examined, the same convention the other contract rules use, so an internal
-options class that legitimately carries a secret is not reported.</p>
+options class that legitimately carries a secret is not reported. Those suffixes are <code>Dto</code>, <code>Request</code>, <code>Response</code>,
+<code>Contract</code>, <code>Event</code>, <code>Command</code> and <code>Message</code>.</p>
 <h2>How to fix it</h2>
 <p>Do not move the secret. Send a reference the consumer can exchange for the secret through a channel that authenticates it - a secret identifier, a
 key vault path, or a short-lived token requested by the consumer itself.</p>

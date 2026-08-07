@@ -22,6 +22,9 @@ reports a public, parameterless, non-static method returning <code>void</code> o
 a test in every framework and is unusual for a helper. A method with any attribute is left alone, which covers the fixture lifecycle
 (<code>[TestInitialize]</code>, <code>[SetUp]</code>, <code>[OneTimeTearDown]</code>, ...), and so is <code>Dispose</code>, which is how xUnit expresses
 teardown.</p>
+<p>The recognized test attributes, with or without the <code>Attribute</code> suffix, are: MSTest <code>[TestMethod]</code> and
+<code>[DataTestMethod]</code>; xUnit <code>[Fact]</code> and <code>[Theory]</code>; NUnit <code>[Test]</code>, <code>[TestCase]</code> and
+<code>[TestCaseSource]</code>. Both <code>Dispose</code> and <code>DisposeAsync</code> are excluded as lifecycle methods.</p>
 <h2>How to fix it</h2>
 <p>Add the test attribute the rest of the class uses, or - if the method really is a helper - make it private so its intent is unambiguous.</p>
 <h3>Code examples</h3>
