@@ -1,55 +1,27 @@
-<p>A database entity or domain object should not be published, sent or consumed as a message.</p>
+<p>Published message types should be declared in a dedicated contract assembly, such as <code>GP.Kaczawa.Contracts</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>A message is a contract between two independently deployed services. An entity is an implementation detail of one of them. Using the entity as the
-message welds the two together: the moment somebody adds a column, renames a property or introduces a navigation property, the wire format of a
-published message changes - and it changes for every consumer, in a deployment that only touched the producer's database.</p>
-<p>The failure is asymmetric and delayed, which is what makes it expensive. The producer's tests pass, the schema migration looks routine, and the
-breakage surfaces in another team's service, at a time nobody connects to the change that caused it.</p>
-<p>Entities also serialize badly. Navigation properties drag half the object graph onto the queue or throw on a lazy-loading proxy, and EF's change
-tracking metadata is meaningless on the other side.</p>
-<pre>
-public class Order            // EF entity, mapped by DbSet&lt;Order&gt;
-{
-    public int Id { get; set; }
-    public Customer Customer { get; set; }
-}
-
-await publisher.Publish(order);
-</pre>
-<p>A type is treated as an entity when any of the following holds: it appears as the element type of a <code>DbSet&lt;T&gt;</code>, it carries EF mapping
-attributes (<code>[Table]</code>, <code>[Key]</code>, <code>[Column]</code>, <code>[ForeignKey]</code>), or it derives from one of the base types listed
-in the <code>entityBaseTypes</code> parameter, or it is declared in one of the namespaces listed in <code>domainNamespaces</code>.</p>
-<h3>Exceptions</h3>
-<p>The rule reports the publish, send or consume site rather than the entity, so an entity that is never used as a message is never reported. Both
-parameters default to empty, which means that out of the box only the two framework-based signals apply - <code>DbSet&lt;T&gt;</code> membership and EF
-attributes - and the namespace and base-type conventions have to be configured per solution.</p>
+<p>A message is a contract between independently deployed services. Declaring it inside the producer service makes the producer assembly the source of
+the wire contract and encourages consumers to depend on service implementation code. A dedicated contracts project gives both sides a small,
+versionable dependency containing only shared message definitions.</p>
 <h2>How to fix it</h2>
-<p>Declare a contract type for the message and map the entity onto it at the boundary. The mapping is the seam that lets the schema and the contract
-change independently.</p>
+<p>Move the message type into the repository's contracts project and publish that type. An assembly named <code>Contracts</code> or ending in
+<code>.Contracts</code> is accepted by default.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public class Order
-{
-    [Key]
-    public int Id { get; set; }
-    public Customer Customer { get; set; }
-}
+// Declared in GP.Kaczawa.Api
+public sealed record OrderAccepted(Guid OrderId);
 
-public Task Accept(Order order) =&gt;
-    _publisher.Publish(order); // Noncompliant {{'Order' is a database entity - use a dedicated contract type as the message instead.}}
+await publisher.Publish(new OrderAccepted(order.Id)); // Noncompliant {{Publish 'OrderAccepted' from a contract assembly; it is declared in 'GP.Kaczawa.Api'.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public sealed record OrderAccepted(Guid OrderId, string CustomerReference, DateTimeOffset OccurredAt);
+// Declared in GP.Kaczawa.Contracts
+public sealed record OrderAccepted(Guid OrderId);
 
-public Task Accept(Order order) =&gt;
-    _publisher.Publish(new OrderAccepted(order.PublicId, order.Customer.Reference, DateTimeOffset.UtcNow));
+await publisher.Publish(new OrderAccepted(order.Id));
 </pre>
-<h2>Resources</h2>
-<h3>Documentation</h3>
-<ul>
-  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/multi-container-microservice-net-applications/integration-event-based-microservice-communications">Implementing event-based communication between microservices (integration events)</a></li>
-  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/architecture/microservices/architect-microservice-container-applications/distributed-data-management">Challenges
-  in managing data in microservices</a></li>
-</ul>
+<h3>Exceptions</h3>
+<p>The comma-separated <code>contractAssemblyNames</code> parameter changes the accepted exact names or final assembly-name segments. Anonymous, dynamic
+and loose payload shapes remain the responsibility of GP0055 and are not reported twice by this rule. Consumer declarations are outside this rule's
+scope.</p>

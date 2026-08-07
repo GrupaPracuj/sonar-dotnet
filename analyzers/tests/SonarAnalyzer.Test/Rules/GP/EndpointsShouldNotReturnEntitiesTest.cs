@@ -141,27 +141,8 @@ public class EndpointsShouldNotReturnEntitiesTest
         builder.AddSnippet(ConfiguredEntityStubs.Replace(" // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}", string.Empty))
             .VerifyNoIssues();
 
-    [TestMethod]
-    public void EndpointsShouldNotReturnEntities_NoncompliantForConfiguredDomainNamespace() =>
-        CreateBuilder(domainNamespaces: "Shop.Domain")
-            .AddSnippet(
-                Stubs + """
-
-                namespace Shop.Domain
-                {
-                    public sealed class Invoice { }
-                }
-
-                public class InvoicesController : Microsoft.AspNetCore.Mvc.ControllerBase
-                {
-                    [Microsoft.AspNetCore.Mvc.HttpGet]
-                    public Shop.Domain.Invoice Get(int id) => null; // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}
-                }
-                """)
-            .Verify();
-
-    private static VerifierBuilder CreateBuilder(string entityBaseTypes = "", string domainNamespaces = "") =>
+    private static VerifierBuilder CreateBuilder(string entityBaseTypes = "") =>
         new VerifierBuilder()
-            .AddAnalyzer(() => new CS.EndpointsShouldNotReturnEntities { EntityBaseTypes = entityBaseTypes, DomainNamespaces = domainNamespaces })
+            .AddAnalyzer(() => new CS.EndpointsShouldNotReturnEntities { EntityBaseTypes = entityBaseTypes })
             .WithOptions(LanguageOptions.CSharpLatest);
 }

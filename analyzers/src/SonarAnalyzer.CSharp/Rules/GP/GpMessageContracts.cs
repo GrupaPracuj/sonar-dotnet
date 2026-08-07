@@ -17,6 +17,14 @@ internal static class GpMessageContracts
         "PublishBatch",
     };
 
+    private static readonly Dictionary<string, string> ShapelessTypes = new(StringComparer.Ordinal)
+    {
+        ["System.Dynamic.ExpandoObject"] = "an ExpandoObject",
+        ["System.Text.Json.JsonElement"] = "a JsonElement",
+        ["System.Text.Json.JsonDocument"] = "a JsonDocument",
+        ["Newtonsoft.Json.Linq.JObject"] = "a JObject",
+    };
+
     // Publish/Send/Consume only carry real messaging semantics when they come from GP.Juno or MassTransit - the same
     // namespace-based test CommitAndPublishShouldNotBeADualWrite (GP0048) and PublishedMessageShouldHaveExplicitContract
     // (GP0055) already rely on, so a same-named member on an unrelated type (MediatR, Prism, Rx, a hand-rolled bus,
@@ -75,6 +83,36 @@ internal static class GpMessageContracts
                && model.GetTypeInfo(firstArgument).Type is INamedTypeSymbol argumentType
                && argumentType.SpecialType != SpecialType.System_Object
             ? argumentType
+            : null;
+    }
+
+    internal static string DescribeShapelessType(ITypeSymbol type)
+    {
+        if (type.IsAnonymousType)
+        {
+            return "an anonymous type";
+        }
+
+        if (type.SpecialType == SpecialType.System_Object)
+        {
+            return "'object'";
+        }
+
+        if (type.TypeKind == TypeKind.Dynamic)
+        {
+            return "'dynamic'";
+        }
+
+        if (ShapelessTypes.TryGetValue(type.ToDisplayString(), out var known))
+        {
+            return known;
+        }
+
+        return type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 2 } dictionary
+               && GpCollectionEndpointHelper.IsCollectionLike(dictionary)
+               && dictionary.TypeArguments[0].SpecialType == SpecialType.System_String
+               && dictionary.TypeArguments[1].SpecialType == SpecialType.System_Object
+            ? "a loose dictionary"
             : null;
     }
 

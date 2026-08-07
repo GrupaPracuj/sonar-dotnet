@@ -1,4 +1,6 @@
-﻿namespace SonarAnalyzer.CSharp.Rules;
+﻿using System.Collections.Concurrent;
+
+namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAnalyzer
@@ -45,9 +47,14 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(EventSuffixRule, CommandSuffixRule, BehaviorFreeMessageRule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
-        context.RegisterNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var behaviorMethods = new ConcurrentDictionary<string, IMethodSymbol>(StringComparer.Ordinal);
+            start.RegisterNodeAction(c => AnalyzeInvocation(c, behaviorMethods), SyntaxKind.InvocationExpression);
+            start.RegisterCompilationEndAction(c => ReportBehaviorMethods(c, behaviorMethods.Values));
+        });
 
-    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context, ConcurrentDictionary<string, IMethodSymbol> behaviorMethods)
     {
         if (context.Node is not InvocationExpressionSyntax invocation
             || !TryGetMessageInvocation(context.Model, invocation, out var messageType, out var reportNode))
@@ -65,13 +72,40 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
             context.ReportIssue(CommandSuffixRule, reportNode, messageType.Name);
         }
 
-        // Reported at the registration site rather than on the contract's own declaration: the declaration usually
-        // lives in a different file (often a different project), and a diagnostic reported outside the syntax tree
-        // being analyzed is dropped by Roslyn when files are analyzed individually.
-        if (HasBusinessBehavior(messageType))
+        var methods = BusinessBehaviorMethods(messageType).ToArray();
+        var methodsWithSource = methods.Where(x => MethodIdentifier(x) is not null).ToArray();
+        foreach (var method in methodsWithSource)
+        {
+            behaviorMethods.TryAdd(method.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), method);
+        }
+
+        // Metadata does not retain source locations. Keep the registration as a fallback for contracts referenced
+        // from a compiled assembly, while source contracts are reported directly on every offending method.
+        if (methods.Length > 0 && methodsWithSource.Length == 0)
         {
             context.ReportIssue(BehaviorFreeMessageRule, reportNode, messageType.Name);
         }
+    }
+
+    private static void ReportBehaviorMethods(SonarCompilationReportingContext context, IEnumerable<IMethodSymbol> methods)
+    {
+        foreach (var method in methods)
+        {
+            if (MethodIdentifier(method) is { } identifier)
+            {
+                context.ReportIssue(CSharpGeneratedCodeRecognizer.Instance, BehaviorFreeMessageRule, identifier.GetLocation(), messageArgs: new[] { method.ContainingType.Name });
+            }
+        }
+    }
+
+    private static SyntaxToken? MethodIdentifier(IMethodSymbol method)
+    {
+        var declarations = method.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<MethodDeclarationSyntax>()
+            .ToArray();
+        return (declarations.FirstOrDefault(x => x.Body is not null || x.ExpressionBody is not null)
+                ?? declarations.FirstOrDefault())?.Identifier;
     }
 
     private static bool TryGetMessageInvocation(SemanticModel model, InvocationExpressionSyntax invocation, out INamedTypeSymbol messageType, out SyntaxNode reportNode)
@@ -141,12 +175,12 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     // Compiler-generated members (a record's Equals/ToString/Deconstruct), overrides, explicit interface
     // implementations and value-semantics members are not business behavior - only a method the author added to
     // make the message *do* something is.
-    private static bool HasBusinessBehavior(INamedTypeSymbol messageType) =>
+    private static IEnumerable<IMethodSymbol> BusinessBehaviorMethods(INamedTypeSymbol messageType) =>
         messageType.GetMembers()
             .OfType<IMethodSymbol>()
-            .Any(x => x is { MethodKind: MethodKind.Ordinary, IsOverride: false, IsImplicitlyDeclared: false, ExplicitInterfaceImplementations.IsEmpty: true }
-                      && !ValueSemanticsMethods.Contains(x.Name)
-                      && !IsFactoryMethod(x, messageType));
+            .Where(x => x is { MethodKind: MethodKind.Ordinary, IsOverride: false, IsImplicitlyDeclared: false, ExplicitInterfaceImplementations.IsEmpty: true }
+                        && !ValueSemanticsMethods.Contains(x.Name)
+                        && !IsFactoryMethod(x, messageType));
 
     // A static method handing back an instance of the contract itself constructs the message rather than acting on it.
     private static bool IsFactoryMethod(IMethodSymbol method, INamedTypeSymbol messageType) =>

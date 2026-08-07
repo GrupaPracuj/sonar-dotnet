@@ -353,7 +353,7 @@ public class RouteNamingConventionsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void RouteNamingConventions_NoncompliantExpandedVerbList() =>
+    public void RouteNamingConventions_CompliantValidateOperation() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc.Routing
@@ -379,11 +379,11 @@ public class RouteNamingConventionsTest
 
             public class OrdersController
             {
-                [Microsoft.AspNetCore.Mvc.HttpPost("orders/{id}/validate-payment")] // Noncompliant {{Remove the verb 'validate' from the route; the HTTP method already expresses the action.}}
+                [Microsoft.AspNetCore.Mvc.HttpPost("orders/{id}/validate-payment")]
                 public void ValidatePayment(int id) { }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void RouteNamingConventions_NoncompliantSecretRouteParameter() =>

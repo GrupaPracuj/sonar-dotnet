@@ -38,23 +38,6 @@ public class ContractShouldNotInheritDomainTypeTest
             """)
             .Verify();
 
-    [TestMethod]
-    public void ContractShouldNotInheritDomainType_NoncompliantForConfiguredDomainNamespace() =>
-        CreateBuilderWithConfiguration(domainNamespaces: "MyCompany.Domain")
-            .AddSnippet(
-            Stubs + """
-
-            namespace MyCompany.Domain
-            {
-                public class Customer { }
-            }
-
-            public class CustomerRegisteredContract : MyCompany.Domain.Customer // Noncompliant {{'Customer' is a domain type - a contract that inherits it publishes the whole entity.}}
-            {
-            }
-            """)
-            .Verify();
-
     // Inheriting another contract or implementing a marker is fine - only a domain base class is reported.
     [TestMethod]
     public void ContractShouldNotInheritDomainType_CompliantForContractBaseAndMarker() =>
@@ -126,8 +109,8 @@ public class ContractShouldNotInheritDomainTypeTest
             .Verify();
     }
 
-    private static VerifierBuilder CreateBuilderWithConfiguration(string entityBaseTypes = "", string domainNamespaces = "") =>
+    private static VerifierBuilder CreateBuilderWithConfiguration(string entityBaseTypes = "") =>
         new VerifierBuilder()
-            .AddAnalyzer(() => new CS.ContractShouldNotInheritDomainType { EntityBaseTypes = entityBaseTypes, DomainNamespaces = domainNamespaces })
+            .AddAnalyzer(() => new CS.ContractShouldNotInheritDomainType { EntityBaseTypes = entityBaseTypes })
             .WithOptions(LanguageOptions.CSharpLatest);
 }

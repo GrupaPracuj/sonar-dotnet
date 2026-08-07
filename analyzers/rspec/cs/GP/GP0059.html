@@ -8,9 +8,10 @@ resolve an ORM.</p>
 <p>The rule reports the use of a forbidden type inside a contract assembly rather than the project reference itself, because that points at the code to
 change instead of at the csproj.</p>
 <h3>Exceptions</h3>
-<p>The rule only runs when the assembly's name matches <code>contractAssemblyNames</code>, which defaults to <code>Contracts</code> - so ordinary service
-projects are never reported. <code>forbiddenNamespaces</code> defaults to the ORM, web and transport namespaces; add the domain namespaces to it to cover
-domain dependencies as an explicit project policy.</p>
+<p>The rule only runs when the assembly's exact name or final name segment matches <code>contractAssemblyNames</code>, which defaults to
+<code>Contracts</code> - so <code>Contracts</code> and names ending in <code>.Contracts</code> are checked, while ordinary service projects are never
+reported. <code>forbiddenNamespaces</code> defaults to the ORM, web and transport namespaces; add domain namespaces to it only as an explicit project
+policy.</p>
 <h2>How to fix it</h2>
 <p>Keep contracts on the BCL. Move anything that needs an ORM, a web framework or the bus into the service that owns it, and map to the contract at the
 boundary.</p>

@@ -19,6 +19,19 @@ public class PublishedMessageShouldHaveExplicitContractTest
             }
         }
 
+        namespace GP.Juno.Abstractions
+        {
+            public class AppConfig { }
+        }
+
+        namespace GP.Juno.EventStream
+        {
+            public static class AppConfigExtensions
+            {
+                public static GP.Juno.Abstractions.AppConfig Publishes<T>(this GP.Juno.Abstractions.AppConfig config) => config;
+            }
+        }
+
         public sealed record OrderAccepted(System.Guid OrderId);
         """;
 
@@ -63,6 +76,19 @@ public class PublishedMessageShouldHaveExplicitContractTest
 
                 public System.Threading.Tasks.Task Accept(object payload) =>
                     _publisher.Publish(payload); // Noncompliant {{Publish a declared contract type instead of 'object'.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void PublishedMessageShouldHaveExplicitContract_NoncompliantForShapelessPublishDeclaration() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Startup
+            {
+                public void Configure(GP.Juno.Abstractions.AppConfig config) =>
+                    GP.Juno.EventStream.AppConfigExtensions.Publishes<object>(config); // Noncompliant {{Publish a declared contract type instead of 'object'.}}
             }
             """)
             .Verify();

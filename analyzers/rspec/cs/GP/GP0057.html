@@ -19,8 +19,8 @@ public class OrderAcceptedContract : Order   // Order is an EF entity
     public DateTimeOffset OccurredAt { get; init; }
 }
 </pre>
-<p>A base type counts as domain on any of these signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or the configured
-<code>entityBaseTypes</code> and <code>domainNamespaces</code>.</p>
+<p>A base type counts as an entity only on deterministic signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or inheritance
+from one of the explicitly configured <code>entityBaseTypes</code>. A namespace alone is not treated as evidence.</p>
 <h3>Exceptions</h3>
 <p>Inheriting from another contract, or implementing a marker interface, is not reported - only a base <em>class</em> that is a domain type.</p>
 <h2>How to fix it</h2>

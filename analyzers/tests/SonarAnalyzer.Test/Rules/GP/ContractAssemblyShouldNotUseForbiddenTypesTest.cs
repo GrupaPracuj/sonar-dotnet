@@ -18,8 +18,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
         }
         """;
 
-    // The verifier compiles snippets into an assembly whose name does not contain "Contracts", so the default
-    // configuration would never fire - the tests name the assembly through the parameter instead.
+    // The verifier compiles snippets into project0, so tests that exercise the rule name that assembly explicitly.
     [TestMethod]
     public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForEntityFrameworkType() =>
         CreateBuilder()
@@ -85,6 +84,21 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_CompliantForAssemblyContainingSimilarWord() =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "project" })
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+            Stubs + """
+
+            public sealed class OrderAcceptedContract
+            {
+                public Microsoft.EntityFrameworkCore.DbContext Context { get; init; }
+            }
+            """)
+            .VerifyNoIssues();
+
     // A namespace the team wants kept out of its contracts is reported once it is named, even though it is not one of the defaults.
     [TestMethod]
     public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForConfiguredNamespace() =>
@@ -120,14 +134,14 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
 
     private static VerifierBuilder CreateBuilder() =>
         new VerifierBuilder()
-            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "project" })
+            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "project0" })
             .WithOptions(LanguageOptions.CSharpLatest);
 
     private static VerifierBuilder CreateBuilder(string forbiddenNamespaces) =>
         new VerifierBuilder()
             .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes
             {
-                ContractAssemblyNames = "project",
+                ContractAssemblyNames = "project0",
                 ForbiddenNamespaces = forbiddenNamespaces,
             })
             .WithOptions(LanguageOptions.CSharpLatest);

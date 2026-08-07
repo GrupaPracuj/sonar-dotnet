@@ -11,7 +11,8 @@ public void GetAll() { }
 <h3>Exceptions</h3>
 <p>A word that merely starts with the same letters as a verb, without a real word boundary (<code>-</code>, <code>_</code>, or an uppercase letter)
 after it, is not flagged: <code>addresses</code> is compliant even though it starts with <code>add</code>, and so are <code>checks</code>,
-<code>searches</code> and <code>confirmations</code>.</p>
+<code>searches</code> and <code>confirmations</code>. <code>validate</code> is also not flagged because validation can be a distinct operation whose
+semantics are not expressed by the HTTP method alone.</p>
 <h2>How to fix it</h2>
 <p>Remove the verb from the path and let the HTTP method express the action; keep the path itself a plural noun for the resource.</p>
 <h3>Code examples</h3>

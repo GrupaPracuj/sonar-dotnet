@@ -23,8 +23,8 @@ the contract itself a stable, predictable data shape.</p>
 value rather than act on it: overrides, explicit interface implementations, <code>Equals</code>/<code>GetHashCode</code>/<code>ToString</code>/
 <code>Deconstruct</code>/<code>Clone</code>, and everything a <code>record</code> declaration generates for you. A static method that returns an
 instance of the contract itself is a factory - it constructs the message rather than acting on it - and is not flagged either.</p>
-<p>The issue is reported at the point where the contract is registered for publishing or sending, not on the contract's own declaration - the
-declaration usually lives in a different file, often a different project, than the registration.</p>
+<p>Each issue points to the method that introduces behavior. If a contract comes from a compiled assembly whose source location is unavailable, the
+publishing or sending registration is used as a fallback location.</p>
 <h2>How to fix it</h2>
 <p>Move any behavior out of the message class and into the component that handles the message. The message class itself should only expose the data
 needed to describe the event or command.</p>
@@ -35,10 +35,10 @@ public class NotifyUser
 {
     public string Email { get; set; }
 
-    public void SendNow() { /* ... calls an email service directly ... */ }
+    public void SendNow() { /* ... calls an email service directly ... */ } // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
 }
 
-appConfig.Sends&lt;NotifyUser&gt;(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+appConfig.Sends&lt;NotifyUser&gt;();
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">

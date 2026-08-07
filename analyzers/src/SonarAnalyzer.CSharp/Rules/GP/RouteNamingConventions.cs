@@ -27,8 +27,9 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
         "get", "create", "update", "delete", "remove", "add", "fetch", "list", "edit", "modify", "set", "retrieve", "save", "post", "put", "patch", "insert",
         // Retrieval / query verbs
         "find", "search", "query", "load", "read",
-        // Validation verbs
-        "validate", "verify", "check",
+        // Validation verbs. "validate" is intentionally excluded because validation is often a distinct operation
+        // whose semantics cannot be expressed by an HTTP method alone.
+        "verify", "check",
         // Lifecycle / workflow action verbs
         "cancel", "approve", "reject", "confirm", "activate", "deactivate", "enable", "disable", "start", "stop", "assign", "register",
         // Transfer / notification verbs

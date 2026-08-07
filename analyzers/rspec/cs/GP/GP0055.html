@@ -1,4 +1,5 @@
-<p>A message should be published as a declared contract type, not as <code>object</code>, <code>dynamic</code>, an anonymous type or a loose dictionary.</p>
+<p>A message should be declared and published as a contract type, not as <code>object</code>, <code>dynamic</code>, an anonymous type or a loose
+dictionary.</p>
 <h2>Why is this an issue?</h2>
 <p>The type is the contract. It is what MassTransit uses to decide the exchange to publish to and therefore which consumers receive the message, and it is
 what documents the payload for the team on the other side. Publishing an anonymous type or a dictionary removes both: the topology is derived from a type
@@ -10,19 +11,22 @@ to prevent, reintroduced by the way the message is sent.</p>
 await _publisher.Publish(new { OrderId = order.Id, Total = order.Total });
 await _publisher.Publish(new Dictionary&lt;string, object&gt; { ["orderId"] = order.Id });
 </pre>
-<p>The rule reports publishing or sending <code>object</code>, <code>dynamic</code>, an anonymous type, <code>ExpandoObject</code>,
+<p>The rule reports declaring <code>Publishes&lt;T&gt;</code>, publishing or sending with <code>object</code>, <code>dynamic</code>, an anonymous type,
+<code>ExpandoObject</code>,
 <code>Dictionary&lt;string, object&gt;</code>, <code>JsonElement</code>, <code>JsonDocument</code> or Newtonsoft's <code>JObject</code>.</p>
 <h2>How to fix it</h2>
 <p>Declare the contract and publish that.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
+config.Publishes&lt;object&gt;(); // Noncompliant {{Publish a declared contract type instead of 'object'.}}
 await _publisher.Publish(new { OrderId = order.Id, Total = order.Total }); // Noncompliant {{Publish a declared contract type instead of an anonymous type.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 public sealed record OrderAccepted(Guid OrderId, decimal Total, string Currency, DateTimeOffset OccurredAt);
 
+config.Publishes&lt;OrderAccepted&gt;();
 await _publisher.Publish(new OrderAccepted(order.Id, order.Total, order.Currency, DateTimeOffset.UtcNow));
 </pre>
 <h2>Resources</h2>

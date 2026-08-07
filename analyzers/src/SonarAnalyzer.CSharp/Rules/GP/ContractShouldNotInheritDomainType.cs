@@ -14,13 +14,10 @@ public sealed class ContractShouldNotInheritDomainType : ParametrizedDiagnosticA
     [RuleParameter("entityBaseTypes", PropertyType.String, "Comma-separated base types whose descendants are entities, e.g. Entity,AggregateRoot", "")]
     public string EntityBaseTypes { get; set; } = string.Empty;
 
-    [RuleParameter("domainNamespaces", PropertyType.String, "Comma-separated namespaces holding domain types, e.g. MyCompany.Domain", "")]
-    public string DomainNamespaces { get; set; } = string.Empty;
-
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>
         {
-            var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes, DomainNamespaces);
+            var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes);
             start.RegisterNodeAction(c => AnalyzeTypeDeclaration(c, entities), SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration);
         });
 

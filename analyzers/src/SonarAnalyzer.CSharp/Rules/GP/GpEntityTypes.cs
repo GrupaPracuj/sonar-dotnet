@@ -2,9 +2,9 @@ namespace SonarAnalyzer.CSharp.Rules;
 
 // Recognises "this type belongs to the database or the domain, not to a wire contract".
 //
-// Two of the four signals are framework-based and work with no configuration: appearing as the element type of a
-// DbSet<T> anywhere in the compilation, and carrying EF mapping attributes. The other two encode a per-solution
-// convention (base types, namespaces) and are therefore driven by rule parameters rather than hardcoded.
+// Two signals are framework-based and work with no configuration: appearing as the element type of a DbSet<T>
+// anywhere in the compilation, and carrying EF mapping attributes. A configured base type is the third,
+// deterministic signal for solutions with a shared entity hierarchy.
 //
 // The DbSet scan walks every type in the compilation's own assembly plus every non-framework referenced assembly
 // (a DbContext frequently lives in a separate persistence project), so it is done once per compilation through
@@ -23,23 +23,20 @@ internal sealed class GpEntityTypes
 
     private readonly HashSet<string> dbSetElementTypes;
     private readonly string[] entityBaseTypes;
-    private readonly string[] domainNamespaces;
 
-    private GpEntityTypes(HashSet<string> dbSetElementTypes, string[] entityBaseTypes, string[] domainNamespaces)
+    private GpEntityTypes(HashSet<string> dbSetElementTypes, string[] entityBaseTypes)
     {
         this.dbSetElementTypes = dbSetElementTypes;
         this.entityBaseTypes = entityBaseTypes;
-        this.domainNamespaces = domainNamespaces;
     }
 
-    internal static GpEntityTypes Create(Compilation compilation, string entityBaseTypes, string domainNamespaces) =>
-        new(DbSetElementTypes(compilation), SplitParameter(entityBaseTypes), SplitParameter(domainNamespaces));
+    internal static GpEntityTypes Create(Compilation compilation, string entityBaseTypes) =>
+        new(DbSetElementTypes(compilation), SplitParameter(entityBaseTypes));
 
     internal bool IsEntity(ITypeSymbol type) =>
         type is INamedTypeSymbol named
         && (HasEntityAttribute(named)
             || DerivesFromConfiguredBase(named)
-            || IsInConfiguredNamespace(named)
             || dbSetElementTypes.Contains(named.OriginalDefinition.ToDisplayString()));
 
     internal static string[] SplitParameter(string value) =>
@@ -67,12 +64,6 @@ internal sealed class GpEntityTypes
         }
 
         return false;
-    }
-
-    private bool IsInConfiguredNamespace(INamedTypeSymbol type)
-    {
-        var containing = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-        return Array.Exists(domainNamespaces, x => containing == x || containing.StartsWith(x + ".", StringComparison.Ordinal));
     }
 
     // A type mapped by EF is reachable as DbSet<T> on some DbContext in the compilation. Looking at the contexts

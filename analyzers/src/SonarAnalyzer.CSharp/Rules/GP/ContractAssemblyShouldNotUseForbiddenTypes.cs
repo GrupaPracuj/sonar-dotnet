@@ -15,7 +15,7 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
-    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated fragments identifying a contract assembly by name", DefaultContractAssemblyNames)]
+    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated names or suffixes identifying contract assemblies", DefaultContractAssemblyNames)]
     public string ContractAssemblyNames { get; set; } = DefaultContractAssemblyNames;
 
     [RuleParameter("forbiddenNamespaces", PropertyType.String, "Comma-separated namespaces a contract assembly must not use", DefaultForbiddenNamespaces)]
@@ -39,7 +39,7 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
     {
         var names = GpEntityTypes.SplitParameter(ContractAssemblyNames);
         var assemblyName = compilation.AssemblyName ?? string.Empty;
-        return names.Length > 0 && Array.Exists(names, x => assemblyName.IndexOf(x, StringComparison.OrdinalIgnoreCase) >= 0);
+        return names.Length > 0 && Array.Exists(names, x => GpAssemblyNames.Matches(assemblyName, x));
     }
 
     private static void AnalyzeType(SonarSyntaxNodeReportingContext context, string[] forbidden)

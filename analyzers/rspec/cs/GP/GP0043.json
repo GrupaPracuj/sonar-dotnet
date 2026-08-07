@@ -1,5 +1,5 @@
 {
-  "title": "Domain entities should not be used as message contracts",
+  "title": "Published messages should come from contract assemblies",
   "type": "BUG",
   "code": {
     "impacts": {

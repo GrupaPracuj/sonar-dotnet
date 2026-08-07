@@ -51,7 +51,6 @@ public class MessageContractsShouldFollowConventionsTest
             """)
             .Verify();
 
-    // Reported at the registration site, not on the contract's declaration, which usually lives in another file.
     [TestMethod]
     public void MessageContractsShouldFollowConventions_Behaviorful() =>
         builder.AddSnippet(
@@ -60,7 +59,7 @@ public class MessageContractsShouldFollowConventionsTest
             {
                 public string Email { get; set; }
 
-                public void SendNow() { }
+                public void SendNow() { } // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
             }
 
             public class AppConfig
@@ -72,7 +71,7 @@ public class MessageContractsShouldFollowConventionsTest
             {
                 public static AppConfig RegisterMessages(this AppConfig appConfig)
                 {
-                    appConfig.Sends<NotifyUser>(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+                    appConfig.Sends<NotifyUser>();
                     return appConfig;
                 }
             }
@@ -133,7 +132,7 @@ public class MessageContractsShouldFollowConventionsTest
             {
                 public string Email { get; set; }
 
-                public static bool IsValid(string email) => email.Length > 0;
+                public static bool IsValid(string email) => email.Length > 0; // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
             }
 
             public class AppConfig
@@ -144,7 +143,33 @@ public class MessageContractsShouldFollowConventionsTest
             public static class Startup
             {
                 public static AppConfig RegisterMessages(this AppConfig appConfig) =>
-                    appConfig.Sends<NotifyUser>(); // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+                    appConfig.Sends<NotifyUser>();
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_ReportsEachBehaviorMethodOnce() =>
+        builder.AddSnippet(
+            """
+            public class NotifyUser
+            {
+                public void SendNow() { } // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+                public bool CanSend() => true; // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static void RegisterMessages(AppConfig first, AppConfig second)
+                {
+                    first.Sends<NotifyUser>();
+                    second.Sends<NotifyUser>();
+                }
             }
             """)
             .Verify();
