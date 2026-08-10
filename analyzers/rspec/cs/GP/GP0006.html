@@ -11,10 +11,11 @@ public bool HasAccess(User user) =&gt;
     user.HasClaim("sub");
 </pre>
 <p>Besides the generic <code>HasClaim</code> overloads, the rule also covers the <code>GP.Juno</code> claim helpers that each imply one fixed claim
-type (<code>HasUserClaim</code>, <code>FindUserClaim</code>, <code>HasApplicationClaim</code>, <code>HasUserGroupClaim</code>,
-<code>HasCompanyClaim</code> and friends). Those are matched only when the method actually comes from a <code>GP.Juno</code> namespace, so an unrelated
-method that happens to share the name is not reported. Claim types written as <code>ClaimTypes.Email</code> are recognised whether the class is
-imported or fully qualified.</p>
+type (<code>HasUserClaim</code>, <code>FindUserClaim</code>, <code>HasApplicationClaim</code>, <code>HasUserGroupClaim</code> and friends). Those are
+matched only when the method actually comes from a <code>GP.Juno</code> namespace, so an unrelated method that happens to share the name is not
+reported. Claim types written as <code>ClaimTypes.Email</code> are recognised whether the class is imported or fully qualified.</p>
+<p><code>HasCompanyClaim</code>/<code>FindCompanyClaim</code> are intentionally not covered: in this organization, the "company" claim is an accepted
+authorization dimension (for example, gating access to company-scoped resources on a multi-tenant platform) rather than an identity leak.</p>
 <p>The complete set of recognized <code>ClaimTypes</code> members is <code>NameIdentifier</code>, <code>Name</code>, <code>Email</code>,
 <code>MobilePhone</code>, <code>Upn</code>, <code>GivenName</code> and <code>Surname</code>.</p>
 <h2>How to fix it</h2>

@@ -212,6 +212,8 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             """)
             .Verify();
 
+    // "company" is an accepted authorization dimension in this organization (e.g. gating access to company-scoped
+    // resources on a multi-tenant platform), not an identity leak, so HasCompanyClaim is not reported.
     [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoHasCompanyClaim() =>
         builder.AddSnippet(
@@ -231,10 +233,10 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Access
             {
                 public bool HasAccess(IEnumerable<Claim> claims) =>
-                    GP.Juno.Security.ClaimsExtractionExtensions.HasCompanyClaim(claims); // Noncompliant {{Do not base access control on identity claim 'company'.}}
+                    GP.Juno.Security.ClaimsExtractionExtensions.HasCompanyClaim(claims);
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     // The name alone does not imply a fixed claim type - only the GP.Juno helpers do.
     [TestMethod]

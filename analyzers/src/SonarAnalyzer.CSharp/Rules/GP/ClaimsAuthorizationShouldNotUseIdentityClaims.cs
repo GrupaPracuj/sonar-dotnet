@@ -43,6 +43,10 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
     // GP.Juno.Security(.UserContexts) exposes its own parameterless claim-existence checks, each tied to one fixed
     // claim type (see GP.Juno CustomClaimTypes / ClaimPrincipalExtensions.ClaimTypeUserId): these bypass the generic
     // HasClaim(string)/HasClaim(predicate) overloads entirely, so they need their own name-to-claim mapping.
+    //
+    // HasCompanyClaim/FindCompanyClaim are deliberately not listed here: unlike the identity claims above, "company"
+    // is an accepted authorization dimension in this organization (e.g. gating access to company-scoped resources
+    // on a multi-tenant platform), not an identity leak, so it is not flagged by this rule.
     private static readonly Dictionary<string, string> JunoParameterlessClaimCheckMethods = new(StringComparer.Ordinal)
     {
         ["HasUserClaim"] = "sub",
@@ -50,8 +54,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         ["HasApplicationClaim"] = "app",
         ["FindApplicationClaim"] = "app",
         ["HasUserGroupClaim"] = "userGroup",
-        ["FindUserGroupClaim"] = "userGroup",
-        ["HasCompanyClaim"] = "company"
+        ["FindUserGroupClaim"] = "userGroup"
     };
 
     private static readonly DiagnosticDescriptor NegativeHasClaimRule = DescriptorFactory.Create(NegativeHasClaimRuleId, NegativeHasClaimMessage);
