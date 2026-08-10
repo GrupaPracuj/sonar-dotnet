@@ -29,6 +29,12 @@ namespace Tests.Diagnostics
             using var conn = new RequiredDisposable { Value = Compute() }; // Noncompliant
         }
 
+        // A required field has to be set in the initializer too, so it cannot be moved out either.
+        public void RequiredFieldHasNoFix()
+        {
+            using var conn = new RequiredFieldDisposable { Value = Compute() }; // Noncompliant
+        }
+
         // A nested collection initializer has no statement form, so there is nothing to rewrite it into.
         public void NestedInitializerHasNoFix()
         {
@@ -72,6 +78,12 @@ namespace Tests.Diagnostics
     public class RequiredDisposable : IDisposable
     {
         public required int Value { get; set; }
+        public void Dispose() { }
+    }
+
+    public class RequiredFieldDisposable : IDisposable
+    {
+        public required int Value;
         public void Dispose() { }
     }
 }

@@ -82,5 +82,19 @@ namespace Tests.Diagnostics
 
             return Microsoft.AspNetCore.Http.TypedResults.Ok();
         }
+
+        // Minimal API handlers are usually async, so the union has to be recognized through the Task that wraps it.
+        public async System.Threading.Tasks.Task<Microsoft.AspNetCore.Http.HttpResults.Results<
+            Microsoft.AspNetCore.Http.HttpResults.Ok,
+            Microsoft.AspNetCore.Http.HttpResults.ForbidHttpResult>> AsyncNamedHandler(System.Security.Claims.ClaimsPrincipal user)
+        {
+            await System.Threading.Tasks.Task.CompletedTask;
+            if (!user.Identity.IsAuthenticated)
+            {
+                return Microsoft.AspNetCore.Http.TypedResults.Forbid(); // Fixed
+            }
+
+            return Microsoft.AspNetCore.Http.TypedResults.Ok();
+        }
     }
 }

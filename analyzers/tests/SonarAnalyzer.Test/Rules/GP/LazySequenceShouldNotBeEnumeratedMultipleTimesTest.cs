@@ -350,4 +350,37 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             }
             """)
             .Verify();
+
+    // A "goto case" can only jump between the sections of its own switch, so one in a nested switch says nothing about
+    // whether the outer switch's sections are still mutually exclusive.
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantWhenGotoCaseBelongsToANestedSwitch() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source, int mode, int inner)
+                {
+                    switch (mode)
+                    {
+                        case 1:
+                            switch (inner)
+                            {
+                                case 10:
+                                    goto case 11;
+                                case 11:
+                                    return 0;
+                            }
+
+                            return source.Count();
+                        default:
+                            return source.Sum();
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

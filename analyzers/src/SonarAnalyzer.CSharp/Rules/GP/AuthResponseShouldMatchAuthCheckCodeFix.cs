@@ -82,8 +82,18 @@ public sealed class AuthResponseShouldMatchAuthCheckCodeFix : SonarCodeFix
         var returnType = handler is not null
             ? (model.GetTypeInfo(handler).ConvertedType as INamedTypeSymbol)?.DelegateInvokeMethod?.ReturnType
             : (model.GetEnclosingSymbol(invocation.SpanStart) as IMethodSymbol)?.ReturnType;
-        return returnType is INamedTypeSymbol namedType
-               && namedType.Name == "Results"
-               && namedType.ContainingNamespace?.ToDisplayString() == "Microsoft.AspNetCore.Http.HttpResults";
+        return IsResultUnion(UnwrapAwaitable(returnType));
     }
+
+    // A Minimal API handler is usually async and so declares Task<Results<...>>: the union has to be looked for
+    // through the awaitable wrapper, or the fix would still rewrite the result type of an async handler.
+    private static ITypeSymbol UnwrapAwaitable(ITypeSymbol type) =>
+        type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } wrapper
+        && wrapper.OriginalDefinition.IsAny(KnownType.System_Threading_Tasks_Task_T, KnownType.System_Threading_Tasks_ValueTask_TResult)
+            ? wrapper.TypeArguments[0]
+            : type;
+
+    private static bool IsResultUnion(ITypeSymbol type) =>
+        type is INamedTypeSymbol { Name: "Results" } namedType
+        && namedType.ContainingNamespace?.ToDisplayString() == "Microsoft.AspNetCore.Http.HttpResults";
 }

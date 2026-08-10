@@ -30,7 +30,9 @@ flagged, even though it also implements <code>IEnumerable&lt;T&gt;</code>: once 
 type is what actually tells you whether re-enumerating is a concern.</p>
 <p>Enumerations in opposite branches of the same <code>if</code>/<code>else</code>, in different sections of the same <code>switch</code> statement, or
 in different arms of the same <code>switch</code> expression are treated as mutually exclusive and do not by themselves produce a finding. A
-<code>switch</code>'s governing expression always runs, so an enumeration there is not exclusive with anything. The rule otherwise uses local syntactic evidence rather than attempting to prove the concrete runtime source or every possible control-flow
+<code>switch</code>'s governing expression always runs, so an enumeration there is not exclusive with anything, and a <code>switch</code> statement
+containing <code>goto case</code> or <code>goto default</code> in its own sections gives that exclusivity up entirely - control really can pass through
+two sections in one execution. Such a <code>goto</code> inside a <em>nested</em> switch only concerns that nested switch and changes nothing here. The rule otherwise uses local syntactic evidence rather than attempting to prove the concrete runtime source or every possible control-flow
 path, so it is classified as a maintainability/performance code smell rather than a guaranteed runtime bug.</p>
 <h2>How to fix it</h2>
 <p>If the value is needed more than once, materialize it a single time - typically with <code>.ToList()</code> or <code>.ToArray()</code> - and reuse

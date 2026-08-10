@@ -95,10 +95,13 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
                       && firstBranch != secondBranch
                       && !CanTransferBetweenSwitchSections(x));
 
+    // Only a goto in this switch's own sections can transfer control between them. One in a nested switch jumps inside
+    // that nested switch and says nothing about this one, so attributing it here would deny exclusivity that holds.
     private static bool CanTransferBetweenSwitchSections(SyntaxNode switchNode) =>
         switchNode is SwitchStatementSyntax switchStatement
         && switchStatement.DescendantNodes().OfType<GotoStatementSyntax>()
-            .Any(x => x.IsKind(SyntaxKind.GotoCaseStatement) || x.IsKind(SyntaxKind.GotoDefaultStatement));
+            .Where(x => x.IsKind(SyntaxKind.GotoCaseStatement) || x.IsKind(SyntaxKind.GotoDefaultStatement))
+            .Any(x => x.Ancestors().OfType<SwitchStatementSyntax>().FirstOrDefault() == switchStatement);
 
     private static bool IsSwitch(SyntaxNode node) =>
         node is SwitchStatementSyntax || SwitchExpressionSyntaxWrapper.IsInstance(node);

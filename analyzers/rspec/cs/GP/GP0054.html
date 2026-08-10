@@ -22,10 +22,15 @@ catch rethrows or throws a cancellation exception.</p>
 <p>A block that rethrows - with <code>throw;</code> or <code>throw ex;</code> - or throws another cancellation exception on every path is not reported.
 Returning, breaking out of a loop, or throwing an unrelated exception suppresses the cancellation signal. Logging alone does not count: a log line does
 not stop the caller from treating the operation as complete.</p>
-<p>A <code>when</code> filter that negates <code>CancellationToken.IsCancellationRequested</code> -
+<p>A <code>when</code> filter that <em>guarantees</em> cancellation was not requested -
 <code>catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)</code>, the documented way to tell an
 <code>HttpClient</code> timeout apart from a caller's cancellation - is not reported: the filter only lets the exception through when nobody asked to
-stop, so handling it there hides no cancellation signal. Any other filter leaves the signal suppressed and is still reported.</p>
+stop, so handling it there hides no cancellation signal.</p>
+<p>"Guarantees" is read through the filter's boolean structure, not by looking for the negation anywhere in it. In <code>A &amp;&amp; B</code> it is
+enough that one side guarantees it; in <code>A || B</code> both sides must, because either one can be what let the exception through. So
+<code>when (!token.IsCancellationRequested &amp;&amp; isTimeout)</code> is not reported, while
+<code>when (!token.IsCancellationRequested || retryTimeouts)</code> is - that filter also accepts a real cancellation. Any filter whose structure the
+rule cannot read this way leaves the signal suppressed and is still reported.</p>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>
