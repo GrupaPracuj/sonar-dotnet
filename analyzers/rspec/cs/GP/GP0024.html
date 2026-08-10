@@ -15,7 +15,9 @@ always using <code>204</code>, which keeps every DELETE endpoint in the API cons
 official <code>Results</code>/<code>TypedResults</code> factories that unambiguously produce a <code>200</code> response body:
 <code>Ok(value)</code>, <code>Json(...)</code>, <code>Text(...)</code>, and <code>Content(...)</code>. A factory with an explicit non-200 or
 non-constant status code is not reported. Named handlers, nested lambdas, local functions and lookalike mapping or result APIs are outside this
-scope.</p>
+scope. For MVC actions, <code>Ok(value)</code> is resolved to a real response factory -
+<code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<code>Controller</code>, or <code>Results</code>/<code>TypedResults</code>, since an action may
+return an <code>IResult</code> too - so a same-named helper declared elsewhere is not reported.</p>
 <pre>
 [HttpDelete]
 public IActionResult DeleteOrder(int id)

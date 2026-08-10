@@ -519,6 +519,33 @@ public class GetCollectionEndpointsShouldNotReturnNoContentTest
             .WithOptions(LanguageOptions.CSharpLatest)
             .VerifyNoIssues();
 
+    // "NoContent" is resolved to ControllerBase: a same-named helper on the controller itself is not the MVC 204 factory.
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForLookalikeNoContent() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute { }
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok<T>(T value) => null;
+                }
+            }
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private static IEnumerable<string> NoContent() => new string[0];
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public IEnumerable<string> GetUsers() => NoContent();
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNoContent_CodeFix() =>
         builder.WithBasePath("GP")

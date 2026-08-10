@@ -69,7 +69,7 @@ internal static class GpCollectionEndpointHelper
     private static bool IsCollectionOkReturn(SemanticModel model, ReturnStatementSyntax returnStatement)
     {
         if (returnStatement.Expression is not InvocationExpressionSyntax invocation
-            || GetInvokedMethodName(invocation) != "Ok")
+            || !GpMvcResults.IsResponseFactory(model, invocation, "Ok"))
         {
             return false;
         }
@@ -84,15 +84,6 @@ internal static class GpCollectionEndpointHelper
                && model.GetTypeInfo(argumentExpression).Type is { } argumentType
                && IsCollectionLike(argumentType);
     }
-
-    internal static string GetInvokedMethodName(InvocationExpressionSyntax invocation) =>
-        invocation.Expression switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            GenericNameSyntax genericName => genericName.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => string.Empty
-        };
 
     internal static bool IsCollectionLike(ITypeSymbol type) =>
         type is IArrayTypeSymbol || type.IsAny(CollectionTypes) || type.ImplementsAny(CollectionTypes);

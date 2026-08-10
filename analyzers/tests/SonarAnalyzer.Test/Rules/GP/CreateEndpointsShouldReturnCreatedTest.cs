@@ -63,4 +63,20 @@ public class CreateEndpointsShouldReturnCreatedTest
             }
             """)
             .VerifyNoIssues();
+
+    // "Ok" is resolved to ControllerBase: a same-named helper on the controller itself is not the MVC 200 factory.
+    [TestMethod]
+    public void CreateEndpointsShouldReturnCreated_CompliantForLookalikeOk() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private static object Ok(object value, bool acknowledged) => null;
+
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public object CreateOrder(object order) => Ok(order, true);
+            }
+            """)
+            .VerifyNoIssues();
 }

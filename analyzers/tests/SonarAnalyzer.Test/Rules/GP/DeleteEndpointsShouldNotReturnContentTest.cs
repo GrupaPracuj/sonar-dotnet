@@ -206,6 +206,39 @@ public class DeleteEndpointsShouldNotReturnContentTest
             """)
             .VerifyNoIssues();
 
+    // An MVC action may return an IResult, so the Minimal API factory counts as a response factory there too.
+    [TestMethod]
+    public void DeleteEndpointsShouldNotReturnContent_NoncompliantForMinimalApiFactoryInsideAnAction() =>
+        builder.AddSnippet(
+            ControllerStubs + MinimalApiStubs + """
+
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpDelete]
+                public Microsoft.AspNetCore.Http.IResult Delete(int id)
+                {
+                    return Microsoft.AspNetCore.Http.Results.Ok(id); // Noncompliant {{DELETE endpoints should return 204 (NoContent) instead of 200 with a response body.}}
+                }
+            }
+            """)
+            .Verify();
+
+    // "Ok" is resolved to ControllerBase: a same-named helper on the controller itself is not the MVC 200 factory.
+    [TestMethod]
+    public void DeleteEndpointsShouldNotReturnContent_CompliantForLookalikeOk() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private static object Ok(object value, bool acknowledged) => null;
+
+                [Microsoft.AspNetCore.Mvc.HttpDelete]
+                public object Delete(int id) => Ok(id, true);
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void DeleteEndpointsShouldNotReturnContent_CodeFix() =>
         builder.WithBasePath("GP")

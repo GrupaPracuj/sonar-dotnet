@@ -23,7 +23,7 @@ public sealed class GetCollectionEndpointsShouldNotReturnNoContent : SonarDiagno
             || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol method
             || !GpCollectionEndpointHelper.IsHttpGetMethod(method)
             || !GpCollectionEndpointHelper.ReturnsCollection(method, context.Model, context.Node)
-            || !IsNoContentResponse(context.Model, invocation))
+            || !GpMvcResults.IsStatusResponse(context.Model, invocation, "NoContent", 204))
         {
             return;
         }
@@ -34,7 +34,7 @@ public sealed class GetCollectionEndpointsShouldNotReturnNoContent : SonarDiagno
     private static void AnalyzeMinimalApiResult(SonarSyntaxNodeReportingContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (!IsMinimalApiNoContentResponse(context.Model, invocation)
+        if (!GpMvcResults.IsStatusResponse(context.Model, invocation, "NoContent", 204)
             || !GpMinimalApi.TryGetInlineHandler(invocation, context.Model, "MapGet", out var handler, out _, out _, out _)
             || !GpMinimalApi.HandlerReturnsCollection(handler, context.Model))
         {
@@ -42,41 +42,5 @@ public sealed class GetCollectionEndpointsShouldNotReturnNoContent : SonarDiagno
         }
 
         context.ReportIssue(Rule, invocation);
-    }
-
-    private static bool IsMinimalApiNoContentResponse(SemanticModel model, InvocationExpressionSyntax invocation)
-    {
-        if (!GpMinimalApi.TryGetResultMethod(model, invocation, out var method))
-        {
-            return false;
-        }
-
-        if (method.Name == "NoContent")
-        {
-            return true;
-        }
-
-        return method.Name == "StatusCode"
-               && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } code
-               && model.GetConstantValue(code) is { HasValue: true, Value: 204 };
-    }
-
-    private static bool IsNoContentResponse(SemanticModel model, InvocationExpressionSyntax invocation)
-    {
-        var methodName = GpCollectionEndpointHelper.GetInvokedMethodName(invocation);
-
-        if (methodName == "NoContent")
-        {
-            return true;
-        }
-
-        if (methodName != "StatusCode"
-            || invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is not ExpressionSyntax codeExpression
-            || model.GetConstantValue(codeExpression) is not { HasValue: true, Value: int statusCode })
-        {
-            return false;
-        }
-
-        return statusCode == 204;
     }
 }

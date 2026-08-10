@@ -20,7 +20,10 @@ public IActionResult CreateOrder(OrderRequest request)
 <h3>Exceptions</h3>
 <p>Only <code>[HttpPost]</code> actions whose name starts with a creation verb (<code>Create</code>, <code>Add</code>, <code>Insert</code>,
 <code>Register</code>) are checked - <code>POST</code> is also routinely used for actions that don't create a resource at all (a login, a search,
-a calculation), where <code>200</code> is the correct response and there is nothing to name after a "creation" verb.</p>
+a calculation), where <code>200</code> is the correct response and there is nothing to name after a "creation" verb. <code>Ok</code> is resolved to a
+real response factory - <code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<code>Controller</code>, or
+<code>Results</code>/<code>TypedResults</code>, since an action may return an <code>IResult</code> too - so a same-named helper declared elsewhere is
+not reported.</p>
 <h2>How to fix it</h2>
 <p>Return <code>CreatedAtAction</code>/<code>CreatedAtRoute</code> (or <code>Created</code> with an explicit URL) instead of <code>Ok</code>.</p>
 <h3>Code examples</h3>

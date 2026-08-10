@@ -21,7 +21,7 @@ public sealed class CreateEndpointsShouldReturnCreated : SonarDiagnosticAnalyzer
         if (context.Node is not ReturnStatementSyntax { Expression: InvocationExpressionSyntax invocation }
             || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol method
             || !IsHttpPostCreateMethod(method)
-            || GpCollectionEndpointHelper.GetInvokedMethodName(invocation) != "Ok")
+            || !GpMvcResults.IsResponseFactory(context.Model, invocation, "Ok"))
         {
             return;
         }

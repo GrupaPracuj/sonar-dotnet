@@ -776,6 +776,33 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             .WithOptions(LanguageOptions.CSharpLatest)
             .VerifyNoIssues();
 
+    // "NotFound" is resolved to ControllerBase: a same-named helper on the controller itself is not the MVC 404 factory.
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForLookalikeNotFound() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute { }
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok<T>(T value) => null;
+                }
+            }
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private static IEnumerable<string> NotFound() => new string[0];
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public IEnumerable<string> GetUsers() => NotFound();
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNotFound_CodeFix() =>
         builder.WithBasePath("GP")

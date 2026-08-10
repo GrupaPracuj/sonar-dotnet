@@ -15,6 +15,10 @@ lambdas or local functions are outside the handler analysis boundary.</p>
 public IActionResult GetUsers() =&gt;
     NoContent();
 </pre>
+<h3>Exceptions</h3>
+<p>The response factory is resolved semantically: <code>NoContent()</code>/<code>StatusCode(204)</code> must come from
+<code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<code>Controller</code>, or from the Minimal API
+<code>Results</code>/<code>TypedResults</code>. A same-named helper declared elsewhere - including on the controller itself - is not reported.</p>
 <h2>How to fix it</h2>
 <p>Return <code>Ok(...)</code> with an empty collection instead of <code>NoContent()</code>.</p>
 <p>The automatic fix is available for MVC actions only. Minimal API result unions require a collection-specific replacement, so no fix is offered

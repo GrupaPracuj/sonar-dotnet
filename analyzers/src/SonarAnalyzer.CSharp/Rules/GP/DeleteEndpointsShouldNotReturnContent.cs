@@ -28,7 +28,7 @@ public sealed class DeleteEndpointsShouldNotReturnContent : SonarDiagnosticAnaly
         if (context.Node is not ReturnStatementSyntax { Expression: InvocationExpressionSyntax invocation }
             || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol method
             || !IsHttpDeleteMethod(method)
-            || GpCollectionEndpointHelper.GetInvokedMethodName(invocation) != "Ok"
+            || !GpMvcResults.IsResponseFactory(context.Model, invocation, "Ok")
             || invocation.ArgumentList.Arguments.Count == 0)
         {
             return;

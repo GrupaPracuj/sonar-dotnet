@@ -23,7 +23,7 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
             || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol method
             || !GpCollectionEndpointHelper.IsHttpGetMethod(method)
             || !GpCollectionEndpointHelper.ReturnsCollection(method, context.Model, context.Node)
-            || !IsNotFoundResponse(context.Model, invocation)
+            || !GpMvcResults.IsStatusResponse(context.Model, invocation, "NotFound", 404)
             || HasVisibleParentRoute(method)
                && !IsGuardedByReturnedCollectionEmptiness(invocation, context.Model, method.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<MethodDeclarationSyntax>().FirstOrDefault()))
         {
@@ -36,7 +36,7 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
     private static void AnalyzeMinimalApiResult(SonarSyntaxNodeReportingContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (!IsMinimalApiNotFoundResponse(context.Model, invocation)
+        if (!GpMvcResults.IsStatusResponse(context.Model, invocation, "NotFound", 404)
             || !GpMinimalApi.TryGetInlineHandler(invocation, context.Model, "MapGet", out var handler, out var mapInvocation, out _, out var routeTemplate)
             || !GpMinimalApi.HandlerReturnsCollection(handler, context.Model)
             || EffectiveMinimalRoute(mapInvocation, routeTemplate, context.Model, out var routeIsUnknown) is { } effectiveRoute
@@ -76,23 +76,6 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
         }
 
         return route;
-    }
-
-    private static bool IsMinimalApiNotFoundResponse(SemanticModel model, InvocationExpressionSyntax invocation)
-    {
-        if (!GpMinimalApi.TryGetResultMethod(model, invocation, out var method))
-        {
-            return false;
-        }
-
-        if (method.Name == "NotFound")
-        {
-            return true;
-        }
-
-        return method.Name == "StatusCode"
-               && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } code
-               && model.GetConstantValue(code) is { HasValue: true, Value: 404 };
     }
 
     private static bool HasVisibleParentRoute(IMethodSymbol method)
@@ -154,8 +137,8 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
     private static IEnumerable<ISymbol> CollectionSymbolsReturnedByOk(SyntaxNode boundary, SemanticModel model) =>
         boundary?.DescendantNodesAndSelf(x => x.Kind() != SyntaxKindEx.LocalFunctionStatement && x is not AnonymousFunctionExpressionSyntax || x == boundary)
             .OfType<InvocationExpressionSyntax>()
-            .Where(x => GpMinimalApi.TryGetResultMethod(model, x, out var resultMethod) && resultMethod.Name == "Ok"
-                        || GpCollectionEndpointHelper.GetInvokedMethodName(x) == "Ok")
+            .Where(x => (GpMinimalApi.TryGetResultMethod(model, x, out var resultMethod) && resultMethod.Name == "Ok")
+                        || GpMvcResults.IsResponseFactory(model, x, "Ok"))
             .Select(x => x.ArgumentList.Arguments.FirstOrDefault()?.Expression)
             .WhereNotNull()
             .Select(x => model.GetSymbolInfo(x))
@@ -274,24 +257,5 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
             expression = parenthesized.Expression;
         }
         return expression;
-    }
-
-    private static bool IsNotFoundResponse(SemanticModel model, InvocationExpressionSyntax invocation)
-    {
-        var methodName = GpCollectionEndpointHelper.GetInvokedMethodName(invocation);
-
-        if (methodName == "NotFound")
-        {
-            return true;
-        }
-
-        if (methodName != "StatusCode"
-            || invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is not ExpressionSyntax codeExpression
-            || model.GetConstantValue(codeExpression) is not { HasValue: true, Value: int statusCode })
-        {
-            return false;
-        }
-
-        return statusCode == 404;
     }
 }

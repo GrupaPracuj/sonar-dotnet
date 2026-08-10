@@ -18,6 +18,10 @@ that the response collection is empty.</p>
 public IActionResult GetUsers() =&gt;
     NotFound();
 </pre>
+<h3>Exceptions</h3>
+<p>The response factory is resolved semantically: <code>NotFound()</code>/<code>StatusCode(404)</code> must come from
+<code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<code>Controller</code>, or from the Minimal API
+<code>Results</code>/<code>TypedResults</code>. A same-named helper declared elsewhere - including on the controller itself - is not reported.</p>
 <h2>How to fix it</h2>
 <p>Return <code>Ok(...)</code> with an empty collection instead of <code>NotFound()</code> when the collection query is valid but matches nothing.</p>
 <h3>Code examples</h3>
