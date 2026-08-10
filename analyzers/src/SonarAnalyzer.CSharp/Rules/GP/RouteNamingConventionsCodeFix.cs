@@ -35,6 +35,20 @@ internal static class RouteLiteralCodeFixHelper
             : null;
     }
 
+    // Which offending segment this diagnostic is about. With several offending segments in one template, fixing the
+    // first one for every diagnostic would rename the wrong segment, so the reported offset picks the segment out.
+    // A null offset means the location no longer points at a segment (a widened FixAll location), and then the first
+    // offender is the only choice left. The default (null, 0) means "nothing to fix here".
+    internal static (string Segment, int Offset) OffendingSegment(string template, int? reportedOffset)
+    {
+        var offenders = RouteNamingConventions.Segments(template)
+            .Where(x => !RouteNamingConventions.IsParameterOrToken(x.Segment) && !RouteNamingConventions.IsKebabCase(x.Segment))
+            .ToArray();
+        return reportedOffset is { } offset
+            ? Array.Find(offenders, x => offset >= x.Offset && offset < x.Offset + x.Segment.Length)
+            : offenders.FirstOrDefault();
+    }
+
     // Replaces the [start, start + length) range of the value text (i.e. offsets excluding the opening quote) and
     // rebuilds a literal token whose raw text and value text stay consistent with each other.
     internal static SyntaxToken WithReplacedValueRange(SyntaxToken token, int start, int length, string replacement)
@@ -61,15 +75,7 @@ public sealed class RouteSegmentShouldBeKebabCaseCodeFix : SonarCodeFix
         }
 
         var template = token.ValueText;
-        var offenders = RouteNamingConventions.Segments(template)
-            .Where(x => !RouteNamingConventions.IsParameterOrToken(x.Segment) && !RouteNamingConventions.IsKebabCase(x.Segment))
-            .ToArray();
-        // With several offending segments in one template, fixing the first one for every diagnostic would rename the
-        // wrong segment, so the reported offset picks the segment this diagnostic is actually about when it is known.
-        var reportedOffset = RouteLiteralCodeFixHelper.ValueOffset(token, diagnostic.Location.SourceSpan);
-        var offender = reportedOffset is { } offset
-            ? Array.Find(offenders, x => offset >= x.Offset && offset < x.Offset + x.Segment.Length)
-            : offenders.FirstOrDefault();
+        var offender = RouteLiteralCodeFixHelper.OffendingSegment(template, RouteLiteralCodeFixHelper.ValueOffset(token, diagnostic.Location.SourceSpan));
         if (offender.Segment is not { Length: > 0 } segment)
         {
             return Task.CompletedTask;

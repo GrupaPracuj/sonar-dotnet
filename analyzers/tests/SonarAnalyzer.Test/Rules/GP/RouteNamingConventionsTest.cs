@@ -1,3 +1,6 @@
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using CS = SonarAnalyzer.CSharp.Rules;
 
 namespace SonarAnalyzer.Test.Rules.GP;
@@ -648,4 +651,39 @@ public class RouteNamingConventionsTest
             }
             """)
             .VerifyNoIssues();
+
+    // The kebab-case fix has to rename the segment its own diagnostic points at. With two offending segments in one
+    // template, always taking the first one would rename the wrong segment for the second issue - and the file-based
+    // code fix verification cannot reach that, because it only ever applies the first diagnostic's action (and the
+    // FixAll location is widened to the whole literal, where the offset is gone), so the selection is checked here.
+    [DataTestMethod]
+    [DataRow(0, "JobOffers")]
+    [DataRow(4, "JobOffers")]
+    [DataRow(10, "ByRecruiter")]
+    [DataRow(20, "ByRecruiter")]
+    public void RouteNamingConventions_KebabCaseFix_TargetsTheReportedSegment(int reportedOffset, string expected) =>
+        CS.RouteLiteralCodeFixHelper.OffendingSegment("JobOffers/ByRecruiter", reportedOffset).Segment.Should().Be(expected);
+
+    // A widened FixAll location no longer points at a segment, so the first offender is the only choice left.
+    [TestMethod]
+    public void RouteNamingConventions_KebabCaseFix_FallsBackToTheFirstOffenderWithoutAnOffset() =>
+        CS.RouteLiteralCodeFixHelper.OffendingSegment("JobOffers/ByRecruiter", null).Segment.Should().Be("JobOffers");
+
+    // An offset inside a compliant segment belongs to no offender, and then there is nothing to fix.
+    [TestMethod]
+    public void RouteNamingConventions_KebabCaseFix_FindsNothingForACompliantSegment() =>
+        CS.RouteLiteralCodeFixHelper.OffendingSegment("api/ByRecruiter", 0).Segment.Should().BeNull();
+
+    // The offset the analyzer reports is relative to the literal's value text, so the opening quote has to be skipped;
+    // a span covering the whole literal - what FixAll widens to - is not a sub-range and yields no offset at all.
+    [TestMethod]
+    public void RouteNamingConventions_KebabCaseFix_ValueOffsetSkipsTheOpeningQuote()
+    {
+        var token = ((LiteralExpressionSyntax)SyntaxFactory.ParseExpression("""
+            "api/ByRecruiter"
+            """)).Token;
+
+        CS.RouteLiteralCodeFixHelper.ValueOffset(token, new TextSpan(token.SpanStart + 1 + 4, "ByRecruiter".Length)).Should().Be(4);
+        CS.RouteLiteralCodeFixHelper.ValueOffset(token, token.Span).Should().BeNull();
+    }
 }
