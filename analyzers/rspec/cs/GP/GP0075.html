@@ -28,6 +28,9 @@ only ever fires on one of these specific, well-known terms, and false positives 
 that implements an interface member (explicitly, or implicitly by matching name and signature) by name, must keep the name it was given. Renaming it
 would either fail to override the base member, or - for an implicit interface implementation - silently stop implementing the interface. Fields,
 parameters, enum members, and type names have no such constraint and are always checked.</p>
+<p>A parameter of an <code>override</code> or of an interface implementation is still reported - parameter names are not part of a signature, so the
+spelling really is wrong there - but no automatic rename is offered for it: renaming only that one declaration would make its name disagree with the
+base or interface declaration, which is what rule S927 reports. Fix such a parameter on the base declaration and propagate the new name from there.</p>
 <h2>How to fix it</h2>
 <p>Rename the identifier to the standard spelling shown in the issue message.</p>
 <h3>Code examples</h3>

@@ -24,6 +24,18 @@ namespace Tests.Diagnostics
             using var conn = new InitOnlyDisposable { Value = Compute() }; // Noncompliant
         }
 
+        // A nested collection initializer has no statement form, so there is nothing to rewrite it into.
+        public void NestedInitializerHasNoFix()
+        {
+            using var conn = new NestedDisposable { Items = { Compute() } }; // Noncompliant
+        }
+
+        // An indexer element is not a member name, so it cannot be moved out either.
+        public void IndexerElementHasNoFix()
+        {
+            using var conn = new IndexedDisposable { [Compute()] = Compute() }; // Noncompliant
+        }
+
         private static int Compute() => 42;
     }
 
@@ -31,6 +43,18 @@ namespace Tests.Diagnostics
     {
         public int Value { get; set; }
         public string Name { get; set; }
+        public void Dispose() { }
+    }
+
+    public class NestedDisposable : IDisposable
+    {
+        public System.Collections.Generic.List<int> Items { get; } = new();
+        public void Dispose() { }
+    }
+
+    public class IndexedDisposable : IDisposable
+    {
+        public int this[int index] { get => 0; set { } }
         public void Dispose() { }
     }
 

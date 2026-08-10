@@ -5,10 +5,10 @@ namespace SonarAnalyzer.CSharp.Rules;
 // Both code fixes below operate on a route template string literal. The analyzer reports on a sub-range of the
 // literal's characters (excluding the quotes), which the shared DocumentBasedFixAllProvider cannot map back to
 // exactly: when the reported span does not equal a whole token's span, it widens the location to the smallest
-// enclosing node - the whole string literal expression, quotes included - before replaying the diagnostic. So
-// rather than trusting the incoming diagnostic span for anything but "which literal token is this about", each fix
-// below re-derives what needs changing straight from the token's own value text, using the same rules as the
-// analyzer (see RouteNamingConventions.Segments/IsKebabCase and the trailing-slash check in AnalyzeAttributes).
+// enclosing node - the whole string literal expression, quotes included - before replaying the diagnostic. So each
+// fix below works out what to change from the token's own value text, using the analyzer's own
+// RouteNamingConventions.Segments/IsParameterOrToken/IsKebabCase rather than a second copy of those rules, and only
+// trusts the incoming span when it really is a sub-range of the literal (which identifies the reported segment).
 internal static class RouteLiteralCodeFixHelper
 {
     internal static bool TryGetPlainLiteralToken(SyntaxNode root, TextSpan diagnosticSpan, out SyntaxToken token)
@@ -24,34 +24,16 @@ internal static class RouteLiteralCodeFixHelper
         return true;
     }
 
-    internal static IEnumerable<(string Segment, int Offset)> Segments(string template)
+    // The offset inside the value text the diagnostic points at, or null when the span is not a proper sub-range of
+    // this literal's characters (a widened FixAll location, or a location on the whole attribute).
+    internal static int? ValueOffset(SyntaxToken token, TextSpan diagnosticSpan)
     {
-        var start = 0;
-        while (start <= template.Length)
-        {
-            var end = template.IndexOf('/', start);
-            if (end < 0)
-            {
-                end = template.Length;
-            }
-
-            if (end > start)
-            {
-                yield return (template.Substring(start, end - start), start);
-            }
-
-            start = end + 1;
-        }
+        var valueStart = token.SpanStart + 1;
+        var valueEnd = token.Span.End - 1;
+        return diagnosticSpan.Start >= valueStart && diagnosticSpan.End <= valueEnd
+            ? diagnosticSpan.Start - valueStart
+            : null;
     }
-
-    internal static bool IsParameterOrToken(string segment) =>
-        segment[0] is '{' or '[';
-
-    internal static bool IsKebabCase(string segment) =>
-        segment[0] != '-'
-        && segment[segment.Length - 1] != '-'
-        && !segment.Contains("--")
-        && segment.All(x => char.IsLower(x) || char.IsDigit(x) || x == '-');
 
     // Replaces the [start, start + length) range of the value text (i.e. offsets excluding the opening quote) and
     // rebuilds a literal token whose raw text and value text stay consistent with each other.
@@ -79,8 +61,15 @@ public sealed class RouteSegmentShouldBeKebabCaseCodeFix : SonarCodeFix
         }
 
         var template = token.ValueText;
-        var offender = RouteLiteralCodeFixHelper.Segments(template)
-            .FirstOrDefault(x => !RouteLiteralCodeFixHelper.IsParameterOrToken(x.Segment) && !RouteLiteralCodeFixHelper.IsKebabCase(x.Segment));
+        var offenders = RouteNamingConventions.Segments(template)
+            .Where(x => !RouteNamingConventions.IsParameterOrToken(x.Segment) && !RouteNamingConventions.IsKebabCase(x.Segment))
+            .ToArray();
+        // With several offending segments in one template, fixing the first one for every diagnostic would rename the
+        // wrong segment, so the reported offset picks the segment this diagnostic is actually about when it is known.
+        var reportedOffset = RouteLiteralCodeFixHelper.ValueOffset(token, diagnostic.Location.SourceSpan);
+        var offender = reportedOffset is { } offset
+            ? Array.Find(offenders, x => offset >= x.Offset && offset < x.Offset + x.Segment.Length)
+            : offenders.FirstOrDefault();
         if (offender.Segment is not { Length: > 0 } segment)
         {
             return Task.CompletedTask;

@@ -28,6 +28,7 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
 
         var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
         if (model is null
+            || !initializer.Expressions.All(IsMovableMemberAssignment)
             || initializer.Expressions.OfType<AssignmentExpressionSyntax>()
                 .Any(x => model.GetSymbolInfo(x.Left).Symbol is IPropertySymbol property && IsInitOnly(property)))
         {
@@ -64,6 +65,12 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
             },
             context.Diagnostics);
     }
+
+    // Only a plain "Member = value" element becomes a valid "x.Member = value;" statement. A nested initializer
+    // ("Items = { 1, 2 }") has no statement form at all, and an indexer element ("[key] = value") is not a member
+    // name - both are still reported, but rewriting them is left to the developer.
+    private static bool IsMovableMemberAssignment(ExpressionSyntax element) =>
+        element is AssignmentExpressionSyntax { Left: SimpleNameSyntax, Right: not InitializerExpressionSyntax };
 
     private static bool IsInitOnly(IPropertySymbol property) =>
         property.DeclaringSyntaxReferences

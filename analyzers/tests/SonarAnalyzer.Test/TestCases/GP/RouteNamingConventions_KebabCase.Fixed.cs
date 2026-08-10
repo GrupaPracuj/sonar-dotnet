@@ -23,4 +23,8 @@ public class JobOffersController
 {
     [Microsoft.AspNetCore.Mvc.HttpGet("job-offers")] // Fixed
     public void GetAll() { }
+
+    // The offending segment is not the first one: the fix has to rename the segment the issue points at.
+    [Microsoft.AspNetCore.Mvc.HttpGet("api/by-recruiter")] // Fixed
+    public void GetByRecruiter() { }
 }

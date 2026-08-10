@@ -28,6 +28,14 @@ public sealed class IdentifierShouldUseStandardCompoundWordSpellingCodeFix : Son
             return;
         }
 
+        // Renaming a parameter of an override or of an interface implementation would make its name disagree with the
+        // base/interface declaration - the very thing S927 reports - so no fix is offered there. The misspelling is
+        // still reported, and is meant to be fixed on the base declaration.
+        if (symbol is IParameterSymbol parameter && !IdentifierShouldUseStandardCompoundWordSpelling.ParameterIsFreelyRenamable(parameter))
+        {
+            return;
+        }
+
         context.RegisterCodeFix(
             Title,
             async c =>

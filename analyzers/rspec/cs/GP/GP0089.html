@@ -12,6 +12,10 @@ using var connection = new SqlConnection { ConnectionString = BuildConnectionStr
 <h2>How to fix it</h2>
 <p>Construct the resource first, with no initializer, so the <code>using</code> starts tracking it for disposal immediately. Assign every member in
 separate statements afterwards - if one of them throws, the <code>using</code> still disposes the already-bound instance.</p>
+<p>The automatic fix is offered for the <code>using var x = new T { ... };</code> declaration form whose initializer only contains plain
+<code>Member = value</code> elements and no <code>init</code>-only member. The <code>using (var x = new T { ... }) { ... }</code> statement form, a
+nested initializer (<code>Items = { ... }</code>) and an indexer element (<code>[key] = value</code>) are reported but left to be rewritten by hand,
+because there is no mechanical rewrite that is guaranteed to preserve the code's meaning.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
