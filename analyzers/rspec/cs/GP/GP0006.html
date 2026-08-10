@@ -1,36 +1,47 @@
-<p>An access-control decision should not be based directly on an identity claim such as <code>sub</code>, <code>name</code>, <code>email</code>,
-<code>phone</code>, <code>phone_number</code>, <code>preferred_username</code>, <code>upn</code>, <code>given_name</code>, <code>family_name</code> or
-<code>unique_name</code>.</p>
+<p>An access-control decision should not be based on the <em>value</em> of an identity claim such as <code>sub</code>, <code>name</code>,
+<code>email</code>, <code>phone</code>, <code>phone_number</code>, <code>preferred_username</code>, <code>upn</code>, <code>given_name</code>,
+<code>family_name</code> or <code>unique_name</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>Identity claims describe <em>who</em> the caller is, not <em>what</em> the caller is allowed to do. Branching authorization logic on the presence
-or value of an identity claim conflates authentication data with permission data: it bypasses whatever role/permission/policy model the application
-uses elsewhere, and it silently breaks if that claim's format or presence changes (for example when the identity provider changes, or a service
-account with no <code>email</code> claim calls the endpoint). Access decisions should be based on dedicated authorization claims or policies instead.</p>
+<p>Identity claims describe <em>who</em> the caller is, not <em>what</em> the caller is allowed to do. Branching authorization logic on a specific
+identity claim <em>value</em> - a hardcoded subject id, a specific email address, a specific username - conflates authentication data with
+permission data: it bypasses whatever role/permission/policy model the application uses elsewhere, hardcodes an exception for one particular
+person, and silently breaks if that claim's format changes (for example when the identity provider changes).</p>
 <pre>
 public bool HasAccess(User user) =&gt;
-    user.HasClaim("sub");
+    user.FindFirst("sub").Value == "a3f1c9d2-...";
 </pre>
-<p>Besides the generic <code>HasClaim</code> overloads, the rule also covers the <code>GP.Juno</code> claim helpers that each imply one fixed claim
-type (<code>HasUserClaim</code>, <code>FindUserClaim</code>, <code>HasApplicationClaim</code>, <code>HasUserGroupClaim</code> and friends). Those are
-matched only when the method actually comes from a <code>GP.Juno</code> namespace, so an unrelated method that happens to share the name is not
-reported. Claim types written as <code>ClaimTypes.Email</code> are recognised whether the class is imported or fully qualified.</p>
-<p><code>HasCompanyClaim</code>/<code>FindCompanyClaim</code> are intentionally not covered: in this organization, the "company" claim is an accepted
-authorization dimension (for example, gating access to company-scoped resources on a multi-tenant platform) rather than an identity leak.</p>
-<p>The complete set of recognized <code>ClaimTypes</code> members is <code>NameIdentifier</code>, <code>Name</code>, <code>Email</code>,
-<code>MobilePhone</code>, <code>Upn</code>, <code>GivenName</code> and <code>Surname</code>.</p>
+<p>Merely checking whether an identity claim is <em>present</em> - <code>HasClaim("sub")</code>, <code>FindFirst("sub") != null</code>, an
+<code>Option&lt;Claim&gt;.HasValue</code> check, or a predicate that only matches on <code>Type</code> - is not reported. Presence alone does not tie
+the decision to a specific identity; only reading and comparing the claim's actual <code>Value</code> does.</p>
 <h2>How to fix it</h2>
-<p>Base the decision on a dedicated permission/role claim or an explicit authorization policy instead of an identity claim.</p>
+<p>Base the decision on a dedicated permission/role claim or an explicit authorization policy instead of a specific identity value.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public bool HasAccess(User user) =&gt;
-    user.HasClaim("sub"); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+    user.FindFirst("sub").Value == "a3f1c9d2-..."; // Noncompliant {{Do not base access control on identity claim 'sub'.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 public bool HasAccess(User user) =&gt;
     user.HasClaim("filestore_access");
 </pre>
+<h3>Recognized shapes</h3>
+<p>Besides the generic <code>HasClaim(Func&lt;Claim, bool&gt;)</code>/<code>FindFirst</code>/<code>FindAll</code> overloads, the rule also covers the
+<code>GP.Juno</code> claim helpers that each imply one fixed claim type (<code>FindUserClaim</code>, <code>FindApplicationClaim</code>,
+<code>FindUserGroupClaim</code> and friends) when the caller reads their result's <code>Value</code>. The parameterless <code>Has*Claim()</code>
+helpers (<code>HasUserClaim</code>, <code>HasApplicationClaim</code>, <code>HasUserGroupClaim</code>) return a <code>bool</code> and are always pure
+existence checks, so they are never reported. Every Juno match requires the method to actually come from a <code>GP.Juno</code> namespace, so an
+unrelated method that happens to share the name is not reported. Claim types written as <code>ClaimTypes.Email</code> are recognised whether the
+class is imported or fully qualified.</p>
+<p><code>HasCompanyClaim</code>/<code>FindCompanyClaim</code> are intentionally not covered at all, existence or value: in this organization, the
+"company" claim is an accepted authorization dimension (for example, gating access to company-scoped resources on a multi-tenant platform) rather
+than an identity leak.</p>
+<p>The complete set of recognized <code>ClaimTypes</code> members is <code>NameIdentifier</code>, <code>Name</code>, <code>Email</code>,
+<code>MobilePhone</code>, <code>Upn</code>, <code>GivenName</code> and <code>Surname</code>.</p>
+<h3>Exceptions</h3>
+<p><code>[Authorize(Policy = "sub")]</code>-style policy names are always reported when the policy name matches one of the recognized identity
+claims, since the attribute alone gives no way to tell whether the policy itself only checks presence or also checks value.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

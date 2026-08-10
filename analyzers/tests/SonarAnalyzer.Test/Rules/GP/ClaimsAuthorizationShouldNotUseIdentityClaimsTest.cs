@@ -1,4 +1,4 @@
-﻿using CS = SonarAnalyzer.CSharp.Rules;
+using CS = SonarAnalyzer.CSharp.Rules;
 
 namespace SonarAnalyzer.Test.Rules.GP;
 
@@ -26,8 +26,10 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             """)
             .Verify();
 
+    // HasClaim(string) is an existence check by construction - there is no value to compare, so it is never
+    // flagged regardless of claim name.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_IdentityClaimInHasClaim() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForHasClaimExistenceCheck() =>
         builder.AddSnippet(
             """
             public static class ClaimTypes
@@ -43,10 +45,62 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Access
             {
                 public bool HasAccess(User user) =>
-                    user.HasClaim("sub"); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+                    user.HasClaim("sub");
 
                 public bool HasAccess2(User user) =>
-                    user.HasClaim(ClaimTypes.NameIdentifier); // Noncompliant {{Do not base access control on identity claim 'NameIdentifier'.}}
+                    user.HasClaim(ClaimTypes.NameIdentifier);
+            }
+            """)
+            .VerifyNoIssues();
+
+    // HasClaim(predicate) is only flagged when the predicate also compares the claim's Value - matching only on
+    // Type is still an existence check, just expressed differently.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForHasClaimPredicateExistenceCheck() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class Claim
+            {
+                public string Type { get; set; }
+                public string Value { get; set; }
+            }
+
+            public class User
+            {
+                public bool HasClaim(Func<Claim, bool> predicate) => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(User user) =>
+                    user.HasClaim(c => c.Type == "sub");
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForHasClaimPredicateValueComparison() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class Claim
+            {
+                public string Type { get; set; }
+                public string Value { get; set; }
+            }
+
+            public class User
+            {
+                public bool HasClaim(Func<Claim, bool> predicate) => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(User user) =>
+                    user.HasClaim(c => c.Type == "sub" && c.Value == "12345"); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
             }
             """)
             .Verify();
@@ -67,8 +121,9 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             """)
             .Verify();
 
+    // FindFirst(...) != null only checks whether the claim is present - not a value comparison.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoOrCalledByApi_HasClaimPredicate() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoOrCalledByApi_HasClaimPredicateExistenceCheck() =>
         builder.AddSnippet(
             """
             using System;
@@ -82,6 +137,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Claim
             {
                 public string Type { get; set; }
+                public string Value { get; set; }
             }
 
             public interface IServiceCollection { }
@@ -98,14 +154,14 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             {
                 public void ConfigureServices(IServiceCollection services)
                 {
-                    services.OrCalledByApi<string>(user => user.HasClaim(c => c.Type == "sub")); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+                    services.OrCalledByApi<string>(user => user.HasClaim(c => c.Type == "sub"));
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoAddUserActivitiesAlternative_FindFirstClaimTypes() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoAddUserActivitiesAlternative_FindFirstExistenceCheck() =>
         builder.AddSnippet(
             """
             using System;
@@ -119,6 +175,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Claim
             {
                 public string Type { get; set; }
+                public string Value { get; set; }
             }
 
             public class ClaimsPrincipal
@@ -141,14 +198,59 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             {
                 public void ConfigureServices(IServiceCollection services)
                 {
-                    services.AddUserActivitiesAlternative(user => user.FindFirst(ClaimTypes.NameIdentifier) != null); // Noncompliant {{Do not base access control on identity claim 'NameIdentifier'.}}
+                    services.AddUserActivitiesAlternative(user => user.FindFirst(ClaimTypes.NameIdentifier) != null);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForJunoAddUserActivitiesAlternative_FindFirstValueComparison() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
+
+            public static class ClaimTypes
+            {
+                public const string NameIdentifier = "sub";
+            }
+
+            public class Claim
+            {
+                public string Type { get; set; }
+                public string Value { get; set; }
+            }
+
+            public class ClaimsPrincipal
+            {
+                public Claim FindFirst(string type) => null;
+                public Claim FindFirst(object type) => null;
+            }
+
+            public interface IServiceCollection { }
+
+            namespace GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection
+            {
+                public static class AlternativePermissionExtensions
+                {
+                    public static IServiceCollection AddUserActivitiesAlternative(this IServiceCollection services, Func<ClaimsPrincipal, bool> alternativePermission) => services;
+                }
+            }
+
+            public class Startup
+            {
+                public void ConfigureServices(IServiceCollection services)
+                {
+                    services.AddUserActivitiesAlternative(user => user.FindFirst(ClaimTypes.NameIdentifier).Value == "some-hardcoded-id"); // Noncompliant {{Do not base access control on identity claim 'NameIdentifier'.}}
                 }
             }
             """)
             .Verify();
 
+    // Has*Claim() returns a bool: it is inherently an existence check and is out of scope for this rule.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoHasUserClaim() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoHasUserClaim() =>
         builder.AddSnippet(
             """
             namespace GP.Juno.Security
@@ -162,11 +264,13 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Access
             {
                 public bool HasAccess(GP.Juno.Security.ClaimsPrincipal user) =>
-                    user.HasUserClaim(); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+                    user.HasUserClaim();
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
+    // The GP0005 (negation) half is unaffected by the existence-vs-value distinction - it is still risky to
+    // negate an existence check regardless of whether GP0006 itself fires.
     [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoNegatedHasApplicationClaim() =>
         builder.AddSnippet(
@@ -183,13 +287,13 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             {
                 public bool HasAccess(GP.Juno.Security.ClaimsPrincipal user) =>
                     !user.HasApplicationClaim(); // Noncompliant {{Do not base access decisions on a negated HasClaim check.}}
-                                                  // Noncompliant@-1 {{Do not base access control on identity claim 'app'.}}
             }
             """)
             .Verify();
 
+    // Option<Claim>.HasValue checks whether the claim was found at all - not its Value - so this stays compliant.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoFindUserGroupClaimHasValue() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoFindUserGroupClaimHasValue() =>
         builder.AddSnippet(
             """
             public class Claim { }
@@ -207,7 +311,32 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Access
             {
                 public bool HasAccess(GP.Juno.Security.UserContexts.ClaimsPrincipal user) =>
-                    user.FindUserGroupClaim().HasValue; // Noncompliant {{Do not base access control on identity claim 'userGroup'.}}
+                    user.FindUserGroupClaim().HasValue;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForJunoFindUserGroupClaimValue() =>
+        builder.AddSnippet(
+            """
+            public class Claim
+            {
+                public string Value { get; set; }
+            }
+
+            namespace GP.Juno.Security.UserContexts
+            {
+                public class ClaimsPrincipal
+                {
+                    public Claim FindUserGroupClaim() => null;
+                }
+            }
+
+            public class Access
+            {
+                public bool HasAccess(GP.Juno.Security.UserContexts.ClaimsPrincipal user) =>
+                    user.FindUserGroupClaim().Value == "some-group-id"; // Noncompliant {{Do not base access control on identity claim 'userGroup'.}}
             }
             """)
             .Verify();
@@ -257,8 +386,9 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             """)
             .VerifyNoIssues();
 
+    // HasClaim(ClaimTypes.Email) is still just an existence check - same treatment as HasClaim("sub").
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForQualifiedClaimTypes() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForQualifiedClaimTypesExistenceCheck() =>
         builder.AddSnippet(
             """
             namespace System.Security.Claims
@@ -277,10 +407,10 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             public class Access
             {
                 public bool HasAccess(User user) =>
-                    user.HasClaim(System.Security.Claims.ClaimTypes.Email); // Noncompliant {{Do not base access control on identity claim 'Email'.}}
+                    user.HasClaim(System.Security.Claims.ClaimTypes.Email);
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_Compliant() =>

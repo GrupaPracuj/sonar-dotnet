@@ -88,9 +88,15 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
         if (JunoParameterlessClaimCheckMethods.TryGetValue(methodName, out var junoClaimName))
         {
-            // The name alone is not enough: only the GP.Juno claim helpers imply a fixed claim type, so an
-            // unrelated method that happens to be called HasCompanyClaim must not be reported.
-            if (IsJunoSecurityMethod(context.Model, invocation))
+            // Has*Claim() returns a bool - it can only ever check whether the claim is present, never what its
+            // value is, so it is out of scope for this rule entirely. Find*Claim() returns the claim itself: only
+            // flag it when the caller actually reads its Value, not when it merely checks whether the claim was
+            // found (a null/HasValue check) - see ResultValueIsAccessed. The name alone is not enough either way:
+            // only the GP.Juno claim helpers imply a fixed claim type, so an unrelated method that happens to share
+            // the name must not be reported.
+            if (methodName.StartsWith("Find", StringComparison.Ordinal)
+                && ResultValueIsAccessed(invocation)
+                && IsJunoSecurityMethod(context.Model, invocation))
             {
                 context.ReportIssue(IdentityClaimRule, invocation, junoClaimName);
             }
@@ -98,12 +104,29 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
             return;
         }
 
-        if (methodName != "HasClaim")
+        if (methodName != "HasClaim"
+            || invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is not { } firstArgument)
         {
             return;
         }
 
-        var claimName = ExtractClaimName(invocation.ArgumentList.Arguments, context.Model);
+        // HasClaim(string) is an existence check by construction - there is no value to compare, so it is never
+        // flagged, regardless of claim name. Only the predicate overload can express a value comparison, and only
+        // when it actually does (e.g. 'c => c.Type == "sub" && c.Value == someId'), not when it only matches Type.
+        var predicateBody = firstArgument switch
+        {
+            ParenthesizedLambdaExpressionSyntax { Body: { } body } => body,
+            SimpleLambdaExpressionSyntax { Body: { } body } => body,
+            AnonymousMethodExpressionSyntax { Body: { } body } => body,
+            _ => null
+        };
+
+        if (predicateBody is null || !ComparesClaimValue(predicateBody))
+        {
+            return;
+        }
+
+        var claimName = ExtractClaimNameFromPredicate(predicateBody, context.Model);
         if (claimName is not null && IsForbiddenIdentityClaim(claimName))
         {
             context.ReportIssue(IdentityClaimRule, invocation, claimName);
@@ -115,6 +138,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         if (context.Node is not InvocationExpressionSyntax invocation
             || invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: var methodName }
             || methodName is not ("FindFirst" or "FindAll")
+            || !ResultValueIsAccessed(invocation)
             || !IsInsideJunoAlternativePermissionPredicate(invocation, context.Model))
         {
             return;
@@ -126,6 +150,27 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
             context.ReportIssue(IdentityClaimRule, invocation, claimName);
         }
     }
+
+    // Existence-only checks - is the claim present, absent, or of a given type - are not what this rule targets:
+    // only a comparison against the claim's actual Value ties an access decision to a specific identity, rather
+    // than merely to whether some claim of that type showed up in the token at all.
+    private static bool IsValueAccess(ExpressionSyntax expression) =>
+        expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Value" };
+
+    private static bool ComparesClaimValue(SyntaxNode predicateBody) =>
+        predicateBody.DescendantNodesAndSelf().OfType<BinaryExpressionSyntax>()
+            .Any(x => x.Kind() is SyntaxKind.EqualsExpression or SyntaxKind.NotEqualsExpression && (IsValueAccess(x.Left) || IsValueAccess(x.Right)));
+
+    // True when the caller reads .Value (or ?.Value) off the invocation's result, rather than merely checking
+    // whether it is null/HasValue - e.g. 'FindFirst(...).Value == x' is a value comparison, 'FindFirst(...) != null'
+    // is not.
+    private static bool ResultValueIsAccessed(InvocationExpressionSyntax invocation) =>
+        invocation.Parent switch
+        {
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Value" } => true,
+            ConditionalAccessExpressionSyntax { WhenNotNull: MemberBindingExpressionSyntax { Name.Identifier.ValueText: "Value" } } => true,
+            _ => false
+        };
 
     private static void CheckAuthorizeAttribute(SonarSyntaxNodeReportingContext context)
     {
