@@ -37,11 +37,14 @@ public sealed class ContractEnumShouldAssignExplicitValues : SonarDiagnosticAnal
         context.ReportIssue(Rule, declaration.Identifier, enumType.Name);
     }
 
+    // An enum serialized as a string puts no ordinal on the wire, so reordering its members changes nothing there.
+    // Both serializers spell the escape hatch the same way, and the codebase uses both.
     private static bool UsesStringEnumConverter(INamedTypeSymbol enumType) =>
         enumType.GetAttributes().Any(attribute =>
-            attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonConverterAttribute"
+            attribute.AttributeClass?.ToDisplayString() is "System.Text.Json.Serialization.JsonConverterAttribute" or "Newtonsoft.Json.JsonConverterAttribute"
             && attribute.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol converter
             && converter.OriginalDefinition.ToDisplayString() is
                 "System.Text.Json.Serialization.JsonStringEnumConverter"
-                or "System.Text.Json.Serialization.JsonStringEnumConverter<TEnum>");
+                or "System.Text.Json.Serialization.JsonStringEnumConverter<TEnum>"
+                or "Newtonsoft.Json.Converters.StringEnumConverter");
 }

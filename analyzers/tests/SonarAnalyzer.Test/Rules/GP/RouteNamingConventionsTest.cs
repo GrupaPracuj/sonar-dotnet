@@ -421,6 +421,90 @@ public class RouteNamingConventionsTest
             """)
             .VerifyNoIssues();
 
+    // A segment that is not entirely literal - an API-versioned "v{version}", a literal prefix in front of a
+    // parameter, a replacement token with a suffix - is a normal template, not a casing mistake.
+    [TestMethod]
+    public void RouteNamingConventions_CompliantSegmentsContainingParametersOrTokens() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class RouteAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public RouteAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+
+                public class HttpGetAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpGetAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            [Microsoft.AspNetCore.Mvc.Route("api/v{version:apiVersion}/[controller]")]
+            public class JobOffersController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet("order-{id}")]
+                public void Get(int id) { }
+
+                [Microsoft.AspNetCore.Mvc.HttpGet("[action]-archive")]
+                public void Archive() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A segment naming a file is a route, not a casing mistake - but its casing is still checked.
+    [TestMethod]
+    public void RouteNamingConventions_FileNameSegment() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpGetAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            public class DocsController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet("swagger/v1/swagger.json")]
+                public void Definition() { }
+
+                [Microsoft.AspNetCore.Mvc.HttpGet("swagger/v1/Swagger.Json")] // Noncompliant {{Rename route segment 'Swagger.Json' to kebab-case.}}
+                public void WronglyCasedDefinition() { }
+            }
+            """)
+            .Verify();
+
     [TestMethod]
     public void RouteNamingConventions_NoncompliantSecretRouteParameter() =>
         builder.AddSnippet(

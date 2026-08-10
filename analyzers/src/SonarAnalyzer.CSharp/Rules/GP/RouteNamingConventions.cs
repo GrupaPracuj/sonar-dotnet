@@ -96,7 +96,7 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
 
     // Yields every non-empty segment together with its offset inside the template, so an issue can point at the
     // offending part of the route instead of stacking several issues on the whole attribute.
-    private static IEnumerable<(string Segment, int Offset)> Segments(string template)
+    internal static IEnumerable<(string Segment, int Offset)> Segments(string template)
     {
         var start = 0;
         while (start <= template.Length)
@@ -142,8 +142,11 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
         return attributeSyntax.GetLocation();
     }
 
-    private static bool IsParameterOrToken(string segment) =>
-        segment[0] is '{' or '[';
+    // A route parameter or a replacement token anywhere in the segment puts the segment's spelling outside the
+    // author's control: "api/v{version}/users" and "[controller]-archive" are ordinary templates, so neither the
+    // kebab-case nor the verb check applies to them. Only a segment that is entirely literal text is checked.
+    internal static bool IsParameterOrToken(string segment) =>
+        segment.IndexOf('{') >= 0 || segment.IndexOf('[') >= 0;
 
     private static bool IsParameter(string segment) =>
         segment[0] == '{' && segment.EndsWith("}", StringComparison.Ordinal);
@@ -182,11 +185,13 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
         return false;
     }
 
-    private static bool IsKebabCase(string segment) =>
+    // '.' is allowed because a segment that names a file - "swagger.json", "robots.txt" - is a normal route, not a
+    // casing mistake. Upper case and '_' are still reported, so "Swagger.Json" remains an issue.
+    internal static bool IsKebabCase(string segment) =>
         segment[0] != '-'
         && segment[segment.Length - 1] != '-'
         && !segment.Contains("--")
-        && segment.All(x => char.IsLower(x) || char.IsDigit(x) || x == '-');
+        && segment.All(x => char.IsLower(x) || char.IsDigit(x) || x == '-' || x == '.');
 
     private static string[] SortedByLengthDescending(params string[] verbs)
     {

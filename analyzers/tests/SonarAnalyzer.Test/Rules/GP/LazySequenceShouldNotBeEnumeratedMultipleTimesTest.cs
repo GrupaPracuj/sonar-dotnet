@@ -228,4 +228,100 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             }
             """)
             .Verify();
+
+    // Two sections of the same switch never both run, so neither enumeration follows the other.
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForMutuallyExclusiveSwitchSections() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source, int mode)
+                {
+                    switch (mode)
+                    {
+                        case 1:
+                            return source.Count();
+                        case 2:
+                            return source.Sum();
+                        default:
+                            return source.First();
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // The same for the arms of a switch expression.
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForMutuallyExclusiveSwitchExpressionArms() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source, int mode) =>
+                    mode switch
+                    {
+                        1 => source.Count(),
+                        2 => source.Sum(),
+                        _ => source.First(),
+                    };
+            }
+            """)
+            .VerifyNoIssues();
+
+    // The governing expression always runs, so it is not exclusive with any section.
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForSwitchOverTheSequenceItself() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source)
+                {
+                    switch (source.Count())
+                    {
+                        case 0:
+                            return 0;
+                        default:
+                            return source.Sum(); // Noncompliant
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    // Two enumerations inside one section still follow each other.
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantWithinASingleSwitchSection() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source, int mode)
+                {
+                    switch (mode)
+                    {
+                        case 1:
+                            var count = source.Count();
+                            return count + source.Sum(); // Noncompliant
+                        default:
+                            return 0;
+                    }
+                }
+            }
+            """)
+            .Verify();
 }

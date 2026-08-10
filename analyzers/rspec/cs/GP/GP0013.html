@@ -12,7 +12,8 @@ public void GetAll() { }
 <h3>Exceptions</h3>
 <p>A word that merely starts with the same letters as a verb, without a real word boundary (<code>-</code>, <code>_</code>, or an uppercase letter)
 after it, is not flagged. Workflow and custom-operation segments such as <code>cancel</code>, <code>approve</code> and <code>validate-payment</code>
-are also allowed because their semantics cannot be expressed by choosing a different HTTP method.</p>
+are also allowed because their semantics cannot be expressed by choosing a different HTTP method. Segments that are not entirely literal text -
+those containing a route parameter or a replacement token, such as <code>get-{id}</code> - are not checked either.</p>
 <h2>How to fix it</h2>
 <p>Remove the duplicated HTTP method name from the path and let the HTTP method express it.</p>
 <h3>Code examples</h3>

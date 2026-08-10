@@ -48,6 +48,10 @@ public sealed class TestMethodShouldHaveTestAttribute : SonarDiagnosticAnalyzer
     // A public, parameterless, non-static method returning void or Task with no attributes at all: a test in every
     // framework, and an unusual shape for a helper. Any attribute at all means the author declared an intent
     // (a lifecycle hook, an explicit exclusion), so the method is left alone.
+    //
+    // A method that implements an interface member is left alone too: the interface, not an attribute, is what makes
+    // the framework call it. That is how xUnit expresses setup and teardown - IAsyncLifetime.InitializeAsync/
+    // DisposeAsync, IDisposable.Dispose - and it covers a project's own fixture interfaces just as well.
     private static bool LooksLikeAnUnannotatedTest(SemanticModel model, MethodDeclarationSyntax method) =>
         method.AttributeLists.Count == 0
         && method.ParameterList.Parameters.Count == 0
@@ -61,7 +65,8 @@ public sealed class TestMethodShouldHaveTestAttribute : SonarDiagnosticAnalyzer
             ExplicitInterfaceImplementations.IsEmpty: true,
             TypeParameters.Length: 0,
         } symbol
-        && ReturnsVoidOrTask(symbol);
+        && ReturnsVoidOrTask(symbol)
+        && !symbol.InterfaceMembers().Any();
 
     private static bool ReturnsVoidOrTask(IMethodSymbol method) =>
         method.ReturnsVoid

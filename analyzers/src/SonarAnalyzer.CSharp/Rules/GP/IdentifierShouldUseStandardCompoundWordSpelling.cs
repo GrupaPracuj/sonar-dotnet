@@ -79,11 +79,18 @@ public sealed class IdentifierShouldUseStandardCompoundWordSpelling : SonarDiagn
         }
     }
 
+    // A parameter of an override or of an interface implementation can be renamed without breaking anything at
+    // compile time - parameter names are not part of a signature - but the new name then disagrees with the
+    // base/interface declaration, which is exactly what S927 reports. The misspelling is still worth pointing out, so
+    // the analyzer reports it; the automatic rename is withheld (see the code fix) rather than trading one issue for
+    // another. The fix belongs on the base declaration, from where it propagates.
+    internal static bool ParameterIsFreelyRenamable(IParameterSymbol parameter) =>
+        parameter.ContainingSymbol is not IMethodSymbol method || IsFreelyRenamable(method);
+
     // A method whose name is constrained by an override or an interface implementation (explicit or implicit) is
     // not the author's free choice to make - renaming it would either fail to override the base member, or (for an
     // implicit interface implementation, which binds purely by name+signature) silently stop implementing the
-    // interface. A field, parameter, enum member, or a type name is always safe to rename on its own, so those get
-    // no such check.
+    // interface. A field, enum member, or a type name is always safe to rename on its own, so those get no such check.
     private static bool IsFreelyRenamable(IMethodSymbol method) =>
         !method.IsOverride
         && method.ExplicitInterfaceImplementations.IsEmpty

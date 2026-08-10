@@ -15,6 +15,10 @@ an outer method is not.</p>
 <p>A call that passes the immediately enclosing method's own <code>CancellationToken</code> parameter is not reported. Passing
 <code>CancellationToken.None</code>, <code>default(CancellationToken)</code>, or a newly constructed token suppresses cancellation propagation and
 is reported.</p>
+<p>Only the immediately enclosing <em>method's</em> parameters are searched for an available token: a token reachable through a field, or bound as a
+parameter of an inline Minimal API handler rather than of a method, is not treated as available, so those calls are not reported. A call is also only
+reported when the invoked API really has an overload taking a <code>CancellationToken</code> - the <code>GP.Juno</code> fluent HTTP API has none, so it
+is never reported.</p>
 <h2>How to fix it</h2>
 <p>Pass the method's own <code>CancellationToken</code> parameter to the outgoing call.</p>
 <h3>Code examples</h3>

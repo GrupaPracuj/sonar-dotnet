@@ -15,9 +15,16 @@ public class HttpMethodShouldMatchActionNameTest
             public class HttpDeleteAttribute : System.Attribute { }
             public class HttpPostAttribute : System.Attribute { }
             public interface IActionResult { }
+            public class ViewResult : IActionResult { }
             public abstract class ControllerBase
             {
                 protected IActionResult Ok() => null;
+                protected IActionResult RedirectToAction(string action) => null;
+            }
+            public abstract class Controller : ControllerBase
+            {
+                protected ViewResult View() => null;
+                protected ViewResult View(object model) => null;
             }
         }
         """;
@@ -117,6 +124,66 @@ public class HttpMethodShouldMatchActionNameTest
             }
             """)
             .VerifyNoIssues();
+
+    // The scaffolded MVC pair: [HttpGet] Edit/Delete render the form, [HttpPost] Edit/Delete apply it.
+    [TestMethod]
+    public void HttpMethodShouldMatchActionName_CompliantForViewRenderingActions() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.Controller
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.ViewResult Edit(int id) => View();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Delete(int id)
+                {
+                    return View(id);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // Rendering nothing, only mutating and redirecting: the [HttpGet] is the problem, not the name.
+    [TestMethod]
+    public void HttpMethodShouldMatchActionName_NoncompliantForMutatingActionThatDoesNotRenderAView() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.Controller
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser(int id) // Noncompliant {{Method 'DeleteUser' looks like it performs a mutating action but is annotated with [HttpGet].}}
+                {
+                    return RedirectToAction("Index");
+                }
+            }
+            """)
+            .Verify();
+
+    // The exemption is resolved semantically: an unrelated View() does not turn an action into a view-rendering one.
+    [TestMethod]
+    public void HttpMethodShouldMatchActionName_NoncompliantForLookalikeViewCall() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public sealed class ReportBuilder
+            {
+                public object View() => null;
+            }
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser(ReportBuilder builder) // Noncompliant {{Method 'DeleteUser' looks like it performs a mutating action but is annotated with [HttpGet].}}
+                {
+                    builder.View();
+                    return Ok();
+                }
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void HttpMethodShouldMatchActionName_CompliantForNonControllerType() =>

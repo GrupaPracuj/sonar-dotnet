@@ -22,6 +22,10 @@ catch rethrows or throws a cancellation exception.</p>
 <p>A block that rethrows - with <code>throw;</code> or <code>throw ex;</code> - or throws another cancellation exception on every path is not reported.
 Returning, breaking out of a loop, or throwing an unrelated exception suppresses the cancellation signal. Logging alone does not count: a log line does
 not stop the caller from treating the operation as complete.</p>
+<p>A <code>when</code> filter that negates <code>CancellationToken.IsCancellationRequested</code> -
+<code>catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)</code>, the documented way to tell an
+<code>HttpClient</code> timeout apart from a caller's cancellation - is not reported: the filter only lets the exception through when nobody asked to
+stop, so handling it there hides no cancellation signal. Any other filter leaves the signal suppressed and is still reported.</p>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>

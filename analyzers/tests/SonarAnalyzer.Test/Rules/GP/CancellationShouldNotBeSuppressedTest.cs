@@ -278,4 +278,57 @@ public class CancellationShouldNotBeSuppressedTest
             }
             """)
             .Verify();
+
+    // The documented way to tell an HttpClient timeout apart from a caller's cancellation: the filter only lets the
+    // exception through when nobody asked to stop, so handling it there hides no cancellation signal.
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantForTimeoutDistinguishingFilter() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderService
+            {
+                public void Process(CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        Work(cancellationToken);
+                    }
+                    catch (System.Threading.Tasks.TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        throw new System.TimeoutException();
+                    }
+                }
+
+                private void Work(CancellationToken cancellationToken) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // Any other filter leaves the cancellation signal suppressed just the same.
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantForUnrelatedFilter() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderService
+            {
+                public void Process(CancellationToken cancellationToken, bool retrying)
+                {
+                    try
+                    {
+                        Work(cancellationToken);
+                    }
+                    catch (System.Threading.Tasks.TaskCanceledException) when (!retrying) // Noncompliant {{Do not turn cancellation into success - let 'TaskCanceledException' propagate or rethrow it.}}
+                    {
+                        System.Console.WriteLine("Cancelled");
+                    }
+                }
+
+                private void Work(CancellationToken cancellationToken) { }
+            }
+            """)
+            .Verify();
 }

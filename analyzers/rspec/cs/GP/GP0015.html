@@ -28,6 +28,11 @@ signal.</p>
 <code>Remove</code>, <code>Add</code>, <code>Insert</code>, <code>Save</code>, <code>Modify</code> and <code>Edit</code>. For
 <code>[HttpDelete]</code>, it is <code>Get</code>, <code>Find</code>, <code>Search</code>, <code>List</code>, <code>Fetch</code>,
 <code>Retrieve</code>, <code>Create</code>, <code>Add</code> and <code>Insert</code>. Only the first Pascal-case word of the method name is checked.</p>
+<p>A classic MVC action that renders a view is also exempt from the <code>[HttpGet]</code> half of the rule: <code>[HttpGet] Edit(id)</code> serves
+the edit form and <code>[HttpPost] Edit(model)</code> applies it, so the name describes what the form is for rather than what the request does.
+An action counts as view-rendering when it returns a <code>ViewResult</code>/<code>PartialViewResult</code> or calls
+<code>Controller.View(...)</code>/<code>Controller.PartialView(...)</code>; a same-named method on an unrelated type does not exempt anything. An
+action that only mutates and redirects is still reported.</p>
 <h2>How to fix it</h2>
 <p>Rename the action so its leading verb matches what it actually does, or use the HTTP verb that matches the existing name.</p>
 <h3>Code examples</h3>

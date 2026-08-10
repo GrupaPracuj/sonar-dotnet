@@ -222,6 +222,61 @@ public class ContractEnumRulesTest
             """)
             .VerifyNoIssues();
 
+    // Newtonsoft spells the same escape hatch its own way, and the codebase uses both serializers.
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_CompliantForNewtonsoftStringEnumConverter() =>
+        explicitValues.AddSnippet(
+            """
+            namespace Newtonsoft.Json
+            {
+                public sealed class JsonConverterAttribute : System.Attribute
+                {
+                    public JsonConverterAttribute(System.Type converterType) { }
+                }
+            }
+
+            namespace Newtonsoft.Json.Converters
+            {
+                public sealed class StringEnumConverter { }
+            }
+
+            [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+            public enum OrderStatus
+            {
+                Unknown,
+                Pending,
+            }
+
+            public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+            """)
+            .VerifyNoIssues();
+
+    // An unrelated converter says nothing about the wire format, so the implicit values are still reported.
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_NoncompliantForUnrelatedConverter() =>
+        explicitValues.AddSnippet(
+            """
+            namespace Newtonsoft.Json
+            {
+                public sealed class JsonConverterAttribute : System.Attribute
+                {
+                    public JsonConverterAttribute(System.Type converterType) { }
+                }
+            }
+
+            public sealed class OrderStatusConverter { }
+
+            [Newtonsoft.Json.JsonConverter(typeof(OrderStatusConverter))]
+            public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract with implicit values - reordering or inserting a member would silently change what is already on the wire.}}
+            {
+                Unknown,
+                Pending,
+            }
+
+            public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+            """)
+            .Verify();
+
     [TestMethod]
     public void ContractEnumShouldAssignExplicitValues_CodeFixForUlongValues() =>
         explicitValues.WithBasePath("GP")

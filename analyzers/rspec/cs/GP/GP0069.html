@@ -18,6 +18,12 @@ public enum OrderStatus
 <p>Explicit numbers make the wire contract independent of the source layout: members can be reordered, grouped or removed and the numbers stay where they
 are. Every member has to be explicit, because a single implicit one still moves when its predecessor changes.</p>
 <p>Only enums a contract actually exposes are reported - an internal enum can be reordered freely, since nothing outside the assembly reads its numbers.</p>
+<h3>Exceptions</h3>
+<p>An enum that is serialized as a string puts no ordinal on the wire, so reordering its members changes nothing there and it is not reported. That is
+recognized through the converter attribute of either serializer:
+<code>[JsonConverter(typeof(JsonStringEnumConverter))]</code> (<code>System.Text.Json</code>, including the generic
+<code>JsonStringEnumConverter&lt;TEnum&gt;</code>) and <code>[JsonConverter(typeof(StringEnumConverter))]</code> (<code>Newtonsoft.Json</code>). Any
+other converter says nothing about the wire format and does not exempt the enum.</p>
 <h2>How to fix it</h2>
 <p>Assign each member its number. On an enum that is already published, assign the numbers it currently has rather than tidy ones, or the fix becomes the
 breaking change it was meant to prevent.</p>

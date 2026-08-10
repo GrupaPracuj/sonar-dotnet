@@ -120,11 +120,17 @@ internal static class GpMessageContracts
             : null;
     }
 
-    // Positional records declare their members in the parameter list, so both shapes have to be inspected.
+    // The public properties of the type and of everything it inherits - which covers a positional record too, since
+    // the compiler turns each of its parameters into exactly such a property.
+    //
+    // Grouped by name because an inherited property that a derived type overrides or hides appears once per level of
+    // the hierarchy, while the serialized message has one member for it; counting it twice would overstate the shape.
     internal static IEnumerable<(string Name, ITypeSymbol Type)> DataMembers(INamedTypeSymbol type) =>
         BaseTypesAndSelf(type)
             .SelectMany(x => x.GetMembers().OfType<IPropertySymbol>())
             .Where(x => x is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, IsIndexer: false })
+            .GroupBy(x => x.Name, StringComparer.Ordinal)
+            .Select(x => x.First())
             .Select(x => (x.Name, x.Type));
 
     private static IEnumerable<INamedTypeSymbol> BaseTypesAndSelf(INamedTypeSymbol type)

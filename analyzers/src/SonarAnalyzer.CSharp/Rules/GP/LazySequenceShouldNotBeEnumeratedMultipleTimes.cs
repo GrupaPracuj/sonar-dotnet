@@ -76,10 +76,32 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
     }
 
     private static bool AreMutuallyExclusive(SyntaxNode first, SyntaxNode second) =>
+        AreInOppositeIfBranches(first, second) || AreInDifferentSwitchBranches(first, second);
+
+    private static bool AreInOppositeIfBranches(SyntaxNode first, SyntaxNode second) =>
         first.Ancestors().OfType<IfStatementSyntax>().Any(ifStatement =>
             ifStatement.Else is not null
             && ((ifStatement.Statement.Span.Contains(first.Span) && ifStatement.Else.Statement.Span.Contains(second.Span))
                 || (ifStatement.Statement.Span.Contains(second.Span) && ifStatement.Else.Statement.Span.Contains(first.Span))));
+
+    // Two sites under different case branches of the same switch - two sections of a switch statement, two arms of a
+    // switch expression - never both run, exactly like the two halves of an if/else. The switch's own governing
+    // expression always runs, so it is not a case branch and is never exclusive with anything.
+    private static bool AreInDifferentSwitchBranches(SyntaxNode first, SyntaxNode second) =>
+        first.Ancestors()
+            .Where(IsSwitch)
+            .Any(x => CaseBranch(x, first) is { } firstBranch
+                      && CaseBranch(x, second) is { } secondBranch
+                      && firstBranch != secondBranch);
+
+    private static bool IsSwitch(SyntaxNode node) =>
+        node is SwitchStatementSyntax || SwitchExpressionSyntaxWrapper.IsInstance(node);
+
+    private static SyntaxNode CaseBranch(SyntaxNode switchNode, SyntaxNode site) =>
+        switchNode.ChildNodes().FirstOrDefault(x => IsCaseBranch(x) && x.Span.Contains(site.Span));
+
+    private static bool IsCaseBranch(SyntaxNode node) =>
+        node is SwitchSectionSyntax || SwitchExpressionArmSyntaxWrapper.IsInstance(node);
 
     // Local variables and parameters whose DECLARED type is exactly IEnumerable<T> or IQueryable<T>. A concrete collection such as
     // List<T> also implements IEnumerable<T>, but its declared type is List<T>, not the interface, so it is not tracked: once

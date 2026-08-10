@@ -23,7 +23,7 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
         }
 
         var actionMethods = type.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod()).ToList();
-        if (!actionMethods.Any(HasAttribute("Authorize")) || HasAttribute("Authorize")(type) || HasAttribute("AllowAnonymous")(type))
+        if (!actionMethods.Any(HasAttribute("Authorize")) || DeclaresAccessPolicyForWholeType(type))
         {
             // No per-action [Authorize] convention to compare against, or access control is already declared at class level.
             return;
@@ -38,6 +38,15 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
         }
     }
 
+    // A shared base controller carrying [Authorize] (or [AllowAnonymous]) already declares the policy for every action
+    // it inherits down, and ASP.NET Core honours that, so the derived controller has nothing left to declare. Both
+    // attributes are Inherited by default, hence AttributesWithInherited rather than the type's own attributes.
+    private static bool DeclaresAccessPolicyForWholeType(INamedTypeSymbol type) =>
+        type.AttributesWithInherited.Any(x => IsNamed(x, "Authorize") || IsNamed(x, "AllowAnonymous"));
+
     private static Func<ISymbol, bool> HasAttribute(string name) =>
-        symbol => symbol.GetAttributes().Any(x => x.AttributeClass?.Name is var className && (className == name || className == name + "Attribute"));
+        symbol => symbol.GetAttributes().Any(x => IsNamed(x, name));
+
+    private static bool IsNamed(AttributeData attribute, string name) =>
+        attribute.AttributeClass?.Name is var className && (className == name || className == name + "Attribute");
 }

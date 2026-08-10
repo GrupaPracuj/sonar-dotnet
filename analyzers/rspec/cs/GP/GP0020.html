@@ -20,7 +20,8 @@ public class UsersController : ControllerBase
 <p>The rule only compares actions within the same controller class. A controller where no action uses <code>[Authorize]</code> at all is not
 checked - there is no established convention in that controller to be inconsistent with. A controller (or the specific action) already carrying
 <code>[Authorize]</code> or <code>[AllowAnonymous]</code> at the class level is not checked either, since in that case every action already inherits
-an explicit default.</p>
+an explicit default. A class-level declaration inherited from a base controller counts the same way, because ASP.NET Core applies it to the derived
+controller's actions.</p>
 <h2>How to fix it</h2>
 <p>Add <code>[Authorize]</code> if the endpoint should require authorization, or <code>[AllowAnonymous]</code> if it is meant to stay public.</p>
 <h3>Code examples</h3>

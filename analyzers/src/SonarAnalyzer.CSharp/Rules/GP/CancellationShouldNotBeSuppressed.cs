@@ -26,6 +26,7 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         if (catchClause.Declaration?.Type is not { } typeSyntax
             || context.Model.GetTypeInfo(typeSyntax).Type is not { } caught
             || !CancellationExceptions.Contains(caught.ToDisplayString())
+            || DistinguishesTimeoutFromCancellation(context.Model, catchClause.Filter)
             || !IsKnownToSuppressCancellation(context.Model, catchClause.Block))
         {
             return;
@@ -33,6 +34,20 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
 
         context.ReportIssue(Rule, typeSyntax, caught.Name);
     }
+
+    // "catch (TaskCanceledException) when (!token.IsCancellationRequested)" is the documented way to tell an HttpClient
+    // timeout apart from a caller's cancellation: the filter only lets the exception through when nobody asked to stop,
+    // so handling it there hides no cancellation signal. Any other filter still leaves the signal suppressed.
+    private static bool DistinguishesTimeoutFromCancellation(SemanticModel model, CatchFilterClauseSyntax filter) =>
+        filter?.FilterExpression is { } condition
+        && condition.DescendantNodesAndSelf()
+            .OfType<PrefixUnaryExpressionSyntax>()
+            .Where(x => x.IsKind(SyntaxKind.LogicalNotExpression))
+            .Any(x => IsCancellationRequested(model, x.Operand));
+
+    private static bool IsCancellationRequested(SemanticModel model, ExpressionSyntax expression) =>
+        model.GetSymbolInfo(expression.RemoveParentheses()).Symbol is IPropertySymbol { Name: "IsCancellationRequested" } property
+        && property.ContainingType.Is(KnownType.System_Threading_CancellationToken);
 
     private static bool IsKnownToSuppressCancellation(SemanticModel model, BlockSyntax block)
     {

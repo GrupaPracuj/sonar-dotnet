@@ -148,10 +148,14 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     // Compiler-generated members (a record's Equals/ToString/Deconstruct), overrides, explicit interface
     // implementations and value-semantics members are not business behavior - only a method the author added to
     // make the message *do* something is.
+    //
+    // A private method is not part of the contract a consumer sees: nothing outside the type can call it, so it cannot
+    // be mistaken for behavior the message offers across the boundary.
     private static IEnumerable<IMethodSymbol> BusinessBehaviorMethods(INamedTypeSymbol messageType) =>
         messageType.GetMembers()
             .OfType<IMethodSymbol>()
             .Where(x => x is { MethodKind: MethodKind.Ordinary, IsOverride: false, IsImplicitlyDeclared: false, ExplicitInterfaceImplementations.IsEmpty: true }
+                        && x.DeclaredAccessibility != Accessibility.Private
                         && !ValueSemanticsMethods.Contains(x.Name)
                         && !IsFactoryMethod(x, messageType));
 

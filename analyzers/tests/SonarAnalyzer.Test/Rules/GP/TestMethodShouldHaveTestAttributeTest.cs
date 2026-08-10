@@ -120,6 +120,56 @@ public class TestMethodShouldHaveTestAttributeTest
             """)
             .VerifyNoIssues();
 
+    // xUnit carries async setup and teardown through IAsyncLifetime rather than an attribute, so neither of its
+    // members is an unannotated test - InitializeAsync in particular has no name-based exclusion to fall back on.
+    [TestMethod]
+    public void TestMethodShouldHaveTestAttribute_CompliantForAsyncLifetimeImplementation() =>
+        xUnit.AddSnippet(
+            """
+            using System.Threading.Tasks;
+            using Xunit;
+
+            public interface IAsyncLifetime
+            {
+                Task InitializeAsync();
+                Task DisposeAsync();
+            }
+
+            public class TokenValidatorTest : IAsyncLifetime
+            {
+                public Task InitializeAsync() => Task.CompletedTask;
+
+                public Task DisposeAsync() => Task.CompletedTask;
+
+                [Fact]
+                public void Accepts_A_Valid_Token() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // The same for a project's own fixture interface: the interface, not an attribute, is what makes it run.
+    [TestMethod]
+    public void TestMethodShouldHaveTestAttribute_CompliantForOwnInterfaceImplementation() =>
+        msTest.AddSnippet(
+            """
+            using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+            public interface INeedsDatabase
+            {
+                void SeedDatabase();
+            }
+
+            [TestClass]
+            public class TokenValidatorTest : INeedsDatabase
+            {
+                public void SeedDatabase() { }
+
+                [TestMethod]
+                public void Accepts_A_Valid_Token() { }
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void TestMethodShouldHaveTestAttribute_CodeFix() =>
         msTest.WithBasePath("GP")

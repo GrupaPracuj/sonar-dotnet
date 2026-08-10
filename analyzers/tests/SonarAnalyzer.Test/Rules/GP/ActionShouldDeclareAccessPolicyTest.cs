@@ -93,4 +93,66 @@ public class ActionShouldDeclareAccessPolicyTest
             }
             """)
             .VerifyNoIssues();
+
+    // ASP.NET Core honours [Authorize] inherited from a shared base controller, so the derived controller has nothing
+    // left to declare.
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantWhenBaseControllerDeclaresAuthorize() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            [Microsoft.AspNetCore.Mvc.Authorize]
+            public abstract class SecuredControllerBase : Microsoft.AspNetCore.Mvc.ControllerBase { }
+
+            public class UsersController : SecuredControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                [Microsoft.AspNetCore.Mvc.Authorize]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetSettings() => Ok();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantWhenBaseControllerDeclaresAllowAnonymous() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            [Microsoft.AspNetCore.Mvc.AllowAnonymous]
+            public abstract class PublicControllerBase : Microsoft.AspNetCore.Mvc.ControllerBase { }
+
+            public class UsersController : PublicControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                [Microsoft.AspNetCore.Mvc.Authorize]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetStatus() => Ok();
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A base class that declares no policy changes nothing: the per-action convention still applies.
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantWhenBaseControllerDeclaresNothing() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public abstract class PlainControllerBase : Microsoft.AspNetCore.Mvc.ControllerBase { }
+
+            public class UsersController : PlainControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                [Microsoft.AspNetCore.Mvc.Authorize]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetSettings() => Ok(); // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous], but other actions in 'UsersController' are explicitly protected with [Authorize].}}
+            }
+            """)
+            .Verify();
 }

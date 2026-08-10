@@ -139,6 +139,68 @@ public class MessageContractsShouldFollowConventionsTest
             """)
             .VerifyNoIssues();
 
+    // Nothing outside the type can call a private method, so it is not behavior the message offers across the
+    // boundary - unlike the non-private one next to it.
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_PrivateHelper_Compliant() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Configuration
+            {
+            public class NotifyUser
+            {
+                public string Email { get; set; }
+
+                public static NotifyUser For(string email) => new NotifyUser { Email = Normalize(email) };
+
+                private static string Normalize(string email) => email.Trim();
+
+                private void SendNow() { }
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<NotifyUser>();
+            }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_InternalAndProtectedBehavior_Noncompliant() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Configuration
+            {
+            public class NotifyUser
+            {
+                public string Email { get; set; }
+
+                internal void SendNow() { }                 // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+
+                protected void Escalate() { }               // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<NotifyUser>();
+            }
+            }
+            """)
+            .Verify();
+
     [TestMethod]
     public void MessageContractsShouldFollowConventions_StaticMethodReturningSomethingElse_Noncompliant() =>
         builder.AddSnippet(

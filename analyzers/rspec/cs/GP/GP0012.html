@@ -8,6 +8,12 @@ the most common convention for REST resource paths precisely because it avoids t
 [HttpGet("JobOffers")]
 public void GetAll() { }
 </pre>
+<h3>Exceptions</h3>
+<p>Only segments that are entirely literal text are checked. A segment containing a route parameter or a replacement token -
+<code>v{version:apiVersion}</code>, <code>order-{id}</code>, <code>[controller]</code>, <code>[action]-archive</code> - is a normal template whose
+spelling is not the author's choice, so it is left alone. A <code>.</code> is allowed as well, because a segment that names a file
+(<code>swagger.json</code>, <code>robots.txt</code>) is a route rather than a casing mistake; upper case and <code>_</code> inside such a segment are
+still reported.</p>
 <h2>How to fix it</h2>
 <p>Rewrite the segment in kebab-case.</p>
 <h3>Code examples</h3>

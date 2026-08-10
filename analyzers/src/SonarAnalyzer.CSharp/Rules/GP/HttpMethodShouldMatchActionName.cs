@@ -43,7 +43,7 @@ public sealed class HttpMethodShouldMatchActionName : SonarDiagnosticAnalyzer
 
         var leadingWord = GpIdentifierWords.LeadingWord(method.Name);
 
-        if (httpVerbAttribute == "HttpGet" && MutatingVerbs.Contains(leadingWord))
+        if (httpVerbAttribute == "HttpGet" && MutatingVerbs.Contains(leadingWord) && !RendersView(methodDeclaration, method, context.Model))
         {
             context.ReportIssue(Rule, methodDeclaration.Identifier, method.Name, "mutating", httpVerbAttribute);
         }
@@ -52,6 +52,29 @@ public sealed class HttpMethodShouldMatchActionName : SonarDiagnosticAnalyzer
             context.ReportIssue(Rule, methodDeclaration.Identifier, method.Name, "read or creation", httpVerbAttribute);
         }
     }
+
+    // A classic MVC action that renders a view legitimately pairs [HttpGet] with a mutating name: [HttpGet] Edit(id)
+    // serves the edit form and [HttpPost] Edit(model) applies it. Rendering a form changes no state, so the name
+    // describes what the form is for rather than what the request does.
+    private static bool RendersView(MethodDeclarationSyntax methodDeclaration, IMethodSymbol method, SemanticModel model) =>
+        IsViewResultType(method.ReturnType)
+        || methodDeclaration.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(x => model.GetSymbolInfo(x).Symbol is IMethodSymbol { Name: "View" or "PartialView" } viewMethod
+                      && IsMvcControllerType(viewMethod.ContainingType));
+
+    private static bool IsViewResultType(ITypeSymbol returnType)
+    {
+        var type = returnType is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } wrapper
+                   && wrapper.OriginalDefinition.IsAny(KnownType.System_Threading_Tasks_Task_T, KnownType.System_Threading_Tasks_ValueTask_TResult)
+            ? wrapper.TypeArguments[0]
+            : returnType;
+        return type?.Name is "ViewResult" or "PartialViewResult"
+               && type.ContainingNamespace?.ToDisplayString() is "Microsoft.AspNetCore.Mvc" or "System.Web.Mvc";
+    }
+
+    private static bool IsMvcControllerType(ITypeSymbol type) =>
+        type?.ToDisplayString() is "Microsoft.AspNetCore.Mvc.Controller" or "System.Web.Mvc.Controller" or "System.Web.Mvc.ControllerBase";
 
     private static string GetHttpVerbAttributeName(IMethodSymbol method)
     {
