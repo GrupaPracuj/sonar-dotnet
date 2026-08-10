@@ -23,11 +23,29 @@ public class DoNotSendRequestToUserControlledUrlTest
 
         namespace System.Net.Http
         {
+            public class HttpMethod
+            {
+                public static HttpMethod Get => null;
+            }
+
+            public class HttpRequestMessage
+            {
+                public HttpRequestMessage() { }
+                public HttpRequestMessage(HttpMethod method, string requestUri) { }
+                public System.Uri RequestUri { get; set; }
+            }
+
             public class HttpClient
             {
                 public string GetStringAsync(string requestUri) => null;
                 public string GetStringAsync(System.Uri requestUri) => null;
                 public string PostAsync(string requestUri, object content) => null;
+                public string SendAsync(HttpRequestMessage request) => null;
+            }
+
+            public class HttpMessageInvoker
+            {
+                public string SendAsync(HttpRequestMessage request) => null;
             }
         }
 
@@ -58,6 +76,68 @@ public class DoNotSendRequestToUserControlledUrlTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_NoncompliantForHttpRequestMessageConstructor() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class PreviewController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Preview(string imageUrl)
+                {
+                    var content = _client.SendAsync(new System.Net.Http.HttpRequestMessage(
+                        requestUri: imageUrl, // Noncompliant {{Do not send a request to a URL taken from parameter 'imageUrl' - validate the host against an allowlist first.}}
+                        method: System.Net.Http.HttpMethod.Get));
+                    return Ok(content);
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_NoncompliantForHttpRequestMessageInitializer() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class PreviewController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly System.Net.Http.HttpMessageInvoker _client = new System.Net.Http.HttpMessageInvoker();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Preview(string imageUrl)
+                {
+                    var content = _client.SendAsync(new System.Net.Http.HttpRequestMessage
+                    {
+                        RequestUri = new System.Uri(imageUrl) // Noncompliant
+                    });
+                    return Ok(content);
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_CompliantForConstantHttpRequestMessageUri() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class PreviewController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Preview(string imageUrl) =>
+                    Ok(_client.SendAsync(new System.Net.Http.HttpRequestMessage
+                    {
+                        RequestUri = new System.Uri("https://images.internal/image")
+                    }));
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DoNotSendRequestToUserControlledUrl_NoncompliantForInterpolatedActionParameter() =>

@@ -86,4 +86,40 @@ public class WholeContractShouldNotBeLoggedTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void WholeContractShouldNotBeLogged_NoncompliantInInterpolationAndConcatenation() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderConsumer
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+
+                public void Handle(OrderAcceptedContract message)
+                {
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, $"Received {message}"); // Noncompliant
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received " + message); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void WholeContractShouldNotBeLogged_CompliantForMemberInInterpolationAndConcatenation() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderConsumer
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+
+                public void Handle(OrderAcceptedContract message)
+                {
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, $"Received {message.OrderId}");
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received " + message.Status);
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

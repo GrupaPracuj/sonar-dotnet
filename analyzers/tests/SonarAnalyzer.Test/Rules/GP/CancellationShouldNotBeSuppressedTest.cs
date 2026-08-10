@@ -77,9 +77,54 @@ public class CancellationShouldNotBeSuppressedTest
             """)
             .VerifyNoIssues();
 
-    // Returning a value makes the cancellation visible to the caller rather than hiding it.
     [TestMethod]
-    public void CancellationShouldNotBeSuppressed_CompliantWhenMappedToAResult() =>
+    public void CancellationShouldNotBeSuppressed_CompliantWhenThrowingCancellation() =>
+        builder.AddSnippet(
+            """
+            public class OrderService
+            {
+                public void Process()
+                {
+                    try
+                    {
+                        Work();
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        throw new System.Threading.Tasks.TaskCanceledException();
+                    }
+                }
+
+                private void Work() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenThrowingAnotherException() =>
+        builder.AddSnippet(
+            """
+            public class OrderService
+            {
+                public void Process()
+                {
+                    try
+                    {
+                        Work();
+                    }
+                    catch (System.OperationCanceledException) // Noncompliant
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+                }
+
+                private void Work() { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenReturningAResult() =>
         builder.AddSnippet(
             """
             public class OrderService
@@ -91,7 +136,7 @@ public class CancellationShouldNotBeSuppressedTest
                         Work();
                         return true;
                     }
-                    catch (System.OperationCanceledException)
+                    catch (System.OperationCanceledException) // Noncompliant
                     {
                         return false;
                     }
@@ -100,11 +145,10 @@ public class CancellationShouldNotBeSuppressedTest
                 private void Work() { }
             }
             """)
-            .VerifyNoIssues();
+            .Verify();
 
-    // The idiomatic worker loop: cancellation means leave the loop and shut down, which is reacting, not suppressing.
     [TestMethod]
-    public void CancellationShouldNotBeSuppressed_CompliantWhenBreakingOutOfALoop() =>
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenBreakingOutOfALoop() =>
         builder.AddSnippet(
             """
             public class Worker
@@ -117,7 +161,7 @@ public class CancellationShouldNotBeSuppressedTest
                         {
                             Work();
                         }
-                        catch (System.OperationCanceledException)
+                        catch (System.OperationCanceledException) // Noncompliant
                         {
                             break;
                         }
@@ -127,7 +171,58 @@ public class CancellationShouldNotBeSuppressedTest
                 private void Work() { }
             }
             """)
-            .VerifyNoIssues();
+            .Verify();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantForAsyncTaskReturn() =>
+        builder.AddSnippet(
+            """
+            public class OrderService
+            {
+                public async System.Threading.Tasks.Task Process()
+                {
+                    try
+                    {
+                        await Work();
+                    }
+                    catch (System.OperationCanceledException) // Noncompliant
+                    {
+                        return;
+                    }
+                }
+
+                private System.Threading.Tasks.Task Work() => System.Threading.Tasks.Task.CompletedTask;
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenOnlyOneBranchThrows() =>
+        builder.AddSnippet(
+            """
+            public class OrderService
+            {
+                public bool Process(bool propagate)
+                {
+                    try
+                    {
+                        Work();
+                        return true;
+                    }
+                    catch (System.OperationCanceledException) // Noncompliant
+                    {
+                        if (propagate)
+                        {
+                            throw;
+                        }
+                        return false;
+                    }
+                }
+
+                private void Work() { }
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void CancellationShouldNotBeSuppressed_CompliantForOtherExceptions() =>

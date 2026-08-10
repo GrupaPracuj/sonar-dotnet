@@ -105,6 +105,27 @@ public class SharedDictionariesShouldUseJunoDictionariesTest
             .Verify();
 
     [TestMethod]
+    public void SharedDictionariesShouldUseJunoDictionaries_CompliantForLookalikeFluentApi() =>
+        builder.AddSnippet(
+            """
+            public sealed class QueryBuilder
+            {
+                public QueryBuilder Service(string name) => this;
+                public QueryBuilder AddPath(string path) => this;
+                public T GetJson<T>() => default(T);
+            }
+
+            public class Service
+            {
+                private readonly QueryBuilder _builder = new QueryBuilder();
+
+                public string Fetch() =>
+                    _builder.Service("skidblandir").AddPath("/api/dictionaries/categories").GetJson<string>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void SharedDictionariesShouldUseJunoDictionaries_CompliantForNonSkidblandirHttpCall() =>
         builder.AddSnippet(
             """
@@ -130,6 +151,37 @@ public class SharedDictionariesShouldUseJunoDictionariesTest
                 {
                     return await _httpClient.GetStringAsync("https://example.org/api/config");
                 }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void SharedDictionariesShouldUseJunoDictionaries_CompliantWhenPayloadMentionsSkidblandir() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace System.Net.Http
+            {
+                public class StringContent
+                {
+                    public StringContent(string content) { }
+                }
+
+                public class HttpClient
+                {
+                    public Task<string> PostAsync(string requestUri, StringContent content) => Task.FromResult(string.Empty);
+                }
+            }
+
+            public class Service
+            {
+                private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+                public Task<string> SendAuditEntry() =>
+                    _httpClient.PostAsync(
+                        "https://example.org/api/audit",
+                        new System.Net.Http.StringContent("Migrated from skidblandir to Juno"));
             }
             """)
             .VerifyNoIssues();

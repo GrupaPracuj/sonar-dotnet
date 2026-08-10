@@ -1,8 +1,11 @@
-<p>Published message types should be declared in a dedicated contract assembly, such as <code>GP.Kaczawa.Contracts</code>.</p>
+<p>The GP architecture policy requires published message types to be declared in a dedicated contract assembly, such as
+<code>GP.Kaczawa.Contracts</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>A message is a contract between independently deployed services. Declaring it inside the producer service makes the producer assembly the source of
 the wire contract and encourages consumers to depend on service implementation code. A dedicated contracts project gives both sides a small,
 versionable dependency containing only shared message definitions.</p>
+<p>Publishing a type from another assembly is not inherently a runtime failure. This rule enforces the GP assembly-boundary policy so ownership,
+versioning, and dependencies remain explicit.</p>
 <h2>How to fix it</h2>
 <p>Move the message type into the repository's contracts project and publish that type. An assembly named <code>Contracts</code> or ending in
 <code>.Contracts</code> is accepted by default.</p>

@@ -90,6 +90,22 @@ public class CollectionInitializerShouldNotHaveDuplicateKeysTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForListDuplicates() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var values = new List<string> { "x", "x" };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
     // Both keys resolve to the same constant value "a" even though the second is written as a reference to a const.
     [TestMethod]
     public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantWhenSecondKeyIsAConstReference() =>

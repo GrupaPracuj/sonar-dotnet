@@ -4,6 +4,9 @@
 intentionally public endpoint, or it might be an endpoint that was simply forgotten when access control was added to the rest of the controller.
 Making the omission explicit with <code>[AllowAnonymous]</code> removes that ambiguity - a reviewer (and the next person to touch the file) can tell
 at a glance that the endpoint is public on purpose, not by oversight.</p>
+<p>The rule only detects an inconsistency between explicit attributes in one controller. It does not prove that an action is reachable anonymously:
+authorization can also come from a fallback policy, global filters, application conventions, middleware, or other framework configuration. GP still
+requires the action-level intent to be explicit so that it can be reviewed locally.</p>
 <pre>
 public class UsersController : ControllerBase
 {
@@ -47,5 +50,4 @@ public class UsersController : ControllerBase
 <ul>
   <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/authorization/simple">Simple authorization in ASP.NET
   Core</a></li>
-  <li>OWASP - <a href="https://owasp.org/Top10/A01_2021-Broken_Access_Control/">Top 10 2021 Category A1 - Broken Access Control</a></li>
 </ul>

@@ -164,9 +164,10 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     // Strips the enclosing braces and any constraint/default value, e.g. "{apiKey:guid=null}" -> "apiKey".
     private static string ParameterName(string segment)
     {
-        var name = segment.Substring(1, segment.Length - 2);
+        var name = segment.Substring(1, segment.Length - 2).TrimStart('*');
         var boundary = name.IndexOfAny(new[] { ':', '=' });
-        return boundary >= 0 ? name.Substring(0, boundary) : name;
+        name = boundary >= 0 ? name.Substring(0, boundary) : name;
+        return name.TrimEnd('?');
     }
 
     private static bool StartsWithVerb(string segment, out string matchedVerb)

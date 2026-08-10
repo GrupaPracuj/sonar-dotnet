@@ -77,6 +77,49 @@ public class HttpCallShouldPropagateCancellationTokenTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_NoncompliantForSuppressedTokens() =>
+        builder.WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+            HttpClientStubs + """
+
+            public class OrderClient
+            {
+                private readonly System.Net.Http.HttpClient _httpClient;
+
+                public void GetOrders(System.Threading.CancellationToken cancellationToken)
+                {
+                    _httpClient.GetStringAsync("/orders", System.Threading.CancellationToken.None); // Noncompliant
+                    _httpClient.GetStringAsync("/orders", default(System.Threading.CancellationToken)); // Noncompliant
+                    _httpClient.GetStringAsync("/orders", new System.Threading.CancellationToken()); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_CompliantWhenOnlyUnrelatedOverloadHasToken() =>
+        builder.AddSnippet(
+            """
+            namespace System.Net.Http
+            {
+                public class HttpClient
+                {
+                    public System.Threading.Tasks.Task<string> GetStringAsync(string url) => null;
+                    public System.Threading.Tasks.Task<string> GetStringAsync(int requestId, System.Threading.CancellationToken cancellationToken) => null;
+                }
+            }
+
+            public class OrderClient
+            {
+                private readonly System.Net.Http.HttpClient _httpClient;
+
+                public System.Threading.Tasks.Task<string> GetOrder(System.Threading.CancellationToken cancellationToken) =>
+                    _httpClient.GetStringAsync("/orders");
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void HttpCallShouldPropagateCancellationToken_CompliantWhenNoTokenIsAvailable() =>
         builder.AddSnippet(
             HttpClientStubs + """

@@ -47,8 +47,24 @@ public sealed class GetOrHeadActionShouldNotBindRequestBody : SonarDiagnosticAna
             {
                 return "HEAD";
             }
+
+            if (attribute.AttributeClass.Is(KnownType.Microsoft_AspNetCore_Mvc_AcceptVerbsAttribute)
+                && AcceptVerb(attribute) is { } acceptedVerb)
+            {
+                return acceptedVerb;
+            }
         }
 
         return null;
     }
+
+    private static string AcceptVerb(AttributeData attribute) =>
+        attribute.ConstructorArguments
+            .SelectMany(Flatten)
+            .Where(x => x.Value is string)
+            .Select(x => ((string)x.Value).ToUpperInvariant())
+            .FirstOrDefault(x => x is "GET" or "HEAD");
+
+    private static IEnumerable<TypedConstant> Flatten(TypedConstant value) =>
+        value.Kind == TypedConstantKind.Array ? value.Values.SelectMany(Flatten) : [value];
 }

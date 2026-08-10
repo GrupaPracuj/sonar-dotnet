@@ -11,6 +11,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_EventSuffix() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class PaymentReceivedEvent { }
 
             public class AppConfig
@@ -26,6 +28,7 @@ public class MessageContractsShouldFollowConventionsTest
                     return appConfig;
                 }
             }
+            }
             """)
             .Verify();
 
@@ -33,6 +36,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_CommandSuffix() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class AcceptOrderCommand { }
 
             public class AppConfig
@@ -48,6 +53,7 @@ public class MessageContractsShouldFollowConventionsTest
                     return appConfig;
                 }
             }
+            }
             """)
             .Verify();
 
@@ -55,6 +61,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_Behaviorful() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class NotifyUser
             {
                 public string Email { get; set; }
@@ -75,6 +83,7 @@ public class MessageContractsShouldFollowConventionsTest
                     return appConfig;
                 }
             }
+            }
             """)
             .Verify();
 
@@ -82,6 +91,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_RecordWithValueSemantics_Compliant() =>
         builder.WithOptions(LanguageOptions.CSharpLatest).AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public record PaymentReceived(string PaymentId)
             {
                 public override string ToString() => PaymentId;
@@ -97,6 +108,7 @@ public class MessageContractsShouldFollowConventionsTest
                 public static AppConfig RegisterMessages(this AppConfig appConfig) =>
                     appConfig.Publishes<PaymentReceived>();
             }
+            }
             """)
             .VerifyNoIssues();
 
@@ -104,6 +116,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_StaticFactory_Compliant() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class NotifyUser
             {
                 public string Email { get; set; }
@@ -121,6 +135,7 @@ public class MessageContractsShouldFollowConventionsTest
                 public static AppConfig RegisterMessages(this AppConfig appConfig) =>
                     appConfig.Sends<NotifyUser>();
             }
+            }
             """)
             .VerifyNoIssues();
 
@@ -128,6 +143,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_StaticMethodReturningSomethingElse_Noncompliant() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class NotifyUser
             {
                 public string Email { get; set; }
@@ -145,6 +162,7 @@ public class MessageContractsShouldFollowConventionsTest
                 public static AppConfig RegisterMessages(this AppConfig appConfig) =>
                     appConfig.Sends<NotifyUser>();
             }
+            }
             """)
             .Verify();
 
@@ -152,6 +170,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_ReportsEachBehaviorMethodOnce() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class NotifyUser
             {
                 public void SendNow() { } // Noncompliant {{Message contract 'NotifyUser' should not contain business behavior.}}
@@ -171,6 +191,7 @@ public class MessageContractsShouldFollowConventionsTest
                     second.Sends<NotifyUser>();
                 }
             }
+            }
             """)
             .Verify();
 
@@ -178,6 +199,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_MutableButBehaviorFree_Compliant() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class NotifyUser
             {
                 // Mutable properties are allowed - only business behavior (methods) is flagged.
@@ -196,6 +219,7 @@ public class MessageContractsShouldFollowConventionsTest
                     appConfig.Sends<NotifyUser>();
                     return appConfig;
                 }
+            }
             }
             """)
             .VerifyNoIssues();
@@ -259,6 +283,8 @@ public class MessageContractsShouldFollowConventionsTest
     public void MessageContractsShouldFollowConventions_Compliant() =>
         builder.AddSnippet(
             """
+            namespace GP.Juno.Configuration
+            {
             public class PaymentReceived
             {
                 public string PaymentId { get; }
@@ -286,6 +312,33 @@ public class MessageContractsShouldFollowConventionsTest
                     appConfig.Publishes<PaymentReceived>();
                     appConfig.Sends<NotifyUser>();
                     return appConfig;
+                }
+            }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_CompliantForLookalikeApi() =>
+        builder.AddSnippet(
+            """
+            public class PaymentReceivedEvent
+            {
+                public void Process() { }
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Publishes<T>() => this;
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static void Register(AppConfig appConfig)
+                {
+                    appConfig.Publishes<PaymentReceivedEvent>();
+                    appConfig.Sends<PaymentReceivedEvent>();
                 }
             }
             """)

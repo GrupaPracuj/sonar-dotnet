@@ -88,6 +88,19 @@ public class NonDerivedInternalTypesShouldBeSealedTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void NonDerivedInternalTypesShouldBeSealed_NoncompliantForPublicLeafNestedInInternalType() =>
+        builder.AddSnippet(
+            """
+            internal sealed class Container
+            {
+                public class Repository // Noncompliant {{'Repository' has no subtype in this assembly and should be sealed.}}
+                {
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void NonDerivedInternalTypesShouldBeSealed_CompliantForPartialClass() =>
         builder.AddSnippet(
             """

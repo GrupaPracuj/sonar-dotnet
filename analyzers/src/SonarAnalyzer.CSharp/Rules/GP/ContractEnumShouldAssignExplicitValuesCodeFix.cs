@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.CodeAnalysis.Formatting;
 
 namespace SonarAnalyzer.CSharp.Rules;
@@ -23,19 +22,29 @@ public sealed class ContractEnumShouldAssignExplicitValuesCodeFix : SonarCodeFix
             return;
         }
 
+        var implicitValues = new Dictionary<EnumMemberDeclarationSyntax, LiteralExpressionSyntax>();
+        foreach (var member in enumDeclaration.Members.Where(x => x.EqualsValue is null))
+        {
+            if (model.GetDeclaredSymbol(member) is not IFieldSymbol { HasConstantValue: true, ConstantValue: { } value }
+                || CreateValueLiteral(value) is not { } literal)
+            {
+                return;
+            }
+
+            implicitValues.Add(member, literal);
+        }
+
         context.RegisterCodeFix(
             Title,
             c =>
             {
                 var newMembers = enumDeclaration.Members.Select(member =>
                 {
-                    if (member.EqualsValue is not null)
+                    if (!implicitValues.TryGetValue(member, out var literal))
                     {
                         return member;
                     }
 
-                    var symbol = model.GetDeclaredSymbol(member) as IFieldSymbol;
-                    var literal = CreateValueLiteral(symbol?.ConstantValue);
                     var equalsValue = SyntaxFactory.EqualsValueClause(literal).WithAdditionalAnnotations(Formatter.Annotation);
                     return member.WithEqualsValue(equalsValue);
                 });
@@ -46,19 +55,23 @@ public sealed class ContractEnumShouldAssignExplicitValuesCodeFix : SonarCodeFix
             context.Diagnostics);
     }
 
-    // SyntaxFactory.Literal(long) prints a numeric suffix ("0L") to keep the token's declared value type intact.
-    // An enum member initializer almost always fits an int - the same digits without a suffix - which is what the
-    // compliant example shows, and remains implicitly convertible to whatever the enum's actual underlying type is.
-    // Only a value that overflows int (an underlying long/ulong enum with a huge member) needs the wider literal.
-    private static LiteralExpressionSyntax CreateValueLiteral(object value)
-    {
-        try
+    private static LiteralExpressionSyntax CreateValueLiteral(object value) =>
+        value switch
         {
-            return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(Convert.ToInt32(value, CultureInfo.InvariantCulture)));
-        }
-        catch (OverflowException)
-        {
-            return SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(Convert.ToInt64(value, CultureInfo.InvariantCulture)));
-        }
-    }
+            byte number => Numeric(SyntaxFactory.Literal((int)number)),
+            sbyte number => Numeric(SyntaxFactory.Literal((int)number)),
+            short number => Numeric(SyntaxFactory.Literal((int)number)),
+            ushort number => Numeric(SyntaxFactory.Literal((int)number)),
+            int number => Numeric(SyntaxFactory.Literal(number)),
+            uint number when number <= int.MaxValue => Numeric(SyntaxFactory.Literal((int)number)),
+            uint number => Numeric(SyntaxFactory.Literal(number)),
+            long number when number is >= int.MinValue and <= int.MaxValue => Numeric(SyntaxFactory.Literal((int)number)),
+            long number => Numeric(SyntaxFactory.Literal(number)),
+            ulong number when number <= int.MaxValue => Numeric(SyntaxFactory.Literal((int)number)),
+            ulong number => Numeric(SyntaxFactory.Literal(number)),
+            _ => null,
+        };
+
+    private static LiteralExpressionSyntax Numeric(SyntaxToken token) =>
+        SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, token);
 }

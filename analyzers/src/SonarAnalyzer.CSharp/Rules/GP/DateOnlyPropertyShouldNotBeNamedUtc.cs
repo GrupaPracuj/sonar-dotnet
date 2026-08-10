@@ -8,6 +8,7 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
     private const string MessageFormat = "Rename '{0}' - a date without a time component should not have 'Utc' in its name.";
 
     private const string JunoLocalDateType = "GP.Juno.Dates.LocalDate";
+    private const string NodaLocalDateType = "NodaTime.LocalDate";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -65,6 +66,16 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
         }
     }
 
-    private static bool IsDateOnlyType(ITypeSymbol type) =>
-        type is not null && (type.Is(KnownType.System_DateOnly) || type.ToDisplayString() == JunoLocalDateType);
+    private static bool IsDateOnlyType(ITypeSymbol type)
+    {
+        while (type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } nullable
+               && nullable.OriginalDefinition.Is(KnownType.System_Nullable_T))
+        {
+            type = nullable.TypeArguments[0];
+        }
+
+        return type is not null
+               && (type.Is(KnownType.System_DateOnly)
+                   || type.ToDisplayString() is JunoLocalDateType or NodaLocalDateType);
+    }
 }

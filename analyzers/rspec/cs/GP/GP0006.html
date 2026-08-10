@@ -1,11 +1,15 @@
-<p>An access-control decision should not be based on the <em>value</em> of an identity claim such as <code>sub</code>, <code>name</code>,
+<p>Under the GP authorization convention, an access-control decision should not be based directly on the <em>value</em> of an identity claim such as <code>sub</code>, <code>name</code>,
 <code>email</code>, <code>phone</code>, <code>phone_number</code>, <code>preferred_username</code>, <code>upn</code>, <code>given_name</code>,
 <code>family_name</code> or <code>unique_name</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>Identity claims describe <em>who</em> the caller is, not <em>what</em> the caller is allowed to do. Branching authorization logic on a specific
 identity claim <em>value</em> - a hardcoded subject id, a specific email address, a specific username - conflates authentication data with
-permission data: it bypasses whatever role/permission/policy model the application uses elsewhere, hardcodes an exception for one particular
+permission data: it can sidestep the role/permission/policy model the application uses elsewhere, hardcodes an exception for one particular
 person, and silently breaks if that claim's format changes (for example when the identity provider changes).</p>
+<p>This rule does not mean that reading an identity claim is inherently unsafe. Standard resource-based authorization can legitimately use the
+authenticated subject identifier to determine whether that subject owns or may access a particular resource. The GP policy is narrower: at the
+recognized access-check sites, express permissions through the approved role, permission, policy, or authorization-handler abstraction rather than
+embedding an identity-specific exception. A finding identifies a convention violation; it does not by itself demonstrate an exploitable bypass.</p>
 <pre>
 public bool HasAccess(User user) =&gt;
     user.FindFirst("sub").Value == "a3f1c9d2-...";
@@ -14,7 +18,8 @@ public bool HasAccess(User user) =&gt;
 <code>Option&lt;Claim&gt;.HasValue</code> check, or a predicate that only matches on <code>Type</code> - is not reported. Presence alone does not tie
 the decision to a specific identity; only reading and comparing the claim's actual <code>Value</code> does.</p>
 <h2>How to fix it</h2>
-<p>Base the decision on a dedicated permission/role claim or an explicit authorization policy instead of a specific identity value.</p>
+<p>Use the approved permission/role claim or explicit authorization policy. When access genuinely depends on the relationship between the caller and
+a resource, implement that relationship in a resource-based authorization handler instead of hardcoding an identity value at the call site.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">

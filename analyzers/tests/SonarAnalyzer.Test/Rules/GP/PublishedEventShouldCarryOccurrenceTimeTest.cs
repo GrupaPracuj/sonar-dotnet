@@ -106,6 +106,26 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantWithInheritedOccurredAt() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public abstract record Event
+            {
+                public System.DateTimeOffset OccurredAt { get; init; }
+            }
+
+            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount) : Event;
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
+
     // DateTime is not enough - an instant crossing a service boundary needs its offset, as S6566 also requires.
     [TestMethod]
     public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForDateTime() =>

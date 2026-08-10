@@ -16,12 +16,12 @@ catch (OperationCanceledException)
     // treated as success
 }
 </pre>
-<p>The rule reports a <code>catch</code> of <code>OperationCanceledException</code> or <code>TaskCanceledException</code> whose body neither rethrows,
-nor throws something else, nor returns a value that signals the cancellation to the caller.</p>
+<p>The rule reports a <code>catch</code> of <code>OperationCanceledException</code> or <code>TaskCanceledException</code> unless every path through the
+catch rethrows or throws a cancellation exception.</p>
 <h3>Exceptions</h3>
-<p>A block that rethrows - with <code>throw;</code>, <code>throw ex;</code> or a different exception - is not reported. Neither is one that returns a
-value, since the code is then deliberately mapping cancellation to a result the caller can see rather than hiding it. Logging alone does not count: a log
-line does not stop the caller from treating the operation as complete.</p>
+<p>A block that rethrows - with <code>throw;</code> or <code>throw ex;</code> - or throws another cancellation exception on every path is not reported.
+Returning, breaking out of a loop, or throwing an unrelated exception suppresses the cancellation signal. Logging alone does not count: a log line does
+not stop the caller from treating the operation as complete.</p>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>

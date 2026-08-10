@@ -72,6 +72,6 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
 
     // Juno is the layer that is supposed to wrap Consul, so its own code is not reported.
     private static bool IsInsideJuno(SonarSyntaxNodeReportingContext context) =>
-        (context.Model.GetEnclosingSymbol(context.Node.SpanStart)?.ContainingNamespace?.ToDisplayString() ?? string.Empty)
-            .StartsWith("GP.Juno", StringComparison.Ordinal);
+        context.Model.GetEnclosingSymbol(context.Node.SpanStart)?.ContainingNamespace?.ToDisplayString() is { } containingNamespace
+        && (containingNamespace == "GP.Juno" || containingNamespace.StartsWith("GP.Juno.", StringComparison.Ordinal));
 }

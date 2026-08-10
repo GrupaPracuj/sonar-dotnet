@@ -118,6 +118,22 @@ public class DictionaryLookupShouldUseTryAddTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DictionaryLookupShouldUseTryAdd_CompliantForIDictionaryWithoutTryAddApi() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class Cache
+            {
+                public void Add(IDictionary<string, int> dict, string key, int value)
+                {
+                    if (!dict.ContainsKey(key)) dict.Add(key, value);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DictionaryLookupShouldUseTryAdd_CodeFix() =>
         builder.WithBasePath("GP")
             .AddPaths("DictionaryLookupShouldUseTryAdd.cs")

@@ -50,4 +50,15 @@ public class PublicApiShouldNotExposeConcreteDictionaryTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublicApiShouldNotExposeConcreteDictionary_NoncompliantPublicIndexer() =>
+        builder.AddSnippet(
+            """
+            public class Registry
+            {
+                public System.Collections.Generic.Dictionary<string, int> this[int index] => null; // Noncompliant {{Expose a dictionary interface instead of the concrete 'Dictionary' type in this public indexer.}}
+            }
+            """)
+            .Verify();
 }

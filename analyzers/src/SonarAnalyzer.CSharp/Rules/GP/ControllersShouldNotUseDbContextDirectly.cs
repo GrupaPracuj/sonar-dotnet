@@ -35,6 +35,14 @@ public sealed class ControllersShouldNotUseDbContextDirectly : SonarDiagnosticAn
     // created as a local. Action parameters are not included - the model binder never binds a DbContext.
     private static IEnumerable<TypeSyntax> DeclaredTypes(ClassDeclarationSyntax classDeclaration)
     {
+        foreach (var parameter in classDeclaration.ParameterList()?.Parameters ?? [])
+        {
+            if (parameter.Type is { } parameterType)
+            {
+                yield return parameterType;
+            }
+        }
+
         foreach (var field in classDeclaration.Members.OfType<FieldDeclarationSyntax>())
         {
             yield return field.Declaration.Type;

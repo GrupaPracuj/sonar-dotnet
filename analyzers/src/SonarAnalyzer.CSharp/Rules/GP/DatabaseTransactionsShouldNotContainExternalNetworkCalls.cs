@@ -1,3 +1,5 @@
+using SonarAnalyzer.CFG.Roslyn;
+
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -82,18 +84,31 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         }
 
         var transactionVariableName = variable.Identifier.ValueText;
-        var boundaryName = isTransactionScope ? "Complete" : "Commit";
-        var boundaryIndex = GetBoundaryStatementIndex(statements, firstIndex, transactionVariableName, boundaryName);
-        var lastStatementToAnalyze = boundaryIndex >= 0 ? boundaryIndex - 1 : statements.Count - 1;
-
-        for (var i = firstIndex; i <= lastStatementToAnalyze; i++)
+        var invocations = statements
+            .Skip(firstIndex)
+            .SelectMany(x => x.DescendantNodesAndSelf(DoesNotBelongToANestedFunction).OfType<InvocationExpressionSyntax>())
+            .ToArray();
+        var networkCalls = invocations.Where(x => IsExternalNetworkCall(context, x, transactionVariableName)).ToArray();
+        if (isTransactionScope)
         {
-            foreach (var invocation in statements[i].DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+            foreach (var networkCall in networkCalls)
             {
-                if (IsExternalNetworkCall(context, invocation, transactionVariableName))
-                {
-                    context.ReportIssue(Rule, invocation);
-                }
+                context.ReportIssue(Rule, networkCall);
+            }
+            return;
+        }
+
+        if (variable.CreateCfg(context.Model, context.Cancel) is not { } cfg)
+        {
+            return;
+        }
+
+        var commitSites = InvocationSites(cfg, invocations.Where(x => IsTransactionMemberInvocation(x, transactionVariableName, "Commit")));
+        foreach (var networkCall in networkCalls)
+        {
+            if (InvocationSite(cfg, networkCall) is { } networkSite && IsReachableWithoutCommit(cfg, networkSite, commitSites))
+            {
+                context.ReportIssue(Rule, networkCall);
             }
         }
     }
@@ -160,23 +175,83 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         ObjectCreationFactory.TryCreate(expression, out var creation)
         && creation.TypeSymbol(model)?.ToDisplayString() == "System.Transactions.TransactionScope";
 
-    // Index of the statement that ends the transaction (Commit/Complete), or -1 when the block never ends it -
-    // in which case every statement in scope is still inside the open transaction.
-    private static int GetBoundaryStatementIndex(SyntaxList<StatementSyntax> statements, int firstIndex, string transactionVariableName, string boundaryMethodName)
-    {
-        for (var i = firstIndex; i < statements.Count; i++)
-        {
-            var endsTransaction = statements[i].DescendantNodesAndSelf()
-                .OfType<InvocationExpressionSyntax>()
-                .Any(x => IsTransactionMemberInvocation(x, transactionVariableName, boundaryMethodName));
+    private static bool DoesNotBelongToANestedFunction(SyntaxNode node) =>
+        node.Kind() != SyntaxKindEx.LocalFunctionStatement && node is not AnonymousFunctionExpressionSyntax;
 
-            if (endsTransaction)
+    private static Dictionary<BasicBlock, List<int>> InvocationSites(ControlFlowGraph cfg, IEnumerable<InvocationExpressionSyntax> invocations)
+    {
+        var spans = invocations.Select(x => x.Span).ToHashSet();
+        var result = new Dictionary<BasicBlock, List<int>>();
+        foreach (var block in cfg.Blocks)
+        {
+            var index = 0;
+            foreach (var operation in block.OperationsAndBranchValue.ToExecutionOrder().Select(x => x.Instance))
             {
-                return i;
+                if (operation.Kind == OperationKindEx.Invocation
+                    && operation.Syntax is InvocationExpressionSyntax invocation
+                    && spans.Contains(invocation.Span))
+                {
+                    if (!result.TryGetValue(block, out var indices))
+                    {
+                        indices = new List<int>();
+                        result.Add(block, indices);
+                    }
+                    indices.Add(index);
+                }
+                index++;
             }
         }
+        return result;
+    }
 
-        return -1;
+    private static (BasicBlock Block, int Index)? InvocationSite(ControlFlowGraph cfg, InvocationExpressionSyntax invocation)
+    {
+        foreach (var block in cfg.Blocks)
+        {
+            var index = 0;
+            foreach (var operation in block.OperationsAndBranchValue.ToExecutionOrder().Select(x => x.Instance))
+            {
+                if (operation.Kind == OperationKindEx.Invocation && operation.Syntax.Span == invocation.Span)
+                {
+                    return (block, index);
+                }
+                index++;
+            }
+        }
+        return null;
+    }
+
+    private static bool IsReachableWithoutCommit(ControlFlowGraph cfg,
+                                                 (BasicBlock Block, int Index) networkSite,
+                                                 Dictionary<BasicBlock, List<int>> commitSites)
+    {
+        var pending = new Stack<BasicBlock>();
+        var visited = new HashSet<BasicBlock>();
+        pending.Push(cfg.EntryBlock);
+        while (pending.Count > 0)
+        {
+            var block = pending.Pop();
+            if (!visited.Add(block))
+            {
+                continue;
+            }
+
+            if (block == networkSite.Block)
+            {
+                return !commitSites.TryGetValue(block, out var indices) || indices.All(x => x > networkSite.Index);
+            }
+
+            if (commitSites.ContainsKey(block))
+            {
+                continue;
+            }
+
+            foreach (var successor in block.SuccessorBlocks)
+            {
+                pending.Push(successor);
+            }
+        }
+        return false;
     }
 
     private static bool IsTransactionMemberInvocation(InvocationExpressionSyntax invocation, string transactionVariableName, string memberName) =>

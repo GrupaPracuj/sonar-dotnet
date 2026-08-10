@@ -30,7 +30,7 @@ public sealed class NonDerivedInternalTypesShouldBeSealed : SonarDiagnosticAnaly
     {
         var declaration = (TypeDeclarationSyntax)context.Node;
         if (IsExcluded(declaration)
-            || context.Model.GetDeclaredSymbol(declaration) is not { DeclaredAccessibility: Accessibility.Internal } symbol
+            || context.Model.GetDeclaredSymbol(declaration) is not { EffectiveAccessibility: Accessibility.Internal } symbol
             || baseTypesWithSubtype.Contains(symbol.OriginalDefinition))
         {
             return;

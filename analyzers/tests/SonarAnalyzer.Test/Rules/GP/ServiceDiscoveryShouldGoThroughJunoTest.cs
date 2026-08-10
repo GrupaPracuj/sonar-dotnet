@@ -158,6 +158,24 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantInsideJunoConsumerNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.JunoConsumer
+            {
+                public class ConsulResolver
+                {
+                    private readonly Consul.IConsulClient _consul;
+
+                    public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
+                        _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void ServiceDiscoveryShouldGoThroughJuno_CompliantWithoutConsul() =>
         builder.AddSnippet(
             Stubs + """

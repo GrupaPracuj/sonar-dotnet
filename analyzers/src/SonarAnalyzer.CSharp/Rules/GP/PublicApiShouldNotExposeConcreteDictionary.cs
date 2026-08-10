@@ -16,7 +16,17 @@ public sealed class PublicApiShouldNotExposeConcreteDictionary : SonarDiagnostic
     {
         context.RegisterNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration, SyntaxKind.ConstructorDeclaration);
         context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
+        context.RegisterNodeAction(AnalyzeIndexer, SyntaxKind.IndexerDeclaration);
         context.RegisterNodeAction(AnalyzeField, SyntaxKind.VariableDeclarator);
+    }
+
+    private static void AnalyzeIndexer(SonarSyntaxNodeReportingContext context)
+    {
+        if (context.Node is IndexerDeclarationSyntax declaration
+            && context.ContainingSymbol is IPropertySymbol { IsPubliclyAccessible: true, IsOverride: false } indexer)
+        {
+            ReportIfConcreteDictionary(context, indexer.Type, declaration.Type, "indexer");
+        }
     }
 
     private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context)

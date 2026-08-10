@@ -140,6 +140,23 @@ public class MessageContractMustBePublicTest
             .Verify();
 
     [TestMethod]
+    public void MessageContractMustBePublic_NoncompliantForPublicContractNestedInInternalType() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            internal class OrderService
+            {
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public sealed record OrderAccepted(System.Guid OrderId);
+
+                public System.Threading.Tasks.Task Accept(System.Guid id) =>
+                    _publisher.Publish(new OrderAccepted(id)); // Noncompliant {{'OrderAccepted' is not public, so no other service can reference this contract.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void MessageContractMustBePublic_CodeFix() =>
         builder.WithBasePath("GP")
             .AddPaths("MessageContractMustBePublic.cs")

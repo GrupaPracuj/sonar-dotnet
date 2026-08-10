@@ -24,7 +24,10 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrDataCodeFix : SonarCod
         switch (argumentList.Arguments.IndexOf(argument))
         {
             case 0:
-                RegisterReplacement(context, root, nullLiteral, SyntaxFactory.ThisExpression(), SenderTitle);
+                if (await SenderReplacementAsync(invocation, context).ConfigureAwait(false) is { } sender)
+                {
+                    RegisterReplacement(context, root, nullLiteral, sender, SenderTitle);
+                }
                 break;
             case 1 when await IsExactlyEventArgsAsync(invocation, context).ConfigureAwait(false):
                 // Registered only when the delegate's second parameter type is exactly System.EventArgs - EventArgs.Empty's
@@ -51,4 +54,31 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrDataCodeFix : SonarCod
             && EventShouldNotBeRaisedWithNullSenderOrData.ResolveEventSymbol(invocation, model) is { Type: INamedTypeSymbol { DelegateInvokeMethod: { Parameters: { Length: 2 } parameters } } }
             && parameters[1].Type.Is(KnownType.System_EventArgs);
     }
+
+    private static async Task<ExpressionSyntax> SenderReplacementAsync(InvocationExpressionSyntax invocation, SonarCodeFixContext context)
+    {
+        var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
+        if (model is null)
+        {
+            return null;
+        }
+
+        if (EventShouldNotBeRaisedWithNullSenderOrData.EventReceiver(invocation) is { } receiver)
+        {
+            return IsSafeReceiver(model, receiver) ? receiver.WithoutTrivia() : null;
+        }
+
+        return model.GetEnclosingSymbol(invocation.SpanStart) is { IsStatic: false }
+            ? SyntaxFactory.ThisExpression()
+            : null;
+    }
+
+    private static bool IsSafeReceiver(SemanticModel model, ExpressionSyntax receiver) =>
+        receiver.RemoveParentheses() switch
+        {
+            ThisExpressionSyntax or BaseExpressionSyntax => true,
+            IdentifierNameSyntax identifier => model.GetSymbolInfo(identifier).Symbol is ILocalSymbol or IParameterSymbol or IFieldSymbol,
+            MemberAccessExpressionSyntax memberAccess => model.GetSymbolInfo(memberAccess).Symbol is IFieldSymbol && IsSafeReceiver(model, memberAccess.Expression),
+            _ => false,
+        };
 }

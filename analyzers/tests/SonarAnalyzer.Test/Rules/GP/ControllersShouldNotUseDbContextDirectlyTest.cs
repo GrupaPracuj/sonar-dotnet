@@ -5,7 +5,8 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class ControllersShouldNotUseDbContextDirectlyTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ControllersShouldNotUseDbContextDirectly>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ControllersShouldNotUseDbContextDirectly>()
+        .WithOptions(LanguageOptions.CSharpLatest);
 
     private const string Stubs =
         """
@@ -64,6 +65,19 @@ public class ControllersShouldNotUseDbContextDirectlyTest
                     ShopDbContext context = new ShopDbContext(); // Noncompliant {{Do not use 'ShopDbContext' in a controller - reach data through a service or repository instead.}}
                     return Ok(context);
                 }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ControllersShouldNotUseDbContextDirectly_NoncompliantForPrimaryConstructorParameter() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrdersController(ShopDbContext context) : Microsoft.AspNetCore.Mvc.ControllerBase // Noncompliant {{Do not use 'ShopDbContext' in a controller - reach data through a service or repository instead.}}
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(int id) => Ok(context);
             }
             """)
             .Verify();

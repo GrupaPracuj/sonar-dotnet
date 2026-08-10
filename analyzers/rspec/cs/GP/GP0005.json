@@ -1,11 +1,11 @@
 {
   "title": "Access checks should not rely on negated HasClaim results",
-  "type": "VULNERABILITY",
+  "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "SECURITY": "MEDIUM"
+      "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "CLEAR"
+    "attribute": "CONVENTIONAL"
   },
   "status": "ready",
   "remediation": {
@@ -14,18 +14,11 @@
   },
   "tags": [
     "gp",
-    "security",
-    "authorization",
-    "cwe"
+    "authorization"
   ],
   "defaultSeverity": "Major",
   "ruleSpecification": "GP-0005",
   "sqKey": "GP0005",
   "scope": "Main",
-  "quickfix": "unknown",
-  "securityStandards": {
-    "CWE": [
-      285
-    ]
-  }
+  "quickfix": "unknown"
 }

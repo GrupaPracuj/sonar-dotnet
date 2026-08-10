@@ -25,6 +25,48 @@ public class DoNotLockAcrossProcessesManuallyTest
             .Verify();
 
     [TestMethod]
+    public void DoNotLockAcrossProcessesManually_NoncompliantForNamedSemaphore() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderImport
+            {
+                private readonly Semaphore _semaphore = new Semaphore(1, 1, "Global\\order-import"); // Noncompliant {{Use Juno's ILockableFactory instead of 'Semaphore' for locking across processes.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotLockAcrossProcessesManually_CompliantForNullOrEmptyName() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderImport
+            {
+                private readonly Mutex _nullMutex = new Mutex(false, null);
+                private readonly Mutex _emptyMutex = new Mutex(false, "");
+                private readonly Semaphore _nullSemaphore = new Semaphore(1, 1, null);
+                private readonly Semaphore _emptySemaphore = new Semaphore(1, 1, "");
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotLockAcrossProcessesManually_CompliantForNonconstantName() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderImport
+            {
+                public Mutex Create(string name) => new Mutex(false, name);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotLockAcrossProcessesManually_NoncompliantForConsulLock() =>
         builder.AddSnippet(
             """

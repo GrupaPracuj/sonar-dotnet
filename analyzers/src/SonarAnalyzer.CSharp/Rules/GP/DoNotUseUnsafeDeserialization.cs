@@ -19,6 +19,12 @@ public sealed class DoNotUseUnsafeDeserialization : SonarDiagnosticAnalyzer
         "System.Web.UI.ObjectStateFormatter",
     };
 
+    private static readonly HashSet<string> TypeNameHandlingOwners = new(StringComparer.Ordinal)
+    {
+        "Newtonsoft.Json.JsonSerializer",
+        "Newtonsoft.Json.JsonSerializerSettings",
+    };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context)
@@ -43,7 +49,12 @@ public sealed class DoNotUseUnsafeDeserialization : SonarDiagnosticAnalyzer
     private static void AnalyzeTypeNameHandling(SonarSyntaxNodeReportingContext context)
     {
         var assignment = (AssignmentExpressionSyntax)context.Node;
-        if (AssignedMemberName(assignment.Left) != "TypeNameHandling"
+        if (context.Model.GetSymbolInfo(assignment.Left).Symbol is not IPropertySymbol
+            {
+                Name: "TypeNameHandling",
+                ContainingType: { } containingType,
+            }
+            || !TypeNameHandlingOwners.Contains(containingType.ToDisplayString())
             || assignment.Right is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: var valueName }
             || valueName == "None"
             || context.Model.GetTypeInfo(assignment.Right).Type?.ToDisplayString() != "Newtonsoft.Json.TypeNameHandling")
@@ -53,12 +64,4 @@ public sealed class DoNotUseUnsafeDeserialization : SonarDiagnosticAnalyzer
 
         context.ReportIssue(Rule, assignment, $"TypeNameHandling.{valueName}");
     }
-
-    private static string AssignedMemberName(ExpressionSyntax left) =>
-        left switch
-        {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText, // object initializer: new JsonSerializerSettings { TypeNameHandling = ... }
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => null,
-        };
 }

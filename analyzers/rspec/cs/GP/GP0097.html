@@ -15,9 +15,9 @@ async Task UpdateStock(IDbConnection connection, IEnumerable&lt;(int ProductId, 
 }
 </pre>
 <h2>How to fix it</h2>
-<p>Send every row in a single command instead of one command per item: pass the whole collection as a table-valued parameter or a single
-<code>UPDATE ... FROM</code>/bulk statement, or - with Dapper - pass the collection directly to <code>Execute</code>, which sends it as one batched
-command rather than issuing it once per element in a loop written by hand.</p>
+<p>Use a real bulk mechanism that reduces database round trips: a provider-specific bulk API, a table-valued parameter, a multi-row
+<code>UPDATE ... FROM</code>/<code>INSERT</code> statement, or bounded batches. Passing a collection directly to Dapper's <code>Execute</code> is a
+convenient multi-execution API, but it may still execute the command repeatedly and should not be described as one batched database command.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="2" data-diff-type="noncompliant">
@@ -32,9 +32,11 @@ async Task UpdateStock(IDbConnection connection, IEnumerable&lt;(int ProductId, 
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="2" data-diff-type="compliant">
-async Task UpdateStock(IDbConnection connection, IEnumerable&lt;(int ProductId, int Quantity)&gt; changes) =&gt;
-    // Dapper sends the whole collection as one batched command instead of one round-trip per item.
-    await connection.ExecuteAsync("UPDATE Products SET Stock = Stock - @Quantity WHERE Id = @ProductId", changes);
+async Task UpdateStock(SqlConnection connection, IEnumerable&lt;StockChange&gt; changes) =&gt;
+    await connection.ExecuteAsync(
+        "dbo.UpdateStock",
+        new { Changes = changes.ToDataTable().AsTableValuedParameter("dbo.StockChangeTableType") },
+        commandType: CommandType.StoredProcedure);
 </pre>
 <h3>Exceptions</h3>
 <p>Only a call that executes directly and synchronously inside the loop body is reported. A call made from a nested lambda, local function, or

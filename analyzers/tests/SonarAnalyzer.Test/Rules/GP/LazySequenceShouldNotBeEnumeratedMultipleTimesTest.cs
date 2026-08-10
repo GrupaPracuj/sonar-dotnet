@@ -161,4 +161,22 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForMultipleDeferredOperations() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public void M(IEnumerable<int> source)
+                {
+                    var positives = source.Where(x => x > 0);
+                    var strings = source.Select(x => x.ToString());
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

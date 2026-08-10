@@ -12,7 +12,6 @@ public sealed class LoopVariableShouldNotBeCapturedByDeferredLambda : SonarDiagn
 
     // The three recognizable "runs later, not now" sinks. Kept as a fixed, narrow list on purpose: anything outside it
     // (an arbitrary method call that might defer the lambda) is deliberately left alone to keep false positives at zero.
-    private static readonly HashSet<string> DeferredCollectionMethods = new(StringComparer.Ordinal) { "Add", "Enqueue", "Push" };
     private static readonly HashSet<string> DeferredTaskMethods = new(StringComparer.Ordinal) { "Run", "StartNew", "ContinueWith" };
     private static readonly HashSet<string> DeferredTaskContainingTypes = new(StringComparer.Ordinal)
     {
@@ -90,15 +89,26 @@ public sealed class LoopVariableShouldNotBeCapturedByDeferredLambda : SonarDiagn
             return false;
         }
 
-        if (DeferredCollectionMethods.Contains(method.Name) && invocation.Expression is MemberAccessExpressionSyntax)
+        if (IsKnownCollectionSink(method))
         {
-            return true; // list.Add(lambda), queue.Enqueue(lambda), stack.Push(lambda)
+            return true;
         }
 
         var containingType = method.ContainingType?.ToDisplayString();
         return (DeferredTaskMethods.Contains(method.Name) && DeferredTaskContainingTypes.Contains(containingType))
                || (method.Name == "QueueUserWorkItem" && containingType == "System.Threading.ThreadPool");
     }
+
+    private static bool IsKnownCollectionSink(IMethodSymbol method) =>
+        method.ContainingType is { IsGenericType: true } type
+        && type.TypeArguments[0].TypeKind == TypeKind.Delegate
+        && ((method.Name == "Add"
+             && (type.ConstructedFrom.Is(KnownType.System_Collections_Generic_List_T)
+                 || type.ConstructedFrom.Is(KnownType.System_Collections_Generic_HashSet_T)
+                 || type.ConstructedFrom.Is(KnownType.System_Collections_Generic_ICollection_T)
+                 || type.ConstructedFrom.Is(KnownType.System_Collections_Generic_ISet_T)))
+            || (method.Name == "Enqueue" && type.ConstructedFrom.Is(KnownType.System_Collections_Generic_Queue_T))
+            || (method.Name == "Push" && type.ConstructedFrom.Is(KnownType.System_Collections_Generic_Stack_T)));
 
     private static bool IsThreadConstruction(SemanticModel model, ObjectCreationExpressionSyntax objectCreation) =>
         model.GetTypeInfo(objectCreation).Type?.ToDisplayString() == "System.Threading.Thread";

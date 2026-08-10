@@ -9,6 +9,12 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
                                           + "underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly HashSet<string> EnumeratingLinqMethods = new(StringComparer.Ordinal)
+    {
+        "Aggregate", "All", "Any", "Average", "Contains", "Count", "ElementAt", "ElementAtOrDefault",
+        "First", "FirstOrDefault", "Last", "LastOrDefault", "LongCount", "Max", "MaxBy", "Min", "MinBy",
+        "SequenceEqual", "Single", "SingleOrDefault", "Sum", "ToArray", "ToDictionary", "ToHashSet", "ToList", "ToLookup",
+    };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -99,6 +105,7 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
         };
 
     private static bool IsLinqExtensionCall(SemanticModel model, InvocationExpressionSyntax invocation) =>
-        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ContainingType: { } containingType }
-        && containingType.ToDisplayString() is "System.Linq.Enumerable" or "System.Linq.Queryable";
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ContainingType: { } containingType } method
+        && containingType.ToDisplayString() is "System.Linq.Enumerable" or "System.Linq.Queryable"
+        && EnumeratingLinqMethods.Contains(method.Name);
 }

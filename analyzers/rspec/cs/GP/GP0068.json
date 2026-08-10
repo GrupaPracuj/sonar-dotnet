@@ -3,9 +3,9 @@
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "RELIABILITY": "MEDIUM"
+      "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "COMPLETE"
+    "attribute": "CONVENTIONAL"
   },
   "status": "ready",
   "remediation": {

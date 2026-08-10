@@ -109,6 +109,38 @@ public class PublishedMessageShouldHaveExplicitContractTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PublishedMessageShouldHaveExplicitContract_CompliantForMassTransitRuntimeType() =>
+        builder.AddSnippet(
+            """
+            using MassTransit;
+
+            namespace MassTransit
+            {
+                public interface IPublishEndpoint { }
+
+                public static class PublishEndpointExtensions
+                {
+                    public static System.Threading.Tasks.Task Publish(
+                        this IPublishEndpoint endpoint,
+                        object message,
+                        System.Type messageType,
+                        System.Threading.CancellationToken cancellationToken = default) => null;
+                }
+            }
+
+            public sealed record OrderAccepted(System.Guid OrderId);
+
+            public class OrderService
+            {
+                private readonly MassTransit.IPublishEndpoint publisher;
+
+                public System.Threading.Tasks.Task Accept(object payload) =>
+                    publisher.Publish(payload, typeof(OrderAccepted));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void PublishedMessageShouldHaveExplicitContract_CompliantForNonMessagingCall() =>
         builder.AddSnippet(
             Stubs + """

@@ -88,6 +88,25 @@ public class DoNotInterpolateRequestInputIntoLogMessageTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotInterpolateRequestInputIntoLogMessage_CompliantForExpressionStructuredArgument() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class SearchController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Sum(int left, int right)
+                {
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Sum: {Sum}", left + right);
+                    return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotInterpolateRequestInputIntoLogMessage_CompliantForInterpolatedNonRequestValue() =>
         builder.AddSnippet(
             Stubs + """

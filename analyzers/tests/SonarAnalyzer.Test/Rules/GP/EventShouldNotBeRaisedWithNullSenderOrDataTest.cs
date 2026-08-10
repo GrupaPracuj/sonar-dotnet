@@ -99,7 +99,6 @@ public class EventShouldNotBeRaisedWithNullSenderOrDataTest
             """)
             .Verify();
 
-    // A custom EventArgs subclass still gets the event-data diagnostic - only the code fix is unavailable for it.
     [TestMethod]
     public void EventShouldNotBeRaisedWithNullSenderOrData_NoncompliantForCustomEventArgsSubclass() =>
         builder.AddSnippet(
@@ -114,7 +113,7 @@ public class EventShouldNotBeRaisedWithNullSenderOrDataTest
 
                 public void Raise()
                 {
-                    FooRaised(this, null); // Noncompliant {{Do not pass null as the event data for 'FooRaised' - pass EventArgs.Empty instead, callers expect a non-null value.}}
+                    FooRaised(this, null); // Noncompliant {{Do not pass null as the event data for 'FooRaised' - pass a non-null 'FooEventArgs' instance instead.}}
                 }
             }
             """)

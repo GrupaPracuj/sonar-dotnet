@@ -20,6 +20,7 @@ public class HttpCallShouldNotBeMadeInALoopTest
             public class HttpClient
             {
                 public Task<string> GetStringAsync(string url) => null;
+                public void CancelPendingRequests() { }
             }
         }
 
@@ -179,6 +180,45 @@ public class HttpCallShouldNotBeMadeInALoopTest
                 }
 
                 private static void Use(int id) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_CompliantForCancelPendingRequests() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Client
+            {
+                public void Cancel(HttpClient client, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        client.CancelPendingRequests();
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_CompliantForCustomHttpClientExtension() =>
+        builder.AddSnippet(
+            Stubs + """
+            public static class CustomHttpExtensions
+            {
+                public static void Inspect(this HttpClient client) { }
+            }
+
+            public class Client
+            {
+                public void InspectAll(HttpClient client, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        client.Inspect();
+                    }
+                }
             }
             """)
             .VerifyNoIssues();

@@ -59,6 +59,26 @@ public class StaticConstructorShouldNotThrowTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_CompliantWhenThrowIsCaught() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                static ConfigurationCache()
+                {
+                    try
+                    {
+                        throw new System.InvalidOperationException();
+                    }
+                    catch (System.InvalidOperationException)
+                    {
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
     // A throw inside a lambda assigned to a field runs later, if and when the delegate is invoked - not
     // synchronously as part of type initialization - so it does not poison the type.
     [TestMethod]

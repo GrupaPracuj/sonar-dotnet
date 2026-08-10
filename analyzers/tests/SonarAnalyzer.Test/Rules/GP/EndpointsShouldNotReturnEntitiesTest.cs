@@ -115,6 +115,27 @@ public class EndpointsShouldNotReturnEntitiesTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void EndpointsShouldNotReturnEntities_CompliantForCustomKeyAttribute() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class KeyAttribute : System.Attribute { }
+
+            public class ViewModel
+            {
+                [Key]
+                public int Id { get; set; }
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public ViewModel Get(int id) => null;
+            }
+            """)
+            .VerifyNoIssues();
+
     private const string ConfiguredEntityStubs =
         Stubs + """
 

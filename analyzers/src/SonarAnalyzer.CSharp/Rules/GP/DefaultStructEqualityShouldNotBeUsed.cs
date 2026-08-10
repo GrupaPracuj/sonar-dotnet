@@ -5,48 +5,23 @@ public sealed class DefaultStructEqualityShouldNotBeUsed : SonarDiagnosticAnalyz
 {
     internal const string RuleId = "GP0085";
 
-    private const string OperatorMessageFormat =
-        "'{0}' does not override Equals/GetHashCode - '==' falls back to slow, reflection-based comparison that compares reference-type fields by reference, not value.";
     private const string EqualsMessageFormat =
         "'{0}.Equals()' uses the slow, reflection-based default - override Equals/GetHashCode on '{0}' for a real fix, or avoid relying on this comparison.";
     private const string CollectionKeyMessageFormat =
         "'{0}' is used as a Dictionary/HashSet key but does not override Equals/GetHashCode - lookups will use slow, reflection-based comparison.";
 
-    private const string OperatorEqualityName = "op_Equality";
-
-    // One conceptual rule (GP0085) reported through three descriptors, all sharing the same rule id, so each usage
+    // One conceptual rule (GP0085) reported through two descriptors, both sharing the same rule id, so each usage
     // site keeps its own precise wording instead of being squeezed into a single generic template.
-    private static readonly DiagnosticDescriptor OperatorRule = DescriptorFactory.Create(RuleId, OperatorMessageFormat);
     private static readonly DiagnosticDescriptor EqualsRule = DescriptorFactory.Create(RuleId, EqualsMessageFormat);
     private static readonly DiagnosticDescriptor CollectionKeyRule = DescriptorFactory.Create(RuleId, CollectionKeyMessageFormat);
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(OperatorRule, EqualsRule, CollectionKeyRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(EqualsRule, CollectionKeyRule);
 
     protected override void Initialize(SonarAnalysisContext context)
     {
-        context.RegisterNodeAction(AnalyzeEqualityOperator, SyntaxKind.EqualsExpression, SyntaxKind.NotEqualsExpression);
         context.RegisterNodeAction(AnalyzeEqualsInvocation, SyntaxKind.InvocationExpression);
         context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression);
     }
-
-    // A plain struct only supports '==' at all when it (or something it implicitly converts to) defines
-    // operator==; when it does, that custom operator is what actually runs, not the default path this rule is
-    // about, so it must not be flagged - see OperandWithoutCustomOperator.
-    private static void AnalyzeEqualityOperator(SonarSyntaxNodeReportingContext context)
-    {
-        var binary = (BinaryExpressionSyntax)context.Node;
-        if ((OperandWithoutCustomOperator(context.Model, binary.Left) ?? OperandWithoutCustomOperator(context.Model, binary.Right)) is not { } flagged)
-        {
-            return;
-        }
-
-        context.ReportIssue(OperatorRule, binary, flagged.Name);
-    }
-
-    private static ITypeSymbol OperandWithoutCustomOperator(SemanticModel model, ExpressionSyntax operand) =>
-        model.GetTypeInfo(operand).Type is { } type && GpStructEquality.UsesDefaultEquality(type) && type.GetMembers(OperatorEqualityName).IsEmpty
-            ? type
-            : null;
 
     // Calling Equals(object) on a struct always resolves to something - either the struct's own override, or (when
     // there is none) the inherited System.ValueType.Equals. Checking that the resolved method's containing type is
@@ -73,7 +48,8 @@ public sealed class DefaultStructEqualityShouldNotBeUsed : SonarDiagnosticAnalyz
         var objectCreation = (ObjectCreationExpressionSyntax)context.Node;
         if (context.Model.GetTypeInfo(objectCreation).Type is not INamedTypeSymbol { TypeArguments.Length: > 0 } createdType
             || KeyOrElementType(createdType) is not { } keyType
-            || !GpStructEquality.UsesDefaultEquality(keyType))
+            || !GpStructEquality.UsesDefaultEquality(keyType)
+            || HasExplicitComparer(context.Model, objectCreation, keyType))
         {
             return;
         }
@@ -87,4 +63,22 @@ public sealed class DefaultStructEqualityShouldNotBeUsed : SonarDiagnosticAnalyz
         createdType.ConstructedFrom.Is(KnownType.System_Collections_Generic_Dictionary_TKey_TValue) || createdType.ConstructedFrom.Is(KnownType.System_Collections_Generic_HashSet_T)
             ? createdType.TypeArguments[0]
             : null;
+
+    private static bool HasExplicitComparer(SemanticModel model, ObjectCreationExpressionSyntax objectCreation, ITypeSymbol keyType)
+    {
+        if (model.GetSymbolInfo(objectCreation).Symbol is not IMethodSymbol constructor)
+        {
+            return false;
+        }
+
+        var lookup = new CSharpMethodParameterLookup(objectCreation.ArgumentList, constructor);
+        return objectCreation.ArgumentList?.Arguments.Any(argument =>
+            lookup.TryGetSymbol(argument, out var parameter)
+            && parameter.Type is INamedTypeSymbol { TypeArguments.Length: 1 } comparerType
+            && comparerType.ConstructedFrom.Is(KnownType.System_Collections_Generic_IEqualityComparer_T)
+            && comparerType.TypeArguments[0].Equals(keyType)
+            && argument.Expression.Kind() is not SyntaxKind.NullLiteralExpression
+                and not SyntaxKind.DefaultExpression
+                and not SyntaxKindEx.DefaultLiteralExpression) == true;
+    }
 }

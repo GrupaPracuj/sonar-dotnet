@@ -13,9 +13,6 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
     private const string CommandSuffixMessage = "Rename command '{0}' to remove the 'Command' suffix.";
     private const string BehaviorFreeMessageFormat = "Message contract '{0}' should not contain business behavior.";
 
-    private const string JunoNamespacePrefix = "GP.Juno";
-    private const string MassTransitNamespacePrefix = "MassTransit";
-
     private static readonly DiagnosticDescriptor EventSuffixRule = DescriptorFactory.Create(EventSuffixRuleId, EventSuffixMessage);
     private static readonly DiagnosticDescriptor CommandSuffixRule = DescriptorFactory.Create(CommandSuffixRuleId, CommandSuffixMessage);
     private static readonly DiagnosticDescriptor BehaviorFreeMessageRule = DescriptorFactory.Create(BehaviorFreeMessageRuleId, BehaviorFreeMessageFormat);
@@ -113,19 +110,9 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
         messageType = null;
         reportNode = invocation;
 
-        if (invocation.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName }
-            && genericName.TypeArgumentList.Arguments.Count == 1
-            && FluentMessageMethods.Contains(genericName.Identifier.ValueText)
-            && model.GetTypeInfo(genericName.TypeArgumentList.Arguments[0]).Type is INamedTypeSymbol fluentType)
-        {
-            messageType = fluentType;
-            reportNode = genericName.TypeArgumentList.Arguments[0];
-            return true;
-        }
-
         if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !FluentMessageMethods.Contains(method.Name)
-            || !IsJunoOrMassTransitMethod(method))
+            || !GpMessageContracts.IsMessagingMethod(method))
         {
             return false;
         }
@@ -133,28 +120,14 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
         return TryGetMessageType(model, invocation, method, out messageType, out reportNode);
     }
 
-    private static bool IsJunoOrMassTransitMethod(IMethodSymbol method)
-    {
-        var methodNamespace = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-        if (IsKnownTransportNamespace(methodNamespace))
-        {
-            return true;
-        }
-
-        var typeNamespace = method.ContainingType?.ContainingNamespace?.ToDisplayString() ?? string.Empty;
-        return IsKnownTransportNamespace(typeNamespace);
-    }
-
-    private static bool IsKnownTransportNamespace(string namespaceName) =>
-        namespaceName.StartsWith(JunoNamespacePrefix, StringComparison.Ordinal)
-        || namespaceName.StartsWith(MassTransitNamespacePrefix, StringComparison.Ordinal);
-
     private static bool TryGetMessageType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method, out INamedTypeSymbol messageType, out SyntaxNode reportNode)
     {
         if (method.TypeArguments.FirstOrDefault() is INamedTypeSymbol typeArgument)
         {
             messageType = typeArgument;
-            reportNode = invocation;
+            reportNode = invocation.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName }
+                ? genericName.TypeArgumentList.Arguments[0]
+                : invocation;
             return true;
         }
 

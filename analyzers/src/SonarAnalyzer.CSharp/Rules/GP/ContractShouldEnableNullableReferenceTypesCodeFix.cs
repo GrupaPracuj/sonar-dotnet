@@ -9,12 +9,26 @@ public sealed class ContractShouldEnableNullableReferenceTypesCodeFix : SonarCod
 
     protected override Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
     {
+        var diagnostic = context.Diagnostics.First();
+        var declaration = root.FindNode(diagnostic.Location.SourceSpan).FirstAncestorOrSelf<TypeDeclarationSyntax>();
         context.RegisterCodeFix(
             Title,
             c =>
             {
-                // Any later "#nullable" directive in the file only overrides the context from that point on, so
-                // inserting an enabling directive at the very top is always safe, regardless of what follows.
+                var disablingDirective = root.DescendantTrivia(descendIntoTrivia: true)
+                    .Where(x => x.SpanStart < (declaration?.SpanStart ?? diagnostic.Location.SourceSpan.Start))
+                    .LastOrDefault(x => x.GetStructure() is { } structure
+                                        && NullableDirectiveTriviaSyntaxWrapper.IsInstance(structure)
+                                        && ((NullableDirectiveTriviaSyntaxWrapper)structure).SettingToken.ValueText == "disable");
+                if (disablingDirective.RawKind != 0)
+                {
+                    var text = disablingDirective.ToFullString();
+                    var disableOffset = text.IndexOf("disable", StringComparison.Ordinal);
+                    var enabledText = text.Substring(0, disableOffset) + "enable" + text.Substring(disableOffset + "disable".Length);
+                    var enabledDirective = SyntaxFactory.ParseLeadingTrivia(enabledText).First(x => x.HasStructure);
+                    return Task.FromResult(context.Document.WithSyntaxRoot(root.ReplaceTrivia(disablingDirective, enabledDirective)));
+                }
+
                 var firstToken = root.GetFirstToken(includeZeroWidth: true);
                 var newLeadingTrivia = SyntaxFactory.ParseLeadingTrivia("#nullable enable\n\n").AddRange(firstToken.LeadingTrivia);
                 var newFirstToken = firstToken.WithLeadingTrivia(newLeadingTrivia);

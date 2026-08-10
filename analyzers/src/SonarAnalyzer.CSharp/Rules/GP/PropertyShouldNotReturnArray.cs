@@ -24,7 +24,7 @@ public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
         var declaration = (PropertyDeclarationSyntax)context.Node;
         if (declaration.Modifiers.Any(SyntaxKind.OverrideKeyword)
             || context.Model.GetDeclaredSymbol(declaration) is not { } property
-            || property.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal)
+            || property.GetMethod?.EffectiveAccessibility is not (Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal)
             || property.Type is not IArrayTypeSymbol
             || IsExcludedContainingType(property.ContainingType))
         {

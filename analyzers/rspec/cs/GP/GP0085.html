@@ -1,10 +1,11 @@
-<p>A struct that has not overridden <code>Equals(object)</code> (and correspondingly <code>GetHashCode()</code>) should not be compared, hashed, or used
-as a dictionary/set key based on that default behavior.</p>
+<p>A struct should not rely on the default <code>ValueType.Equals(object)</code> when <code>Equals</code> is called, or on default equality and hashing
+when it is used as a dictionary/set key.</p>
 <h2>Why is this an issue?</h2>
 <p>Every <code>struct</code> inherits <code>Equals(object)</code> and <code>GetHashCode()</code> from <code>System.ValueType</code> unless it overrides
-them itself. <code>ValueType</code>'s versions use reflection to enumerate and compare every field - this is slow, and for a struct that contains a
-reference-type field, it compares that field by <b>reference</b>, not by value. Two structs that clearly represent the same value can therefore compare as
-unequal, or end up in different hash buckets, simply because their reference-type fields happen to point at different (but equal) instances.</p>
+them itself. The default equality compares the struct's fields by calling each field's <code>Equals</code>; reference-type fields therefore follow
+their own equality implementation and are not always compared by reference. The runtime can optimize some layouts, but the fallback may use
+reflection-based field inspection, and the default hash code is not designed around the type's domain identity. Relying on these defaults can add
+avoidable cost and can include fields that should not participate in the domain's equality or hashing semantics.</p>
 <pre>
 public struct OrderLine
 {
@@ -14,25 +15,26 @@ public struct OrderLine
 
 var a = new OrderLine { Quantity = 1, ProductCode = "SKU-1" };
 var b = new OrderLine { Quantity = 1, ProductCode = "SKU-1" };
-bool same = a.Equals(b); // may be false: ProductCode is compared by reference, not by content
+bool same = a.Equals(b); // uses ValueType's field-wise default rather than declared OrderLine semantics
 </pre>
-<p>The rule reports three ways this default falls back into production code:</p>
+<p>The rule reports two ways this default reaches production code:</p>
 <ul>
-  <li>Comparing two structs with <code>==</code> when neither side has overloaded the operator itself - so whatever ends up running is not the fast,
-  correct comparison the code likely intended.</li>
   <li><code>.Equals()</code> resolving to the inherited <code>ValueType.Equals</code> because the struct never overrode it.</li>
-  <li>A struct without an <code>Equals</code>/<code>GetHashCode</code> override used as the key type of a <code>Dictionary&lt;TKey, TValue&gt;</code> or
-  the element type of a <code>HashSet&lt;T&gt;</code> - every lookup then pays the reflection cost and risks the reference-comparison bug above.</li>
+  <li>A struct missing either an <code>Equals</code> or <code>GetHashCode</code> override used as the key type of a <code>Dictionary&lt;TKey, TValue&gt;</code> or
+  the element type of a <code>HashSet&lt;T&gt;</code> without an explicit comparer, so lookups rely on the default equality and hashing path.</li>
 </ul>
 <h3>Exceptions</h3>
-<p><code>record struct</code> types are never reported: the compiler synthesizes a correct, fast, field-by-field <code>Equals</code>,
+<p><code>record struct</code> types are never reported: the compiler synthesizes explicit, field-by-field <code>Equals</code>,
 <code>GetHashCode</code>, <code>==</code> and <code>!=</code> for them. Plain <code>enum</code> types are a different <code>TypeKind</code> entirely and
 always use the built-in, fast comparison - they are not a concern here at all.</p>
+<p>A call resolved to a typed <code>IEquatable&lt;T&gt;.Equals(T)</code> implementation is not reported. A
+<code>Dictionary&lt;TKey, TValue&gt;</code> or <code>HashSet&lt;T&gt;</code> constructed with a non-null explicit
+<code>IEqualityComparer&lt;T&gt;</code> is also not reported, because it does not rely on the struct's default comparer.</p>
 <p>This rule also flags usage sites, not only declarations - including struct types that come from a third-party library outside your control, where
 adding <code>IEquatable&lt;T&gt;</code> or overriding <code>Equals</code>/<code>GetHashCode</code> yourself is not an option.</p>
 <h2>How to fix it</h2>
 <p>Override <code>Equals(object)</code> and <code>GetHashCode()</code> on the struct (and, ideally, implement <code>IEquatable&lt;T&gt;</code> and overload
-<code>operator==</code>/<code>operator!=</code>) so comparisons are explicit, fast, and based on the fields that actually define the struct's value. When
+<code>operator==</code>/<code>operator!=</code>) so comparisons are explicit and based on the fields that actually define the struct's value. When
 the struct belongs to a third-party library and cannot be changed, avoid relying on its default equality: compare the fields you care about explicitly, or
 supply an explicit <code>IEqualityComparer&lt;T&gt;</code> to the dictionary or set instead of depending on the default one.</p>
 <h3>Code examples</h3>
@@ -59,6 +61,10 @@ public struct OrderLine : IEquatable&lt;OrderLine&gt;
 }
 
 var lines = new Dictionary&lt;OrderLine, decimal&gt;();
+</pre>
+<p>For a third-party struct, supply an explicit comparer:</p>
+<pre>
+var lines = new Dictionary&lt;ExternalOrderLine, decimal&gt;(new ExternalOrderLineComparer());
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

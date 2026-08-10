@@ -419,6 +419,45 @@ public class RouteNamingConventionsTest
             .Verify();
 
     [TestMethod]
+    public void RouteNamingConventions_NoncompliantSecretRouteParameterModifiers() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpGetAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            public class SessionsController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token?}")] // Noncompliant {{Route parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                public void Optional(string token) { }
+
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{*apiKey}")] // Noncompliant {{Route parameter 'apiKey' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                public void CatchAll(string apiKey) { }
+
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{**password}")] // Noncompliant {{Route parameter 'password' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                public void DoubleCatchAll(string password) { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void RouteNamingConventions_CompliantOrdinaryRouteParameter() =>
         builder.AddSnippet(
             """

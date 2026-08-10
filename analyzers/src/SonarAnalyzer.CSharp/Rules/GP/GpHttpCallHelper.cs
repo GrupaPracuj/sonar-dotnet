@@ -22,29 +22,50 @@ internal static class GpHttpCallHelper
         "System.Net.Http.HttpMessageInvoker"
     };
 
+    private static readonly HashSet<string> FrameworkRequestMethods = new(StringComparer.Ordinal)
+    {
+        "DeleteAsync", "GetAsync", "GetByteArrayAsync", "GetStreamAsync", "GetStringAsync", "PatchAsync",
+        "PostAsync", "PutAsync", "Send", "SendAsync",
+    };
+
+    private static readonly HashSet<string> FrameworkJsonRequestMethods = new(StringComparer.Ordinal)
+    {
+        "DeleteFromJsonAsync", "GetFromJsonAsync", "PatchAsJsonAsync", "PostAsJsonAsync", "PutAsJsonAsync",
+    };
+
+    private static readonly HashSet<string> JunoRequestMethods = new(StringComparer.Ordinal)
+    {
+        "Delete", "DeleteJson", "DeleteString", "Download", "Get", "GetBytes", "GetFile", "GetJson", "GetStream",
+        "GetString", "Head", "Options", "Patch", "PatchJson", "PatchString", "Post", "PostFormMultipart",
+        "PostFormUrlEncoded", "PostJson", "PostMultipart", "PostString", "Put", "PutFormUrlEncoded", "PutJson",
+        "PutString", "Send", "SendJson", "SendString",
+    };
+
     internal static bool IsHttpCall(IMethodSymbol method)
     {
-        if (IsHttpTargetType(method.ContainingType))
+        if (FrameworkHttpTargetTypes.Contains(method.ContainingType?.ToDisplayString())
+            && FrameworkRequestMethods.Contains(method.Name))
         {
             return true;
         }
 
-        if (!method.IsExtensionMethod)
+        if (method.ContainingType?.ToDisplayString() == "System.Net.Http.Json.HttpClientJsonExtensions"
+            && FrameworkJsonRequestMethods.Contains(method.Name)
+            && ReceiverType(method)?.ToDisplayString() == "System.Net.Http.HttpClient")
         {
-            return false;
+            return true;
         }
 
-        // For an extension method called via instance syntax (x.Method(...), the common case), the symbol from
-        // GetSymbolInfo is already reduced: Parameters excludes the receiver, so it must be read from ReceiverType.
-        // Parameters[0] only holds the receiver when the method is referenced in its unreduced/static form.
-        return IsHttpTargetType(method.ReceiverType)
-               || (method.Parameters.Length > 0 && IsHttpTargetType(method.Parameters[0].Type));
+        if (!method.IsExtensionMethod && JunoHttpTargetTypes.Contains(method.ContainingType?.ToDisplayString()))
+        {
+            return JunoRequestMethods.Contains(method.Name);
+        }
+
+        return method.IsExtensionMethod
+               && JunoRequestMethods.Contains(method.Name)
+               && JunoHttpTargetTypes.Contains(ReceiverType(method)?.ToDisplayString());
     }
 
-    private static bool IsHttpTargetType(ITypeSymbol type)
-    {
-        var typeDisplayName = type?.ToDisplayString() ?? string.Empty;
-        return JunoHttpTargetTypes.Contains(typeDisplayName)
-               || FrameworkHttpTargetTypes.Contains(typeDisplayName);
-    }
+    private static ITypeSymbol ReceiverType(IMethodSymbol method) =>
+        method.ReceiverType ?? method.Parameters.FirstOrDefault()?.Type;
 }

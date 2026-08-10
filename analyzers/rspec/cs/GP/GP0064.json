@@ -1,11 +1,11 @@
 {
   "title": "Contract types should not form a cycle",
-  "type": "BUG",
+  "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "RELIABILITY": "MEDIUM"
+      "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "LOGICAL"
+    "attribute": "CONVENTIONAL"
   },
   "status": "ready",
   "remediation": {
@@ -17,7 +17,7 @@
     "messaging",
     "serialization"
   ],
-  "defaultSeverity": "Blocker",
+  "defaultSeverity": "Major",
   "ruleSpecification": "GP-0064",
   "sqKey": "GP0064",
   "scope": "Main",

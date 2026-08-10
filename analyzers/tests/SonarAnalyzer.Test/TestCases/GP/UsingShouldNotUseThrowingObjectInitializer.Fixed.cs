@@ -22,6 +22,11 @@ namespace Tests.Diagnostics
             using var conn = new FakeDisposable { Value = 42 };
         }
 
+        public void InitOnlyHasNoFix()
+        {
+            using var conn = new InitOnlyDisposable { Value = Compute() }; // Fixed
+        }
+
         private static int Compute() => 42;
     }
 
@@ -29,6 +34,12 @@ namespace Tests.Diagnostics
     {
         public int Value { get; set; }
         public string Name { get; set; }
+        public void Dispose() { }
+    }
+
+    public class InitOnlyDisposable : IDisposable
+    {
+        public int Value { get; init; }
         public void Dispose() { }
     }
 }

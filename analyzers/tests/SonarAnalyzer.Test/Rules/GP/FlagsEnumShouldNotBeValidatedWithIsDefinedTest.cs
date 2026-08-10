@@ -68,4 +68,22 @@ public class FlagsEnumShouldNotBeValidatedWithIsDefinedTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void FlagsEnumShouldNotBeValidatedWithIsDefined_CompliantForStringName() =>
+        builder.AddSnippet(
+            """
+            [System.Flags]
+            public enum Access
+            {
+                Read = 1,
+                Write = 2,
+            }
+
+            public class Validator
+            {
+                public bool IsValid(string value) => System.Enum.IsDefined(typeof(Access), value);
+            }
+            """)
+            .VerifyNoIssues();
 }

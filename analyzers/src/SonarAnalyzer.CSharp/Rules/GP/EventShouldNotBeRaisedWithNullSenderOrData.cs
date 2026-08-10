@@ -12,6 +12,7 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrData : SonarDiagnostic
 
     internal const string NullSenderMessageFormat = "Do not pass null as the sender - use 'this' (or the actual raising instance) so subscribers know who raised '{0}'.";
     internal const string NullDataMessageFormat = "Do not pass null as the event data for '{0}' - pass EventArgs.Empty instead, callers expect a non-null value.";
+    internal const string NullGenericDataMessageFormat = "Do not pass null as the event data for '{0}' - pass a non-null '{1}' instance instead.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -38,7 +39,11 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrData : SonarDiagnostic
 
         if (IsNullLiteral(arguments[1].Expression))
         {
-            context.ReportIssue(Rule, arguments[1].Expression, string.Format(NullDataMessageFormat, eventSymbol.Name));
+            var eventDataType = EventDataType(eventSymbol);
+            var message = eventDataType.Is(KnownType.System_EventArgs)
+                ? string.Format(NullDataMessageFormat, eventSymbol.Name)
+                : string.Format(NullGenericDataMessageFormat, eventSymbol.Name, eventDataType?.Name ?? "event data");
+            context.ReportIssue(Rule, arguments[1].Expression, message);
         }
     }
 
@@ -64,6 +69,18 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrData : SonarDiagnostic
         return null;
     }
 
+    internal static ExpressionSyntax EventReceiver(InvocationExpressionSyntax invocation) =>
+        invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Invoke", Expression: MemberAccessExpressionSyntax eventAccess } => eventAccess.Expression,
+            MemberAccessExpressionSyntax { Name.Identifier.ValueText: "Invoke" } => null,
+            MemberAccessExpressionSyntax directEventAccess => directEventAccess.Expression,
+            MemberBindingExpressionSyntax memberBinding
+                when memberBinding.FirstAncestorOrSelf<ConditionalAccessExpressionSyntax>()?.Expression is MemberAccessExpressionSyntax eventAccess =>
+                eventAccess.Expression,
+            _ => null,
+        };
+
     private static IEventSymbol EventBeforeInvoke(ExpressionSyntax invokeAccess, SemanticModel model) =>
         invokeAccess switch
         {
@@ -77,4 +94,7 @@ public sealed class EventShouldNotBeRaisedWithNullSenderOrData : SonarDiagnostic
 
     private static bool IsNullLiteral(ExpressionSyntax expression) =>
         expression.IsKind(SyntaxKind.NullLiteralExpression);
+
+    private static ITypeSymbol EventDataType(IEventSymbol eventSymbol) =>
+        (eventSymbol.Type as INamedTypeSymbol)?.DelegateInvokeMethod?.Parameters.ElementAtOrDefault(1)?.Type;
 }

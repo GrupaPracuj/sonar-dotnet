@@ -29,6 +29,7 @@ public sealed class PublishedMessageShouldHaveExplicitContract : SonarDiagnostic
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !PublishMethods.Contains(method.Name)
             || !GpMessageContracts.IsMessagingMethod(method)
+            || HasExplicitRuntimeType(context.Model, invocation, method)
             || MessageType(context.Model, invocation, method) is not { } messageType
             || GpMessageContracts.DescribeShapelessType(messageType) is not { } description)
         {
@@ -37,6 +38,16 @@ public sealed class PublishedMessageShouldHaveExplicitContract : SonarDiagnostic
 
         context.ReportIssue(Rule, invocation, description);
     }
+
+    private static bool HasExplicitRuntimeType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method) =>
+        method.Name == "Publish"
+        && method.ContainingNamespace.ToDisplayString() == "MassTransit"
+        && invocation.ArgumentList.Arguments.Select((argument, index) => (Argument: argument, Index: index)).Any(x =>
+            (x.Argument.NameColon is { Name.Identifier.ValueText: var parameterName }
+                ? method.Parameters.FirstOrDefault(parameter => parameter.Name == parameterName)
+                : x.Index < method.Parameters.Length ? method.Parameters[x.Index] : null)
+            ?.Type.Is(KnownType.System_Type) == true);
+
     private static ITypeSymbol MessageType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method) =>
         method.TypeArguments.FirstOrDefault()
         ?? (invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } firstArgument

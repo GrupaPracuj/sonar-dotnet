@@ -9,6 +9,13 @@ public sealed class DoNotInterpolateRequestInputIntoLogMessage : SonarDiagnostic
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
+    private static readonly HashSet<string> MessageParameterNames = new(StringComparer.Ordinal)
+    {
+        "format",
+        "message",
+        "messageTemplate",
+    };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
@@ -17,16 +24,19 @@ public sealed class DoNotInterpolateRequestInputIntoLogMessage : SonarDiagnostic
     private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (invocation.ArgumentList is not { } argumentList || !GpLoggingHelper.IsLoggingCall(context.Model, invocation))
+        if (!GpLoggingHelper.IsLoggingCall(context.Model, invocation)
+            || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || method.Parameters.FirstOrDefault(x => MessageParameterNames.Contains(x.Name) && x.Type.Is(KnownType.System_String)) is not { } messageParameter
+            || !new CSharpMethodParameterLookup(invocation, method).TryGetSyntax(messageParameter, out var messageArguments))
         {
             return;
         }
 
-        foreach (var argument in argumentList.Arguments.Where(x => IsBuiltMessage(x.Expression)))
+        foreach (var expression in messageArguments.OfType<ExpressionSyntax>().Where(IsBuiltMessage))
         {
-            if (GpRequestInputHelper.ActionParameterName(context.Model, argument.Expression) is { } parameterName)
+            if (GpRequestInputHelper.ActionParameterName(context.Model, expression) is { } parameterName)
             {
-                context.ReportIssue(Rule, argument, parameterName);
+                context.ReportIssue(Rule, expression, parameterName);
                 return; // one finding per logging call is enough
             }
         }

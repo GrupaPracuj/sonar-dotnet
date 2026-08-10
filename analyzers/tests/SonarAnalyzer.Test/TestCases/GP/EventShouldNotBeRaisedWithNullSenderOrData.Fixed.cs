@@ -15,5 +15,17 @@ namespace Tests.Diagnostics
         {
             Shipped?.Invoke(this, EventArgs.Empty); // Fixed
         }
+
+        public static void RaiseOnAnotherInstance(EventShouldNotBeRaisedWithNullSenderOrData source)
+        {
+            source.Shipped?.Invoke(source, EventArgs.Empty); // Fixed
+        }
+
+        public static void RaiseOnComputedInstance()
+        {
+            Source().Shipped?.Invoke(null, EventArgs.Empty); // Fixed
+        }
+
+        private static EventShouldNotBeRaisedWithNullSenderOrData Source() => new();
     }
 }

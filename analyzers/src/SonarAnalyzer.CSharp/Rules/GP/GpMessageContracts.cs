@@ -51,7 +51,11 @@ internal static class GpMessageContracts
         @interface is { Name: "IConsumer", IsGenericType: true, TypeArguments.Length: 1 } && IsMessagingType(@interface);
 
     internal static bool IsConsumeMethod(IMethodSymbol method) =>
-        method is { Name: "Consume" } && method.ContainingType.AllInterfaces.Any(IsConsumerInterface);
+        method is not null
+        && method.ContainingType.AllInterfaces
+            .Where(IsConsumerInterface)
+            .SelectMany(x => x.GetMembers("Consume").OfType<IMethodSymbol>())
+            .Any(x => method.Equals(method.ContainingType.FindImplementationForInterfaceMember(x)));
 
     internal static bool IsInsideConsumer(SemanticModel model, SyntaxNode node) =>
         node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is { } methodDeclaration
@@ -118,8 +122,16 @@ internal static class GpMessageContracts
 
     // Positional records declare their members in the parameter list, so both shapes have to be inspected.
     internal static IEnumerable<(string Name, ITypeSymbol Type)> DataMembers(INamedTypeSymbol type) =>
-        type.GetMembers()
-            .OfType<IPropertySymbol>()
+        BaseTypesAndSelf(type)
+            .SelectMany(x => x.GetMembers().OfType<IPropertySymbol>())
             .Where(x => x is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, IsIndexer: false })
             .Select(x => (x.Name, x.Type));
+
+    private static IEnumerable<INamedTypeSymbol> BaseTypesAndSelf(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            yield return current;
+        }
+    }
 }

@@ -27,6 +27,7 @@ public sealed class ContractEnumShouldAssignExplicitValues : SonarDiagnosticAnal
         if (context.Node is not EnumDeclarationSyntax { Members.Count: > 0 } declaration
             || context.Model.GetDeclaredSymbol(declaration) is not { } enumType
             || !contractEnums.IsUsedByAContract(enumType)
+            || UsesStringEnumConverter(enumType)
             // Every member has to be explicit: one implicit member is enough for a later edit to shift it.
             || declaration.Members.All(x => x.EqualsValue is not null))
         {
@@ -35,4 +36,12 @@ public sealed class ContractEnumShouldAssignExplicitValues : SonarDiagnosticAnal
 
         context.ReportIssue(Rule, declaration.Identifier, enumType.Name);
     }
+
+    private static bool UsesStringEnumConverter(INamedTypeSymbol enumType) =>
+        enumType.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonConverterAttribute"
+            && attribute.ConstructorArguments.FirstOrDefault().Value is INamedTypeSymbol converter
+            && converter.OriginalDefinition.ToDisplayString() is
+                "System.Text.Json.Serialization.JsonStringEnumConverter"
+                or "System.Text.Json.Serialization.JsonStringEnumConverter<TEnum>");
 }

@@ -17,7 +17,7 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
     private static void AnalyzeConstructor(SonarSyntaxNodeReportingContext context)
     {
         var constructor = (ConstructorDeclarationSyntax)context.Node;
-        if (!constructor.Modifiers.Any(SyntaxKind.StaticKeyword) || !ThrowsDirectly(constructor))
+        if (!constructor.Modifiers.Any(SyntaxKind.StaticKeyword) || !ThrowsDirectly(context.Model, constructor))
         {
             return;
         }
@@ -30,10 +30,13 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
     // run on demand) rather than calls right away while the type is being initialized.
     // "ExpressionBody" is ambiguous as a plain member access here: two different lightup/shim layers each add an
     // extension for it on this project's compile-time (older) Roslyn reference, so the call is qualified to pick one.
-    private static bool ThrowsDirectly(ConstructorDeclarationSyntax constructor)
+    private static bool ThrowsDirectly(SemanticModel model, ConstructorDeclarationSyntax constructor)
     {
         SyntaxNode body = constructor.Body ?? (SyntaxNode)StyleCop.Analyzers.Lightup.BaseMethodDeclarationSyntaxExtensions.ExpressionBody(constructor);
-        return body is not null && body.DescendantNodes(DoesNotBelongToANestedFunction).Any(IsThrow);
+        return body is not null
+               && body.DescendantNodes(DoesNotBelongToANestedFunction)
+                   .Where(IsThrow)
+                   .Any(x => !IsCaught(model, x));
     }
 
     // A throw inside a lambda or local function exits that function, not the static constructor, so it does not
@@ -43,4 +46,29 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
 
     private static bool IsThrow(SyntaxNode node) =>
         node is ThrowStatementSyntax || node.Kind() == SyntaxKindEx.ThrowExpression;
+
+    private static bool IsCaught(SemanticModel model, SyntaxNode throwNode)
+    {
+        var thrownExpression = throwNode switch
+        {
+            ThrowStatementSyntax throwStatement => throwStatement.Expression,
+            _ when ThrowExpressionSyntaxWrapper.IsInstance(throwNode) => ((ThrowExpressionSyntaxWrapper)throwNode).Expression,
+            _ => null
+        };
+        if (thrownExpression is null || model.GetTypeInfo(thrownExpression).Type is not { } thrownType)
+        {
+            return false;
+        }
+
+        return throwNode.Ancestors()
+            .OfType<TryStatementSyntax>()
+            .Where(x => x.Block.Span.Contains(throwNode.Span))
+            .SelectMany(x => x.Catches)
+            .Any(x => x.Filter is null && Catches(model, x, thrownType));
+    }
+
+    private static bool Catches(SemanticModel model, CatchClauseSyntax catchClause, ITypeSymbol thrownType) =>
+        catchClause.Declaration is null
+        || (model.GetTypeInfo(catchClause.Declaration.Type).Type is { } caughtType
+            && (thrownType.Equals(caughtType) || GpJunoTypes.DerivesFrom(thrownType, caughtType.ToDisplayString())));
 }

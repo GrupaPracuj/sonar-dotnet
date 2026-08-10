@@ -32,13 +32,29 @@ internal static class GpUrlExpressionHelper
         return null;
     }
 
-    // The destination stops being caller-controllable once the text so far has moved past the authority into a path,
-    // which is what the first '/' after an optional "scheme://" marks.
+    // The destination stops being caller-controllable once the text so far has moved past the authority into a path.
+    // A single leading slash is not enough because caller input beginning with slash would form a protocol-relative URL.
     private static bool DestinationIsFixed(string literalPrefix)
     {
         var schemeEnd = literalPrefix.IndexOf("://", StringComparison.Ordinal);
-        var afterScheme = schemeEnd >= 0 ? literalPrefix.Substring(schemeEnd + 3) : literalPrefix;
-        return afterScheme.IndexOf('/') >= 0;
+        if (schemeEnd >= 0)
+        {
+            return literalPrefix.IndexOf('/', schemeEnd + 3) >= 0;
+        }
+
+        if (!literalPrefix.StartsWith("/", StringComparison.Ordinal))
+        {
+            return literalPrefix.IndexOf('/') >= 0;
+        }
+
+        var firstNonSlash = 0;
+        while (firstNonSlash < literalPrefix.Length && literalPrefix[firstNonSlash] == '/')
+        {
+            firstNonSlash++;
+        }
+
+        return (firstNonSlash == 1 && firstNonSlash < literalPrefix.Length)
+               || (firstNonSlash < literalPrefix.Length && literalPrefix.IndexOf('/', firstNonSlash) >= 0);
     }
 
     // Flattens the expression into the order the pieces appear in the resulting string.

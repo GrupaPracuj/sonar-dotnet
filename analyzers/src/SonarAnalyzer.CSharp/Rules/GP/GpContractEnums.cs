@@ -21,7 +21,7 @@ internal sealed class GpContractEnums
         {
             foreach (var member in GpMessageContracts.DataMembers(contract))
             {
-                if (EnumType(member.Type) is { } enumType)
+                foreach (var enumType in EnumTypes(member.Type))
                 {
                     result.Add(enumType.ToDisplayString());
                 }
@@ -35,30 +35,70 @@ internal sealed class GpContractEnums
         enumsUsedByContracts.Contains(enumType.ToDisplayString());
 
     // Nullable and collection wrappers still put the enum on the wire.
-    private static INamedTypeSymbol EnumType(ITypeSymbol type)
+    private static IEnumerable<INamedTypeSymbol> EnumTypes(ITypeSymbol type)
     {
-        var candidate = type switch
+        if (type is INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType)
         {
-            IArrayTypeSymbol array => array.ElementType,
-            INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } generic => generic.TypeArguments[0],
-            _ => type,
-        };
+            yield return enumType;
+            yield break;
+        }
 
-        return candidate is INamedTypeSymbol { TypeKind: TypeKind.Enum } named ? named : null;
+        if (type is IArrayTypeSymbol array)
+        {
+            foreach (var nested in EnumTypes(array.ElementType))
+            {
+                yield return nested;
+            }
+        }
+        else if (type is INamedTypeSymbol { IsGenericType: true } generic
+                 && (generic.OriginalDefinition.Is(KnownType.System_Nullable_T) || GpCollectionEndpointHelper.IsCollectionLike(generic)))
+        {
+            foreach (var argument in generic.TypeArguments)
+            {
+                foreach (var nested in EnumTypes(argument))
+                {
+                    yield return nested;
+                }
+            }
+        }
     }
 
     private static IEnumerable<INamedTypeSymbol> ContractTypes(INamespaceSymbol root)
     {
-        foreach (var type in root.GetTypeMembers().Where(x => GpMessageContracts.HasContractName(x.Name)))
+        foreach (var type in root.GetTypeMembers())
         {
-            yield return type;
-        }
-
-        foreach (var nested in root.GetNamespaceMembers())
-        {
-            foreach (var type in ContractTypes(nested))
+            if (GpMessageContracts.HasContractName(type.Name))
             {
                 yield return type;
+            }
+
+            foreach (var nestedType in ContractTypes(type))
+            {
+                yield return nestedType;
+            }
+        }
+
+        foreach (var nestedNamespace in root.GetNamespaceMembers())
+        {
+            foreach (var type in ContractTypes(nestedNamespace))
+            {
+                yield return type;
+            }
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> ContractTypes(INamedTypeSymbol root)
+    {
+        foreach (var type in root.GetTypeMembers())
+        {
+            if (GpMessageContracts.HasContractName(type.Name))
+            {
+                yield return type;
+            }
+
+            foreach (var nested in ContractTypes(type))
+            {
+                yield return nested;
             }
         }
     }

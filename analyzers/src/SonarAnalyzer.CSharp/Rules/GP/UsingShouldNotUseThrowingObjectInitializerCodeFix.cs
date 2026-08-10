@@ -12,7 +12,7 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
     internal const string Title = "Move the member assignments out of the object initializer";
     public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(UsingShouldNotUseThrowingObjectInitializer.RuleId);
 
-    protected override Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
+    protected override async Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
     {
         var diagnostic = context.Diagnostics.First();
         var span = diagnostic.Location.SourceSpan;
@@ -23,7 +23,15 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
             || variable.Parent.Parent is not LocalDeclarationStatementSyntax { UsingKeyword: { RawKind: (int)SyntaxKind.UsingKeyword } } localDeclaration
             || localDeclaration.Parent is not BlockSyntax block)
         {
-            return Task.CompletedTask;
+            return;
+        }
+
+        var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
+        if (model is null
+            || initializer.Expressions.OfType<AssignmentExpressionSyntax>()
+                .Any(x => model.GetSymbolInfo(x.Left).Symbol is IPropertySymbol property && IsInitOnly(property)))
+        {
+            return;
         }
 
         context.RegisterCodeFix(
@@ -55,7 +63,11 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
                 return Task.FromResult(context.Document.WithSyntaxRoot(newRoot));
             },
             context.Diagnostics);
-
-        return Task.CompletedTask;
     }
+
+    private static bool IsInitOnly(IPropertySymbol property) =>
+        property.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<PropertyDeclarationSyntax>()
+            .Any(x => x.AccessorList?.Accessors.AnyOfKind(SyntaxKindEx.InitAccessorDeclaration) == true);
 }

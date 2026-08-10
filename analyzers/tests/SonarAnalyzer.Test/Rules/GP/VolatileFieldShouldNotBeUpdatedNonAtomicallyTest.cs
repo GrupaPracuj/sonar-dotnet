@@ -104,4 +104,26 @@ public class VolatileFieldShouldNotBeUpdatedNonAtomicallyTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void VolatileFieldShouldNotBeUpdatedNonAtomically_CompliantInsideLock() =>
+        builder.AddSnippet(
+            """
+            public class OrderProcessor
+            {
+                private readonly object _gate = new object();
+                private volatile int _processed;
+
+                public void Process()
+                {
+                    lock (_gate)
+                    {
+                        _processed++;
+                        _processed += 2;
+                        _processed = _processed + 1;
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

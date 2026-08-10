@@ -1,3 +1,5 @@
+using SonarAnalyzer.CFG.Roslyn;
+
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -40,25 +42,78 @@ public sealed class CommitAndPublishShouldNotBeADualWrite : ParametrizedDiagnost
             return;
         }
 
-        // Only a publish that follows the commit is a dual write. A publish before it is GP0008's case - a network
-        // call inside an open transaction - so the two rules never report the same statement.
-        var invocations = body.DescendantNodes()
+        var invocations = body.DescendantNodes(DoesNotBelongToANestedFunction)
             .OfType<InvocationExpressionSyntax>()
             .Select(x => (Invocation: x, Symbol: context.Model.GetSymbolInfo(x).Symbol as IMethodSymbol))
             .Where(x => x.Symbol is not null)
             .ToList();
 
-        if (invocations.FirstOrDefault(x => IsCommit(x.Symbol)) is not { Invocation: { } commit })
+        if (methodDeclaration.CreateCfg(context.Model, context.Cancel) is not { } cfg)
         {
             return;
         }
 
-        foreach (var publish in invocations
-            .Where(x => x.Invocation.SpanStart > commit.SpanStart && IsPublish(x.Symbol))
-            .Select(x => x.Invocation))
+        var commitSites = invocations
+            .Where(x => IsCommit(x.Symbol))
+            .Select(x => InvocationSite(cfg, x.Invocation))
+            .Where(x => x.HasValue)
+            .Select(x => x.Value)
+            .ToArray();
+        foreach (var publish in invocations.Where(x => IsPublish(x.Symbol)))
         {
-            context.ReportIssue(Rule, publish);
+            if (InvocationSite(cfg, publish.Invocation) is { } publishSite && commitSites.Any(x => CanReach(x, publishSite)))
+            {
+                context.ReportIssue(Rule, publish.Invocation);
+            }
         }
+    }
+
+    private static bool DoesNotBelongToANestedFunction(SyntaxNode node) =>
+        node.Kind() != SyntaxKindEx.LocalFunctionStatement && node is not AnonymousFunctionExpressionSyntax;
+
+    private static (BasicBlock Block, int Index)? InvocationSite(ControlFlowGraph cfg, InvocationExpressionSyntax invocation)
+    {
+        foreach (var block in cfg.Blocks)
+        {
+            var index = 0;
+            foreach (var operation in block.OperationsAndBranchValue.ToExecutionOrder().Select(x => x.Instance))
+            {
+                if (operation.Kind == OperationKindEx.Invocation && operation.Syntax.Span == invocation.Span)
+                {
+                    return (block, index);
+                }
+                index++;
+            }
+        }
+        return null;
+    }
+
+    private static bool CanReach((BasicBlock Block, int Index) from, (BasicBlock Block, int Index) to)
+    {
+        if (from.Block == to.Block && from.Index < to.Index)
+        {
+            return true;
+        }
+
+        var pending = new Stack<BasicBlock>(from.Block.SuccessorBlocks);
+        var visited = new HashSet<BasicBlock>();
+        while (pending.Count > 0)
+        {
+            var block = pending.Pop();
+            if (!visited.Add(block))
+            {
+                continue;
+            }
+            if (block == to.Block)
+            {
+                return true;
+            }
+            foreach (var successor in block.SuccessorBlocks)
+            {
+                pending.Push(successor);
+            }
+        }
+        return false;
     }
 
     private static bool IsCommit(IMethodSymbol method) =>

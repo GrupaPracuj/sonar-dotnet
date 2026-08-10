@@ -49,6 +49,17 @@ public class DateOnlyPropertyShouldNotBeNamedUtcTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_NoncompliantForNullableDateOnly() =>
+        builder.AddSnippet(
+            """
+            public class Contract
+            {
+                public System.DateOnly? ExpirationDateUtc { get; set; } // Noncompliant {{Rename 'ExpirationDateUtc' - a date without a time component should not have 'Utc' in its name.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DateOnlyPropertyShouldNotBeNamedUtc_CodeFix() =>
         builder.WithBasePath("GP")
             .AddPaths("DateOnlyPropertyShouldNotBeNamedUtc.cs")
@@ -78,6 +89,38 @@ public class DateOnlyPropertyShouldNotBeNamedUtcTest
             public class Contract
             {
                 private GP.Juno.Dates.LocalDate utcExpirationDate; // Noncompliant {{Rename 'utcExpirationDate' - a date without a time component should not have 'Utc' in its name.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_NoncompliantForNullableJunoLocalDate() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Dates
+            {
+                public struct LocalDate { }
+            }
+
+            public class Contract
+            {
+                public GP.Juno.Dates.LocalDate? ExpirationDateUtc { get; set; } // Noncompliant {{Rename 'ExpirationDateUtc' - a date without a time component should not have 'Utc' in its name.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_NoncompliantForNullableNodaLocalDate() =>
+        builder.AddSnippet(
+            """
+            namespace NodaTime
+            {
+                public struct LocalDate { }
+            }
+
+            public class Contract
+            {
+                public NodaTime.LocalDate? ExpirationDateUtc { get; set; } // Noncompliant {{Rename 'ExpirationDateUtc' - a date without a time component should not have 'Utc' in its name.}}
             }
             """)
             .Verify();

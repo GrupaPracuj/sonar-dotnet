@@ -756,6 +756,142 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantCallAfterTransactionScopeCompleteBeforeDispose() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Threading.Tasks;
+
+            namespace System.Transactions
+            {
+                public class TransactionScope : IDisposable
+                {
+                    public void Complete() { }
+                    public void Dispose() { }
+                }
+            }
+
+            namespace System.Net.Http
+            {
+                public class HttpClient
+                {
+                    public Task<object> GetAsync(string url) => Task.FromResult((object)null);
+                }
+            }
+
+            public class Service
+            {
+                private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+                public async Task Save()
+                {
+                    using (var scope = new System.Transactions.TransactionScope())
+                    {
+                        scope.Complete();
+                        await _httpClient.GetAsync("/orders"); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_NoncompliantAfterConditionalCommit() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace System.Net.Http
+            {
+                public class HttpClient
+                {
+                    public Task<object> GetAsync(string url) => Task.FromResult((object)null);
+                }
+            }
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                void Commit();
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+                public Service(ITransactional transactional) => _transactional = transactional;
+
+                public async Task Save(bool commit)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        if (commit)
+                        {
+                            transaction.Commit();
+                        }
+                        await _httpClient.GetAsync("/orders"); // Noncompliant {{Do not call external network resources inside a database transaction before commit.}}
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantAfterCommitOnEveryBranch() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace System.Net.Http
+            {
+                public class HttpClient
+                {
+                    public Task<object> GetAsync(string url) => Task.FromResult((object)null);
+                }
+            }
+
+            public interface ITransactional
+            {
+                Task<ITransaction> StartTransaction();
+            }
+
+            public interface ITransaction : System.IDisposable
+            {
+                void Commit();
+            }
+
+            public class Service
+            {
+                private readonly ITransactional _transactional;
+                private readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
+
+                public Service(ITransactional transactional) => _transactional = transactional;
+
+                public async Task Save(bool first)
+                {
+                    using (var transaction = await _transactional.StartTransaction())
+                    {
+                        if (first)
+                        {
+                            transaction.Commit();
+                        }
+                        else
+                        {
+                            transaction.Commit();
+                        }
+                        await _httpClient.GetAsync("/orders");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantForNonNetworkSendMethod() =>
         builder.AddSnippet(
             """

@@ -35,7 +35,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
             || !GpMessageContracts.IsMessagingMethod(method)
             || MessageType(context.Model, invocation, method) is not { } messageType
             || !IsDeclaredInThisAssembly(messageType, context.Compilation)
-            || messageType.DeclaredAccessibility == Accessibility.Public)
+            || messageType.EffectiveAccessibility == Accessibility.Public)
         {
             return;
         }
@@ -54,7 +54,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
         foreach (var consumed in type.AllInterfaces
             .Where(GpMessageContracts.IsConsumerInterface)
             .Select(x => x.TypeArguments[0])
-            .Where(x => IsDeclaredInThisAssembly(x, context.Compilation) && x.DeclaredAccessibility != Accessibility.Public))
+            .Where(x => IsDeclaredInThisAssembly(x, context.Compilation) && x.EffectiveAccessibility != Accessibility.Public))
         {
             context.ReportIssue(Rule, classDeclaration.Identifier, consumed.Name);
         }

@@ -45,8 +45,12 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
         }
         else if (elements.All(x => !IsComplexElement(x)))
         {
-            // The plain "{ item1, item2 }" shape used by HashSet<T>/List<T>-style single-argument Add(item) calls.
-            ReportDuplicates(context, elements.Select(x => (Compare: x, Report: (SyntaxNode)x)), CollectionValueMessage);
+            if (initializer.Parent is ExpressionSyntax creation
+                && context.Model.GetTypeInfo(creation).Type is { } createdType
+                && createdType.DerivesOrImplements(KnownType.System_Collections_Generic_ISet_T))
+            {
+                ReportDuplicates(context, elements.Select(x => (Compare: x, Report: (SyntaxNode)x)), CollectionValueMessage);
+            }
         }
 
         // Anything else (a mix of both shapes) is not valid C# for a single initializer under normal overload

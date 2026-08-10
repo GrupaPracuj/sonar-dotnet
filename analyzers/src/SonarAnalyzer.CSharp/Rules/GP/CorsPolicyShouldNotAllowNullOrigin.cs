@@ -69,21 +69,47 @@ public sealed class CorsPolicyShouldNotAllowNullOrigin : SonarDiagnosticAnalyzer
 
     private static bool IsHeaderWrite(InvocationExpressionSyntax invocation, IMethodSymbol method, SemanticModel model)
     {
-        if (invocation.ArgumentList.Arguments.Count != 2
-            || !IsAllowOriginHeader(invocation.ArgumentList.Arguments[0].Expression, model)
-            || !IsNullOrigin(invocation.ArgumentList.Arguments[1].Expression, model))
-        {
-            return false;
-        }
-
         if (method is { Name: "Append" } && method.ContainingType?.ToDisplayString() == HeaderDictionaryExtensions)
         {
-            return true;
+            var lookup = new CSharpMethodParameterLookup(invocation, method);
+            return HeaderReceiver(invocation, method, lookup, model) is not null
+                   && lookup.TryGetSyntax("key", out var keys)
+                   && keys.Length == 1
+                   && IsAllowOriginHeader((ExpressionSyntax)keys[0], model)
+                   && lookup.TryGetSyntax("value", out var values)
+                   && values.Length == 1
+                   && IsNullOrigin((ExpressionSyntax)values[0], model);
         }
 
-        return method.Name == "Add"
+        return invocation.ArgumentList.Arguments.Count == 2
+               && IsAllowOriginHeader(invocation.ArgumentList.Arguments[0].Expression, model)
+               && IsNullOrigin(invocation.ArgumentList.Arguments[1].Expression, model)
+               && method.Name == "Add"
                && invocation.Expression is MemberAccessExpressionSyntax { Expression: { } receiver }
                && GpJunoTypes.Implements(model.GetTypeInfo(receiver).Type, HeaderDictionary);
+    }
+
+    private static ExpressionSyntax HeaderReceiver(InvocationExpressionSyntax invocation, IMethodSymbol method, CSharpMethodParameterLookup lookup, SemanticModel model)
+    {
+        ExpressionSyntax receiver;
+        if (method.ReducedFrom is not null)
+        {
+            receiver = (invocation.Expression as MemberAccessExpressionSyntax)?.Expression;
+        }
+        else if (method.Parameters.FirstOrDefault(x => x.Name == "headers" && GpJunoTypes.Implements(x.Type, HeaderDictionary)) is { } receiverParameter
+                 && lookup.TryGetSyntax(receiverParameter, out var receivers)
+                 && receivers.Length == 1)
+        {
+            receiver = (ExpressionSyntax)receivers[0];
+        }
+        else
+        {
+            receiver = null;
+        }
+
+        return receiver is not null && GpJunoTypes.Implements(model.GetTypeInfo(receiver).Type, HeaderDictionary)
+            ? receiver
+            : null;
     }
 
     private static bool IsAllowOriginHeader(ExpressionSyntax expression, SemanticModel model) =>

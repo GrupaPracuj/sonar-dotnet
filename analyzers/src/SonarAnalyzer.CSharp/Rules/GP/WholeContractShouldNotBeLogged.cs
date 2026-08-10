@@ -24,7 +24,7 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
 
         foreach (var argument in argumentList.Arguments)
         {
-            if (ContractArgumentType(context.Model, argument.Expression) is { } contractType)
+            if (ContractTypeInLogArgument(context.Model, argument.Expression) is { } contractType)
             {
                 context.ReportIssue(Rule, argument, contractType.Name);
                 return; // one finding per logging call is enough
@@ -34,6 +34,26 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
 
     // The whole object, not one of its fields: "message" matches, "message.OrderId" does not, because the type of a
     // member access is the member's type rather than the contract's.
+    private static INamedTypeSymbol ContractTypeInLogArgument(SemanticModel model, ExpressionSyntax expression)
+    {
+        if (ContractArgumentType(model, expression) is { } direct)
+        {
+            return direct;
+        }
+
+        return expression.RemoveParentheses() switch
+        {
+            InterpolatedStringExpressionSyntax interpolated => interpolated.Contents
+                .OfType<InterpolationSyntax>()
+                .Select(x => ContractArgumentType(model, x.Expression))
+                .FirstOrDefault(x => x is not null),
+            BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.AddExpression)
+                && model.GetTypeInfo(binary).ConvertedType?.SpecialType == SpecialType.System_String =>
+                ContractTypeInLogArgument(model, binary.Left) ?? ContractTypeInLogArgument(model, binary.Right),
+            _ => null,
+        };
+    }
+
     private static INamedTypeSymbol ContractArgumentType(SemanticModel model, ExpressionSyntax expression) =>
         model.GetTypeInfo(expression).Type is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } named
         && GpMessageContracts.HasContractName(named.Name)

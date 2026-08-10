@@ -89,7 +89,7 @@ public class DoNotSwallowAuthorizationExceptionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotSwallowAuthorizationException_CompliantWhenCatchLogsTheFailure() =>
+    public void DoNotSwallowAuthorizationException_NoncompliantForUnrecognizedOutputCall() =>
         builder.AddSnippet(
             """
             public class User
@@ -105,12 +105,105 @@ public class DoNotSwallowAuthorizationExceptionTest
                     {
                         return user.IsInRole("Admin");
                     }
-                    catch (System.InvalidOperationException ex)
+                    catch (System.InvalidOperationException ex) // Noncompliant {{Do not silently swallow an exception around an access check - at least log the failure.}}
                     {
                         System.Console.WriteLine(ex);
                     }
 
                     return false;
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_CompliantWhenRecognizedLoggerLogsException() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogError(this ILogger logger, System.Exception exception, string message) { }
+                }
+            }
+
+            public class User
+            {
+                public bool IsInRole(string role) => true;
+            }
+
+            public class Service
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger logger;
+
+                public bool HasAccess(User user)
+                {
+                    try
+                    {
+                        return user.IsInRole("Admin");
+                    }
+                    catch (System.InvalidOperationException ex)
+                    {
+                        logger.LogError(ex, "Authorization failed");
+                        return false;
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_NoncompliantWhenCatchReturnsFallback() =>
+        builder.AddSnippet(
+            """
+            public class User
+            {
+                public bool IsInRole(string role) => true;
+            }
+
+            public class Service
+            {
+                public bool HasAccess(User user)
+                {
+                    try
+                    {
+                        return user.IsInRole("Admin");
+                    }
+                    catch (System.InvalidOperationException) // Noncompliant {{Do not silently swallow an exception around an access check - at least log the failure.}}
+                    {
+                        return false;
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_CompliantWhenCatchRethrows() =>
+        builder.AddSnippet(
+            """
+            public class User
+            {
+                public bool IsInRole(string role) => true;
+            }
+
+            public class Service
+            {
+                public bool HasAccess(User user)
+                {
+                    try
+                    {
+                        return user.IsInRole("Admin");
+                    }
+                    catch (System.InvalidOperationException)
+                    {
+                        throw;
+                    }
                 }
             }
             """)

@@ -37,6 +37,11 @@ public sealed class VolatileFieldShouldNotBeUpdatedNonAtomically : SonarDiagnost
 
     private static void AnalyzeIncrementOrDecrement(SonarSyntaxNodeReportingContext context)
     {
+        if (IsInsideLock(context.Node))
+        {
+            return;
+        }
+
         var operand = context.Node switch
         {
             PrefixUnaryExpressionSyntax prefix => prefix.Operand,
@@ -53,7 +58,7 @@ public sealed class VolatileFieldShouldNotBeUpdatedNonAtomically : SonarDiagnost
     private static void AnalyzeAssignment(SonarSyntaxNodeReportingContext context)
     {
         var assignment = (AssignmentExpressionSyntax)context.Node;
-        if (VolatileField(context.Model, assignment.Left) is not { } field)
+        if (IsInsideLock(assignment) || VolatileField(context.Model, assignment.Left) is not { } field)
         {
             return;
         }
@@ -75,4 +80,7 @@ public sealed class VolatileFieldShouldNotBeUpdatedNonAtomically : SonarDiagnost
         expression is not null && model.GetSymbolInfo(expression).Symbol is IFieldSymbol { IsVolatile: true } field
             ? field
             : null;
+
+    private static bool IsInsideLock(SyntaxNode node) =>
+        node.Ancestors().Any(x => x.IsKind(SyntaxKind.LockStatement));
 }

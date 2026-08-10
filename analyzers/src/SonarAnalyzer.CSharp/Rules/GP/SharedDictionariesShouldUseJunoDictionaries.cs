@@ -19,7 +19,7 @@ public sealed class SharedDictionariesShouldUseJunoDictionaries : SonarDiagnosti
         if (context.Node is not InvocationExpressionSyntax invocation
             || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !GpHttpCallHelper.IsHttpCall(method)
-            || !ContainsSkidblandirUrl(invocation))
+            || !ContainsSkidblandirUrl(invocation, method))
         {
             return;
         }
@@ -27,22 +27,33 @@ public sealed class SharedDictionariesShouldUseJunoDictionaries : SonarDiagnosti
         context.ReportIssue(Rule, invocation);
     }
 
-    private static bool ContainsSkidblandirUrl(InvocationExpressionSyntax invocation) =>
-        invocation.ArgumentList.Arguments
-            .Select(x => x.Expression)
-            .Any(ContainsSkidblandir);
-
-    private static bool ContainsSkidblandir(ExpressionSyntax expression) =>
-        expression switch
+    private static bool ContainsSkidblandirUrl(InvocationExpressionSyntax invocation, IMethodSymbol method)
+    {
+        if (IsJunoHttpCall(method))
         {
-            LiteralExpressionSyntax literal when literal.IsKind(SyntaxKind.StringLiteralExpression) =>
-                HasSkidblandirToken(literal.Token.ValueText),
-            InterpolatedStringExpressionSyntax interpolated =>
-                interpolated.Contents
-                    .OfType<InterpolatedStringTextSyntax>()
-                    .Any(x => HasSkidblandirToken(x.TextToken.ValueText)),
-            _ => false
-        };
+            // Juno carries the service name in the fluent receiver chain:
+            // builder.Service("skidblandir").AddPath(...).GetJson<T>().
+            return invocation.Expression is MemberAccessExpressionSyntax memberAccess
+                   && ContainsSkidblandir(memberAccess.Expression);
+        }
+
+        var lookup = new CSharpMethodParameterLookup(invocation, method);
+        return lookup.GetAllArgumentParameterMappings()
+            .Where(x => x.Symbol.Name is "address" or "requestUri" or "requestUriString" or "url")
+            .Any(x => ContainsSkidblandir(x.Node.Expression));
+    }
+
+    private static bool IsJunoHttpCall(IMethodSymbol method) =>
+        (method.ReceiverType ?? method.ContainingType)?.ToDisplayString()
+            .StartsWith("GP.Juno.HttpClient.", StringComparison.Ordinal) == true;
+
+    private static bool ContainsSkidblandir(SyntaxNode node) =>
+        node.DescendantNodesAndSelf().Any(x =>
+            x is LiteralExpressionSyntax literal
+                && literal.IsKind(SyntaxKind.StringLiteralExpression)
+                && HasSkidblandirToken(literal.Token.ValueText)
+            || x is InterpolatedStringTextSyntax interpolated
+                && HasSkidblandirToken(interpolated.TextToken.ValueText));
 
     private static bool HasSkidblandirToken(string value) =>
         value.IndexOf("skidblandir", StringComparison.OrdinalIgnoreCase) >= 0;

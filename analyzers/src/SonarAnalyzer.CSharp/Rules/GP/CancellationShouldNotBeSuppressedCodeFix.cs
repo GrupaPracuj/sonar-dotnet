@@ -8,14 +8,20 @@ public sealed class CancellationShouldNotBeSuppressedCodeFix : SonarCodeFix
     internal const string Title = "Rethrow the cancellation";
     public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(CancellationShouldNotBeSuppressed.RuleId);
 
-    protected override Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
+    protected override async Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
     {
         var diagnostic = context.Diagnostics.First();
         var diagnosticSpan = diagnostic.Location.SourceSpan;
 
         if (root.FindNode(diagnosticSpan).FirstAncestorOrSelf<CatchClauseSyntax>() is not { Block: { } block } catchClause)
         {
-            return Task.CompletedTask;
+            return;
+        }
+
+        var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
+        if (model is null || !model.AnalyzeControlFlow(block).EndPointIsReachable)
+        {
+            return;
         }
 
         context.RegisterCodeFix(
@@ -28,7 +34,5 @@ public sealed class CancellationShouldNotBeSuppressedCodeFix : SonarCodeFix
                 return Task.FromResult(context.Document.WithSyntaxRoot(newRoot));
             },
             context.Diagnostics);
-
-        return Task.CompletedTask;
     }
 }

@@ -72,6 +72,25 @@ public class ContractShouldNotInheritDomainTypeTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_CompliantForCustomKeyAttribute() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class KeyAttribute : System.Attribute { }
+
+            public class ViewModel
+            {
+                [Key]
+                public int Id { get; set; }
+            }
+
+            public class ViewResponse : ViewModel
+            {
+            }
+            """)
+            .VerifyNoIssues();
+
     // A DbContext frequently lives in a separate persistence project rather than in the assembly being analyzed, so
     // the DbSet scan that recognises an entity has to reach into referenced assemblies too, not just the compilation
     // that is being analyzed.

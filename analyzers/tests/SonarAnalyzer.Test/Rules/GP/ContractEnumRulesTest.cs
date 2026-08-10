@@ -75,6 +75,25 @@ public class ContractEnumRulesTest
             """)
             .Verify();
 
+    [TestMethod]
+    public void ContractEnumShouldHaveUnknownValue_NoncompliantThroughNestedWrappersAndNestedContract() =>
+        unknownValue.AddSnippet(
+            """
+            public static class Contracts
+            {
+                public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract but has no zero value named Unknown - a consumer cannot represent a value it does not recognise.}}
+                {
+                    Pending = 1,
+                }
+
+                public sealed class OrderAcceptedContract
+                {
+                    public System.Collections.Generic.IReadOnlyList<OrderStatus?[]> History { get; init; }
+                }
+            }
+            """)
+            .Verify();
+
     // An enum no contract exposes can be shaped freely.
     [TestMethod]
     public void ContractEnumShouldHaveUnknownValue_CompliantForInternalEnum() =>
@@ -100,6 +119,20 @@ public class ContractEnumRulesTest
             public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract with implicit values - reordering or inserting a member would silently change what is already on the wire.}}
             {
                 Unknown,
+                Pending,
+            }
+
+            public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_NoncompliantForImplicitValueAfterBrokenInitializer() =>
+        explicitValues.AddSnippet(
+            """
+            public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract with implicit values - reordering or inserting a member would silently change what is already on the wire.}}
+            {
+                Unknown = Missing, // Error [CS0103]
                 Pending,
             }
 
@@ -143,6 +176,59 @@ public class ContractEnumRulesTest
             public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_NoncompliantThroughNestedWrappersAndNestedContract() =>
+        explicitValues.AddSnippet(
+            """
+            public static class Contracts
+            {
+                public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract with implicit values - reordering or inserting a member would silently change what is already on the wire.}}
+                {
+                    Unknown,
+                    Pending,
+                }
+
+                public sealed class OrderAcceptedContract
+                {
+                    public System.Collections.Generic.IReadOnlyList<OrderStatus?[]> History { get; init; }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_CompliantForJsonStringEnumConverter() =>
+        explicitValues.AddSnippet(
+            """
+            namespace System.Text.Json.Serialization
+            {
+                public sealed class JsonConverterAttribute : System.Attribute
+                {
+                    public JsonConverterAttribute(System.Type converterType) { }
+                }
+
+                public sealed class JsonStringEnumConverter { }
+            }
+
+            [System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
+            public enum OrderStatus
+            {
+                Unknown,
+                Pending,
+            }
+
+            public sealed record OrderAcceptedContract(System.Guid OrderId, OrderStatus Status);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractEnumShouldAssignExplicitValues_CodeFixForUlongValues() =>
+        explicitValues.WithBasePath("GP")
+            .AddPaths("ContractEnumShouldAssignExplicitValues_Ulong.cs")
+            .WithCodeFix<CS.ContractEnumShouldAssignExplicitValuesCodeFix>()
+            .WithCodeFixedPaths("ContractEnumShouldAssignExplicitValues_Ulong.Fixed.cs")
+            .VerifyCodeFix();
 
     [TestMethod]
     public void ContractEnumShouldNotBeFlags_NoncompliantForFlagsEnum() =>

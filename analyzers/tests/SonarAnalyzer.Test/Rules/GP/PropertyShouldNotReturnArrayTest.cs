@@ -42,6 +42,17 @@ public class PropertyShouldNotReturnArrayTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForPrivateGetter() =>
+        builder.AddSnippet(
+            """
+            public class Book
+            {
+                public string[] Pages { private get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void PropertyShouldNotReturnArray_CompliantForReadOnlyCollectionProperty() =>
         builder.AddSnippet(
             """

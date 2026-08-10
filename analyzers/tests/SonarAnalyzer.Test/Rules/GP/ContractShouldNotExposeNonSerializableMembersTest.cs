@@ -74,6 +74,61 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_CompliantOutsideSerializedPropertySurface() =>
+        builder.AddSnippet(
+            """
+            public class UploadRequest
+            {
+                public static System.IO.Stream Shared { get; }
+                public System.IO.Stream WriteOnly { private get; set; }
+                internal System.IO.Stream Internal { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_CompliantForKnownJsonIgnoreAttributes() =>
+        builder.AddSnippet(
+            """
+            namespace System.Text.Json.Serialization
+            {
+                public sealed class JsonIgnoreAttribute : System.Attribute { }
+            }
+
+            namespace Newtonsoft.Json
+            {
+                public sealed class JsonIgnoreAttribute : System.Attribute { }
+            }
+
+            public class UploadRequest
+            {
+                [System.Text.Json.Serialization.JsonIgnore]
+                public System.IO.Stream SystemTextJsonFile { get; set; }
+
+                [Newtonsoft.Json.JsonIgnore]
+                public System.IO.Stream NewtonsoftFile { get; set; }
+
+                [Newtonsoft.Json.JsonIgnore]
+                public System.IO.Stream IgnoredField;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForLookalikeJsonIgnoreAttribute() =>
+        builder.AddSnippet(
+            """
+            public sealed class JsonIgnoreAttribute : System.Attribute { }
+
+            public class UploadRequest
+            {
+                [JsonIgnore]
+                public System.IO.Stream File { get; set; } // Noncompliant@-1 {{'File' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void ContractShouldNotExposeNonSerializableMembers_CompliantForPrivateField() =>
         builder.AddSnippet(
             """

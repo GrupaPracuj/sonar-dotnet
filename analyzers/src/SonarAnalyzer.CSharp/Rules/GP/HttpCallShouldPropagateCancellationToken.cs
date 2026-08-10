@@ -19,9 +19,9 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !GpHttpCallHelper.IsHttpCall(method)
-            || !HasCancellationTokenOverload(method)
-            || AlreadyPassesCancellationToken(context.Model, invocation)
-            || !HasAvailableCancellationToken(context.Model, invocation))
+            || AvailableCancellationToken(context.Model, invocation) is not { } availableToken
+            || CancellationTokenParameter(method) is null
+            || PassesAvailableCancellationToken(context.Model, invocation, availableToken))
         {
             return;
         }
@@ -39,19 +39,97 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
     // overload accepting a CancellationToken anywhere, so those calls can never propagate one and must not be
     // reported. A call is only reported when another member sharing its name in the same containing type - a sibling
     // overload for instance methods, or a sibling extension method for extension methods - actually accepts one.
-    private static bool HasCancellationTokenOverload(IMethodSymbol method) =>
-        method.ContainingType is { } containingType
-        && containingType.GetMembers(method.Name)
-            .OfType<IMethodSymbol>()
-            .Any(x => x.Parameters.Any(p => p.Type.Is(KnownType.System_Threading_CancellationToken)));
+    internal static IParameterSymbol CancellationTokenParameter(IMethodSymbol method)
+    {
+        var definition = (method.ReducedFrom ?? method).OriginalDefinition;
+        if (definition.Parameters.FirstOrDefault(IsCancellationToken) is { } ownToken)
+        {
+            return ownToken;
+        }
 
-    private static bool AlreadyPassesCancellationToken(SemanticModel model, InvocationExpressionSyntax invocation) =>
-        invocation.ArgumentList.Arguments.Any(x => model.GetTypeInfo(x.Expression).Type.Is(KnownType.System_Threading_CancellationToken));
+        return definition.ContainingType?.GetMembers(definition.Name)
+            .OfType<IMethodSymbol>()
+            .Where(x => x.Arity == definition.Arity && x.Parameters.Count(IsCancellationToken) == 1)
+            .Select(x => (Method: x, Token: x.Parameters.First(IsCancellationToken)))
+            .FirstOrDefault(x => IsSameSignatureWithoutToken(definition, x.Method, x.Token))
+            .Token;
+    }
+
+    private static bool IsSameSignatureWithoutToken(IMethodSymbol method, IMethodSymbol candidate, IParameterSymbol token)
+    {
+        if (candidate.Parameters.Length != method.Parameters.Length + 1)
+        {
+            return false;
+        }
+
+        var candidateParameters = candidate.Parameters.Where(x => !x.Equals(token)).ToArray();
+        return method.Parameters.Zip(candidateParameters, (left, right) =>
+                left.RefKind == right.RefKind && EquivalentType(left.Type, right.Type))
+            .All(x => x);
+    }
+
+    private static bool EquivalentType(ITypeSymbol left, ITypeSymbol right) =>
+        (left, right) switch
+        {
+            (ITypeParameterSymbol leftParameter, ITypeParameterSymbol rightParameter) =>
+                leftParameter.TypeParameterKind == rightParameter.TypeParameterKind && leftParameter.Ordinal == rightParameter.Ordinal,
+            (IArrayTypeSymbol leftArray, IArrayTypeSymbol rightArray) =>
+                leftArray.Rank == rightArray.Rank && EquivalentType(leftArray.ElementType, rightArray.ElementType),
+            (INamedTypeSymbol leftNamed, INamedTypeSymbol rightNamed) =>
+                leftNamed.OriginalDefinition.Equals(rightNamed.OriginalDefinition)
+                && leftNamed.TypeArguments.Length == rightNamed.TypeArguments.Length
+                && leftNamed.TypeArguments.Zip(rightNamed.TypeArguments, EquivalentType).All(x => x),
+            _ => left.Equals(right),
+        };
+
+    private static bool IsCancellationToken(IParameterSymbol parameter) =>
+        parameter.Type.Is(KnownType.System_Threading_CancellationToken);
+
+    private static bool PassesAvailableCancellationToken(SemanticModel model,
+                                                         InvocationExpressionSyntax invocation,
+                                                         IParameterSymbol availableToken) =>
+        ArgumentsWithParameters(invocation, model.GetSymbolInfo(invocation).Symbol as IMethodSymbol)
+            .Any(x => IsCancellationToken(x.Parameter)
+                      && availableToken.Equals(model.GetSymbolInfo(x.Argument.Expression).Symbol));
+
+    internal static ArgumentSyntax CancellationTokenArgument(InvocationExpressionSyntax invocation, IMethodSymbol method) =>
+        ArgumentsWithParameters(invocation, method)
+            .FirstOrDefault(x => IsCancellationToken(x.Parameter))
+            .Argument;
+
+    private static IEnumerable<(ArgumentSyntax Argument, IParameterSymbol Parameter)> ArgumentsWithParameters(InvocationExpressionSyntax invocation,
+                                                                                                               IMethodSymbol method)
+    {
+        if (method is null)
+        {
+            yield break;
+        }
+
+        for (var index = 0; index < invocation.ArgumentList.Arguments.Count; index++)
+        {
+            var argument = invocation.ArgumentList.Arguments[index];
+            IParameterSymbol parameter;
+            if (argument.NameColon is { Name.Identifier.ValueText: var parameterName })
+            {
+                parameter = method.Parameters.FirstOrDefault(x => x.Name == parameterName);
+            }
+            else
+            {
+                parameter = index < method.Parameters.Length ? method.Parameters[index] : null;
+            }
+
+            if (parameter is not null)
+            {
+                yield return (argument, parameter);
+            }
+        }
+    }
 
     // Only looks at the immediately enclosing method's own parameters - a token available via a field or a
     // wrapping local function is not considered "available" for this check.
-    private static bool HasAvailableCancellationToken(SemanticModel model, SyntaxNode node) =>
+    internal static IParameterSymbol AvailableCancellationToken(SemanticModel model, SyntaxNode node) =>
         node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is { } methodDeclaration
         && model.GetDeclaredSymbol(methodDeclaration) is IMethodSymbol method
-        && method.Parameters.Any(x => x.Type.Is(KnownType.System_Threading_CancellationToken));
+            ? method.Parameters.FirstOrDefault(IsCancellationToken)
+            : null;
 }

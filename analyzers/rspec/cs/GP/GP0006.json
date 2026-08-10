@@ -1,11 +1,11 @@
 {
   "title": "Access checks should not use identity claims",
-  "type": "VULNERABILITY",
+  "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "SECURITY": "HIGH"
+      "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "CLEAR"
+    "attribute": "CONVENTIONAL"
   },
   "status": "ready",
   "remediation": {
@@ -14,18 +14,11 @@
   },
   "tags": [
     "gp",
-    "security",
-    "authorization",
-    "cwe"
+    "authorization"
   ],
-  "defaultSeverity": "Critical",
+  "defaultSeverity": "Major",
   "ruleSpecification": "GP-0006",
   "sqKey": "GP0006",
   "scope": "Main",
-  "quickfix": "unknown",
-  "securityStandards": {
-    "CWE": [
-      285
-    ]
-  }
+  "quickfix": "unknown"
 }

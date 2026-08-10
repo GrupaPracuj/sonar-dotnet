@@ -16,6 +16,12 @@ public sealed class DoNotLockAcrossProcessesManually : SonarDiagnosticAnalyzer
         "ExecuteLocked",
     };
 
+    private static readonly HashSet<string> NamedSynchronizationTypes = new(StringComparer.Ordinal)
+    {
+        "System.Threading.Mutex",
+        "System.Threading.Semaphore",
+    };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context)
@@ -28,8 +34,9 @@ public sealed class DoNotLockAcrossProcessesManually : SonarDiagnosticAnalyzer
     {
         if (!ObjectCreationFactory.TryCreate(context.Node, out var creation)
             || creation.TypeSymbol(context.Model) is not { } type
-            || type.ToDisplayString() != "System.Threading.Mutex"
-            || !HasName(context.Model, creation.ArgumentList))
+            || !NamedSynchronizationTypes.Contains(type.ToDisplayString())
+            || creation.MethodSymbol(context.Model) is not { } constructor
+            || !HasConstantName(context.Model, creation.ArgumentList, constructor))
         {
             return;
         }
@@ -50,7 +57,17 @@ public sealed class DoNotLockAcrossProcessesManually : SonarDiagnosticAnalyzer
 
     // Only a *named* Mutex reaches beyond the current process; an unnamed one is in-process synchronization, which
     // this rule deliberately leaves alone along with lock/SemaphoreSlim/Monitor.
-    private static bool HasName(SemanticModel model, ArgumentListSyntax argumentList) =>
-        argumentList is { Arguments.Count: > 1 }
-        && argumentList.Arguments.Any(x => model.GetTypeInfo(x.Expression).Type.Is(KnownType.System_String));
+    private static bool HasConstantName(SemanticModel model, ArgumentListSyntax argumentList, IMethodSymbol constructor)
+    {
+        if (argumentList is null
+            || !new CSharpMethodParameterLookup(argumentList, constructor).TryGetSyntax("name", out var names)
+            || names.Length != 1
+            || names[0] is not ExpressionSyntax expression)
+        {
+            return false;
+        }
+
+        var value = model.GetConstantValue(expression);
+        return value.HasValue && value.Value is string { Length: > 0 };
+    }
 }

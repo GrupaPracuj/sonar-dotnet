@@ -26,7 +26,7 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         if (catchClause.Declaration?.Type is not { } typeSyntax
             || context.Model.GetTypeInfo(typeSyntax).Type is not { } caught
             || !CancellationExceptions.Contains(caught.ToDisplayString())
-            || SignalsCancellationToCaller(catchClause.Block))
+            || !IsKnownToSuppressCancellation(context.Model, catchClause.Block))
         {
             return;
         }
@@ -34,20 +34,68 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         context.ReportIssue(Rule, typeSyntax, caught.Name);
     }
 
-    // Rethrowing, throwing something else, returning a value, or breaking out of the enclosing loop all mean the code
-    // stops rather than carrying on as if the work had finished. Logging alone does not - it records the fact without
-    // changing what happens next.
-    private static bool SignalsCancellationToCaller(BlockSyntax block) =>
-        block is null
-        || block.DescendantNodes(DoesNotBelongToANestedFunction).Any(IsCallerVisibleExit);
+    private static bool IsKnownToSuppressCancellation(SemanticModel model, BlockSyntax block)
+    {
+        var outcomes = block is null ? FlowOutcome.Unknown : Outcomes(model, block.Statements);
+        return !outcomes.HasFlag(FlowOutcome.Unknown) && outcomes != FlowOutcome.CancellationThrow;
+    }
 
-    // A throw or return inside a lambda or local function exits that function, not the catch block, so it says
-    // nothing about what the caller will see.
-    private static bool DoesNotBelongToANestedFunction(SyntaxNode node) =>
-        node.Kind() != SyntaxKindEx.LocalFunctionStatement && node is not AnonymousFunctionExpressionSyntax;
+    private static FlowOutcome Outcomes(SemanticModel model, SyntaxList<StatementSyntax> statements)
+    {
+        var outcome = FlowOutcome.Continues;
+        foreach (var statement in statements)
+        {
+            if (!outcome.HasFlag(FlowOutcome.Continues))
+            {
+                break;
+            }
+            outcome = (outcome & ~FlowOutcome.Continues) | Outcomes(model, statement);
+        }
+        return outcome;
+    }
 
-    // "break" covers the idiomatic worker loop: catch cancellation, leave the loop, shut down cleanly.
-    private static bool IsCallerVisibleExit(SyntaxNode node) =>
-        node is ThrowStatementSyntax or ReturnStatementSyntax or BreakStatementSyntax
-        || node.Kind() == SyntaxKindEx.ThrowExpression;
+    private static FlowOutcome Outcomes(SemanticModel model, StatementSyntax statement)
+    {
+        if (statement.Kind() == SyntaxKindEx.LocalFunctionStatement)
+        {
+            return FlowOutcome.Continues;
+        }
+
+        return statement switch
+        {
+            EmptyStatementSyntax or ExpressionStatementSyntax or LocalDeclarationStatementSyntax => FlowOutcome.Continues,
+            BlockSyntax block => Outcomes(model, block.Statements),
+            ThrowStatementSyntax throwStatement => IsCancellationThrow(model, throwStatement) ? FlowOutcome.CancellationThrow : FlowOutcome.OtherExit,
+            ReturnStatementSyntax or BreakStatementSyntax or ContinueStatementSyntax or GotoStatementSyntax or YieldStatementSyntax => FlowOutcome.OtherExit,
+            IfStatementSyntax ifStatement => Outcomes(model, ifStatement.Statement)
+                                             | (ifStatement.Else is null ? FlowOutcome.Continues : Outcomes(model, ifStatement.Else.Statement)),
+            CheckedStatementSyntax checkedStatement => Outcomes(model, checkedStatement.Block.Statements),
+            UnsafeStatementSyntax unsafeStatement => Outcomes(model, unsafeStatement.Block.Statements),
+            LabeledStatementSyntax labeledStatement => Outcomes(model, labeledStatement.Statement),
+            LockStatementSyntax lockStatement => Outcomes(model, lockStatement.Statement),
+            UsingStatementSyntax usingStatement => Outcomes(model, usingStatement.Statement),
+            FixedStatementSyntax fixedStatement => Outcomes(model, fixedStatement.Statement),
+            _ => FlowOutcome.Unknown
+        };
+    }
+
+    private static bool IsCancellationThrow(SemanticModel model, ThrowStatementSyntax throwStatement)
+    {
+        if (throwStatement.Expression is null)
+        {
+            return true;
+        }
+
+        return model.GetTypeInfo(throwStatement.Expression).Type is { } thrownType
+               && CancellationExceptions.Any(x => GpJunoTypes.DerivesFrom(thrownType, x));
+    }
+
+    [Flags]
+    private enum FlowOutcome
+    {
+        Continues = 1,
+        CancellationThrow = 2,
+        OtherExit = 4,
+        Unknown = 8,
+    }
 }

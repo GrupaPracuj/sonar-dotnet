@@ -25,10 +25,10 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
     // Having written the polymorphic configuration down is the point - any of these means the decision was made.
     private static readonly HashSet<string> PolymorphismAttributes = new(StringComparer.Ordinal)
     {
-        "JsonDerivedTypeAttribute",
-        "JsonPolymorphicAttribute",
-        "JsonConverterAttribute",
-        "KnownTypeAttribute",
+        "System.Text.Json.Serialization.JsonDerivedTypeAttribute",
+        "System.Text.Json.Serialization.JsonPolymorphicAttribute",
+        "System.Text.Json.Serialization.JsonConverterAttribute",
+        "System.Runtime.Serialization.KnownTypeAttribute",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(InterfaceRule, AbstractRule);
@@ -45,9 +45,10 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
     private void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (GpMessageContracts.IsContractMember(declaration))
+        if (GpMessageContracts.IsContractMember(declaration)
+            && context.Model.GetDeclaredSymbol(declaration) is { } property)
         {
-            Report(context, declaration.Identifier, context.Model.GetTypeInfo(declaration.Type).Type);
+            Report(context, declaration.Identifier, property.Type, property);
         }
     }
 
@@ -63,13 +64,16 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
 
         foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
         {
-            Report(context, parameter.Identifier, context.Model.GetTypeInfo(parameter.Type).Type);
+            if (context.Model.GetDeclaredSymbol(parameter) is { } parameterSymbol)
+            {
+                Report(context, parameter.Identifier, parameterSymbol.Type, parameterSymbol);
+            }
         }
     }
 
-    private void Report(SonarSyntaxNodeReportingContext context, SyntaxToken identifier, ITypeSymbol memberType)
+    private void Report(SonarSyntaxNodeReportingContext context, SyntaxToken identifier, ITypeSymbol memberType, ISymbol member)
     {
-        if (memberType is not INamedTypeSymbol named || HasPolymorphicConfiguration(named))
+        if (memberType is not INamedTypeSymbol named || HasPolymorphicConfiguration(member, named))
         {
             return;
         }
@@ -98,6 +102,8 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
         return Array.Exists(allowed, x => type.Name == x || type.ToDisplayString() == x);
     }
 
-    private static bool HasPolymorphicConfiguration(INamedTypeSymbol type) =>
-        type.GetAttributes().Any(x => x.AttributeClass?.Name is { } name && PolymorphismAttributes.Contains(name));
+    private static bool HasPolymorphicConfiguration(ISymbol member, INamedTypeSymbol type) =>
+        member.GetAttributes().Concat(type.GetAttributes()).Any(x =>
+            x.AttributeClass?.ToDisplayString() is { } name
+            && PolymorphismAttributes.Contains(name));
 }

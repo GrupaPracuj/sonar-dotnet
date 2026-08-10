@@ -15,9 +15,10 @@ public sealed class HttpCallShouldPropagateCancellationTokenCodeFix : SonarCodeF
         }
 
         var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
-        if (invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is not { } methodDeclaration
-            || model?.GetDeclaredSymbol(methodDeclaration) is not IMethodSymbol method
-            || method.Parameters.FirstOrDefault(x => x.Type.Is(KnownType.System_Threading_CancellationToken)) is not { } tokenParameter)
+        if (model is null
+            || HttpCallShouldPropagateCancellationToken.AvailableCancellationToken(model, invocation) is not { } tokenParameter
+            || model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol invokedMethod
+            || HttpCallShouldPropagateCancellationToken.CancellationTokenParameter(invokedMethod) is not { } targetParameter)
         {
             return;
         }
@@ -26,8 +27,13 @@ public sealed class HttpCallShouldPropagateCancellationTokenCodeFix : SonarCodeF
             Title,
             c =>
             {
-                var newArgument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(tokenParameter.Name));
-                var newArgumentList = invocation.ArgumentList.AddArguments(newArgument);
+                var replacement = SyntaxFactory.IdentifierName(tokenParameter.Name);
+                var existingArgument = HttpCallShouldPropagateCancellationToken.CancellationTokenArgument(invocation, invokedMethod);
+                var newArgumentList = existingArgument is not null
+                    ? invocation.ArgumentList.ReplaceNode(existingArgument, existingArgument.WithExpression(replacement))
+                    : invocation.ArgumentList.AddArguments(
+                        SyntaxFactory.Argument(replacement)
+                            .WithNameColon(SyntaxFactory.NameColon(targetParameter.Name)));
                 var newInvocation = invocation.WithArgumentList(newArgumentList);
                 var newRoot = root.ReplaceNode(invocation, newInvocation);
                 return Task.FromResult(context.Document.WithSyntaxRoot(newRoot));

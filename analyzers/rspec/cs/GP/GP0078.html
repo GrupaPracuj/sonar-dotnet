@@ -25,7 +25,8 @@ public class ConfigurationCache
 <p>Only static constructors are checked. Instance constructors are free to throw - the guideline this rule is based on explicitly allows it, since a
 failed instance construction only affects that one instance, not the type itself.</p>
 <p>A <code>throw</code> that only runs inside a local function or a lambda that the static constructor merely declares - without calling it synchronously
-during initialization - is not reported: it does not run while the type is being initialized, so it cannot poison the type.</p>
+during initialization - is not reported: it does not run while the type is being initialized, so it cannot poison the type. A throw fully handled by an
+enclosing unfiltered <code>catch</code> inside the static constructor is also not reported.</p>
 <h2>How to fix it</h2>
 <p>Move the validation out of the static constructor. A common alternative is lazy validation: defer the check to the first place the value is actually
 used, so a bad configuration fails that one call instead of taking the whole type down. If initialization can genuinely fail, prefer a static factory

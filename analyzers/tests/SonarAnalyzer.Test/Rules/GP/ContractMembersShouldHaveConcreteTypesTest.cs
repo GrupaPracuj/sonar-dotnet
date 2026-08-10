@@ -16,6 +16,11 @@ public class ContractMembersShouldHaveConcreteTypesTest
             {
                 public JsonDerivedTypeAttribute(System.Type type, string discriminator) { }
             }
+
+            public class JsonConverterAttribute : System.Attribute
+            {
+                public JsonConverterAttribute(System.Type type) { }
+            }
         }
 
         public interface IPaymentMethod { }
@@ -99,6 +104,47 @@ public class ContractMembersShouldHaveConcreteTypesTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_CompliantForMemberJsonConverter() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class PaymentConverter { }
+
+            public sealed class OrderAcceptedContract
+            {
+                [System.Text.Json.Serialization.JsonConverter(typeof(PaymentConverter))]
+                public IPaymentMethod Payment { get; init; }
+            }
+
+            public sealed record PaymentAcceptedContract(
+                [System.Text.Json.Serialization.JsonConverter(typeof(PaymentConverter))] IPaymentMethod Payment);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_NoncompliantForLookalikeJsonConverter() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace Custom
+            {
+                public class JsonConverterAttribute : System.Attribute
+                {
+                    public JsonConverterAttribute(System.Type type) { }
+                }
+            }
+
+            public sealed class PaymentConverter { }
+
+            public sealed class OrderAcceptedContract
+            {
+                [Custom.JsonConverter(typeof(PaymentConverter))]
+                public IPaymentMethod Payment { get; init; } // Noncompliant
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void ContractMembersShouldHaveConcreteTypes_CompliantForConcreteType() =>

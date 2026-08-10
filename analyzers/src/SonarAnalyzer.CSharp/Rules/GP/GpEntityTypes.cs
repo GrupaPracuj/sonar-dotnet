@@ -13,12 +13,12 @@ internal sealed class GpEntityTypes
 {
     private static readonly HashSet<string> EntityAttributes = new(StringComparer.Ordinal)
     {
-        "TableAttribute",
-        "KeyAttribute",
-        "ColumnAttribute",
-        "ForeignKeyAttribute",
-        "DatabaseGeneratedAttribute",
-        "PrimaryKeyAttribute",
+        "System.ComponentModel.DataAnnotations.KeyAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.TableAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.ForeignKeyAttribute",
+        "System.ComponentModel.DataAnnotations.Schema.DatabaseGeneratedAttribute",
+        "Microsoft.EntityFrameworkCore.PrimaryKeyAttribute",
     };
 
     private readonly HashSet<string> dbSetElementTypes;
@@ -46,7 +46,7 @@ internal sealed class GpEntityTypes
 
     private static bool HasEntityAttribute(INamedTypeSymbol type) =>
         type.GetMembers().OfType<IPropertySymbol>().SelectMany(x => x.GetAttributes()).Concat(type.GetAttributes())
-            .Any(x => x.AttributeClass?.Name is { } name && EntityAttributes.Contains(name));
+            .Any(x => x.AttributeClass?.ToDisplayString() is { } name && EntityAttributes.Contains(name));
 
     private bool DerivesFromConfiguredBase(INamedTypeSymbol type)
     {

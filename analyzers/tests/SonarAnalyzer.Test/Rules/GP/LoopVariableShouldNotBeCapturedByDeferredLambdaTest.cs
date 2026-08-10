@@ -122,6 +122,32 @@ public class LoopVariableShouldNotBeCapturedByDeferredLambdaTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void LoopVariableShouldNotBeCapturedByDeferredLambda_CompliantForCustomSynchronousAdd() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public sealed class Runner
+            {
+                public void Add(Action action) => action();
+            }
+
+            public class C
+            {
+                public void M(Runner runner)
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+                        runner.Add(() => Use(i));
+                    }
+                }
+
+                private static void Use(int value) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void LoopVariableShouldNotBeCapturedByDeferredLambda_NoncompliantWhenPassedToTaskRun() =>
         builder.AddSnippet(
             """

@@ -43,6 +43,8 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
         if (GpMessageContracts.IsContractMember(declaration)
+            && context.Model.GetDeclaredSymbol(declaration) is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, GetMethod.DeclaredAccessibility: Accessibility.Public } property
+            && !IsIgnored(property)
             && BannedType(context.Model, declaration.Type) is { } typeName)
         {
             context.ReportIssue(Rule, declaration, declaration.Identifier.ValueText, typeName);
@@ -62,7 +64,10 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
 
         foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
         {
-            if (BannedType(context.Model, parameter.Type) is { } bannedType)
+            if (context.Model.GetDeclaredSymbol(declaration) is { } recordType
+                && recordType.GetMembers(parameter.Identifier.ValueText).OfType<IPropertySymbol>().FirstOrDefault() is { } property
+                && !IsIgnored(property)
+                && BannedType(context.Model, parameter.Type) is { } bannedType)
             {
                 context.ReportIssue(Rule, parameter, parameter.Identifier.ValueText, bannedType);
             }
@@ -83,9 +88,16 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
 
         foreach (var variable in declaration.Declaration.Variables)
         {
-            context.ReportIssue(Rule, variable, variable.Identifier.ValueText, typeName);
+            if (context.Model.GetDeclaredSymbol(variable) is { } field && !IsIgnored(field))
+            {
+                context.ReportIssue(Rule, variable, variable.Identifier.ValueText, typeName);
+            }
         }
     }
+
+    private static bool IsIgnored(ISymbol symbol) =>
+        symbol.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() is
+            "System.Text.Json.Serialization.JsonIgnoreAttribute" or "Newtonsoft.Json.JsonIgnoreAttribute");
 
     private static string BannedType(SemanticModel model, TypeSyntax typeSyntax) =>
         model.GetTypeInfo(typeSyntax).Type is { } type && IsBannedType(type)

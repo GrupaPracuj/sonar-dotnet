@@ -155,6 +155,28 @@ public class DoNotUseUnsafeDeserializationTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotUseUnsafeDeserialization_CompliantForLookalikePolicy() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Policy
+            {
+                public Newtonsoft.Json.TypeNameHandling TypeNameHandling { get; set; }
+            }
+
+            public class SerializerFactory
+            {
+                public Policy Create()
+                {
+                    var policy = new Policy();
+                    policy.TypeNameHandling = Newtonsoft.Json.TypeNameHandling.All;
+                    return policy;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotUseUnsafeDeserialization_CompliantForDataContractSerializer() =>
         builder.AddSnippet(
             Stubs + """

@@ -26,6 +26,7 @@ public class DoNotRedirectToUserControlledUrlTest
                 protected IActionResult RedirectPermanent(string url) => null;
                 protected IActionResult LocalRedirect(string localUrl) => null;
                 protected IActionResult RedirectToAction(string action) => null;
+                protected IActionResult BadRequest() => null;
             }
         }
         """;
@@ -94,6 +95,91 @@ public class DoNotRedirectToUserControlledUrlTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantWhenGuardedValueIsReassigned() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl, string fallbackUrl)
+                {
+                    if (Url.IsLocalUrl(returnUrl))
+                    {
+                        returnUrl = fallbackUrl;
+                        return Redirect(returnUrl); // Noncompliant
+                    }
+
+                    return RedirectToAction("Index");
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_CompliantWhenNegativeGuardExitsEarly() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl)
+                {
+                    if (!Url.IsLocalUrl(returnUrl))
+                    {
+                        return BadRequest();
+                    }
+
+                    return Redirect(returnUrl);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantWhenNegativeGuardDoesNotExit() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl)
+                {
+                    if (!Url.IsLocalUrl(returnUrl))
+                    {
+                        RedirectToAction("Index");
+                    }
+
+                    return Redirect(returnUrl); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantWhenNegativeGuardChecksDifferentUrl() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl, string fallbackUrl)
+                {
+                    if (!Url.IsLocalUrl(fallbackUrl))
+                    {
+                        return BadRequest();
+                    }
+
+                    return Redirect(returnUrl); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DoNotRedirectToUserControlledUrl_CompliantForParameterInFixedPath() =>
         builder.AddSnippet(
             Stubs + """
@@ -106,6 +192,64 @@ public class DoNotRedirectToUserControlledUrlTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantForRootPrefix() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl) =>
+                    Redirect("/" + returnUrl); // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantForUnrelatedIsLocalUrl() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl)
+                {
+                    if (IsLocalUrl(returnUrl))
+                    {
+                        return Redirect(returnUrl); // Noncompliant
+                    }
+
+                    return RedirectToAction("Index");
+                }
+
+                private static bool IsLocalUrl(string url) => true;
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_NoncompliantForIsLocalUrlOfDifferentArgument() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string returnUrl, string fallbackUrl)
+                {
+                    if (Url.IsLocalUrl(fallbackUrl))
+                    {
+                        return Redirect(returnUrl); // Noncompliant
+                    }
+
+                    return RedirectToAction("Index");
+                }
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void DoNotRedirectToUserControlledUrl_CompliantForConstantUrl() =>

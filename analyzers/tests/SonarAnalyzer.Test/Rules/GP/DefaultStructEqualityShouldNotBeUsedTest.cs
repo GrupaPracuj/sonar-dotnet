@@ -38,14 +38,17 @@ public class DefaultStructEqualityShouldNotBeUsedTest
 
             public bool Equals(PlainPointWithIEquatable other) => X == other.X && Y == other.Y;
         }
+
+        public struct EqualsOnlyPoint
+        {
+            public int X, Y;
+
+            public override bool Equals(object obj) => obj is EqualsOnlyPoint p && X == p.X && Y == p.Y;
+        }
         """;
 
-    // A plain struct only supports '==' at all once something defines operator== (overriding Equals(object) alone
-    // does not enable it), so a direct 'PlainPoint == PlainPoint' comparison is a compile error, not a runtime
-    // concern - see CS0019. A 'dynamic' operand defers operator resolution to runtime and is therefore the one
-    // realistic way to reach this check with code that still compiles.
     [TestMethod]
-    public void DefaultStructEqualityShouldNotBeUsed_NoncompliantForOperatorUsage() =>
+    public void DefaultStructEqualityShouldNotBeUsed_CompliantForDynamicOperatorUsage() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -54,12 +57,12 @@ public class DefaultStructEqualityShouldNotBeUsedTest
                 public void M()
                 {
                     dynamic left = new PlainPoint();
-                    var b1 = left == new PlainPoint(); // Noncompliant {{'PlainPoint' does not override Equals/GetHashCode - '==' falls back to slow, reflection-based comparison that compares reference-type fields by reference, not value.}}
-                    var b2 = left != new PlainPoint(); // Noncompliant
+                    var b1 = left == new PlainPoint();
+                    var b2 = left != new PlainPoint();
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DefaultStructEqualityShouldNotBeUsed_CompliantForOperatorUsageWithCustomOperator() =>
@@ -121,6 +124,22 @@ public class DefaultStructEqualityShouldNotBeUsedTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DefaultStructEqualityShouldNotBeUsed_EvaluatesEqualsAndGetHashCodeIndependently() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class C
+            {
+                public void M()
+                {
+                    var equals = new EqualsOnlyPoint().Equals(new EqualsOnlyPoint());
+                    var dictionary = new System.Collections.Generic.Dictionary<EqualsOnlyPoint, string>(); // Noncompliant {{'EqualsOnlyPoint' is used as a Dictionary/HashSet key but does not override Equals/GetHashCode - lookups will use slow, reflection-based comparison.}}
+                }
+            }
+            """)
+            .Verify();
 
     // Overload resolution picks the fast, typed IEquatable<T>.Equals(T) overload here (an exact match beats the
     // boxing conversion Equals(object) would need), so this specific call never touches ValueType.Equals and must
@@ -199,6 +218,29 @@ public class DefaultStructEqualityShouldNotBeUsedTest
                 {
                     var d = new System.Collections.Generic.Dictionary<GoodPoint, string>();
                     var h = new System.Collections.Generic.HashSet<GoodPoint>();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DefaultStructEqualityShouldNotBeUsed_CompliantForExplicitComparer() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class PointComparer : System.Collections.Generic.IEqualityComparer<PlainPoint>
+            {
+                public bool Equals(PlainPoint x, PlainPoint y) => x.X == y.X && x.Y == y.Y;
+                public int GetHashCode(PlainPoint value) => (value.X, value.Y).GetHashCode();
+            }
+
+            public class C
+            {
+                public void M()
+                {
+                    var comparer = new PointComparer();
+                    var d = new System.Collections.Generic.Dictionary<PlainPoint, string>(comparer);
+                    var h = new System.Collections.Generic.HashSet<PlainPoint>(comparer);
                 }
             }
             """)

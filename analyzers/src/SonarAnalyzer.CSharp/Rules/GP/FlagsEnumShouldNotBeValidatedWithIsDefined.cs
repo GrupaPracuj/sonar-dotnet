@@ -20,6 +20,7 @@ public sealed class FlagsEnumShouldNotBeValidatedWithIsDefined : SonarDiagnostic
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol { Name: "IsDefined" } method
             || !method.ContainingType.Is(KnownType.System_Enum)
             || EnumType(context, invocation, method) is not { TypeKind: TypeKind.Enum } enumType
+            || HasStringValueArgument(context.Model, invocation, method)
             || !enumType.GetAttributes().Any(x => x.AttributeClass.Is(KnownType.System_FlagsAttribute)))
         {
             return;
@@ -50,5 +51,14 @@ public sealed class FlagsEnumShouldNotBeValidatedWithIsDefined : SonarDiagnostic
         }
 
         return null;
+    }
+
+    private static bool HasStringValueArgument(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method)
+    {
+        var lookup = new CSharpMethodParameterLookup(invocation.ArgumentList, method);
+        return invocation.ArgumentList.Arguments.Any(argument =>
+            lookup.TryGetSymbol(argument, out var parameter)
+            && parameter.Ordinal == 1
+            && model.GetTypeInfo(argument.Expression).Type?.SpecialType == SpecialType.System_String);
     }
 }

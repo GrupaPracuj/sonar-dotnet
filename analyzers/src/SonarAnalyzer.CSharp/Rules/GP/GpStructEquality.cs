@@ -10,5 +10,11 @@ internal static class GpStructEquality
     internal static bool UsesDefaultEquality(ITypeSymbol type) =>
         type is { TypeKind: TypeKind.Struct }
         && !type.IsRecord()
-        && !type.GetMembers(nameof(Equals)).OfType<IMethodSymbol>().Any(x => x.IsOverride && x.Parameters.Length == 1);
+        && (UsesDefaultEquals(type) || UsesDefaultGetHashCode(type));
+
+    internal static bool UsesDefaultEquals(ITypeSymbol type) =>
+        !type.GetMembers(nameof(Equals)).OfType<IMethodSymbol>().Any(x => x.IsOverride && x.Parameters.Length == 1);
+
+    private static bool UsesDefaultGetHashCode(ITypeSymbol type) =>
+        !type.GetMembers(nameof(GetHashCode)).OfType<IMethodSymbol>().Any(x => x.IsOverride && x.Parameters.Length == 0);
 }

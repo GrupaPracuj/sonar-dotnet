@@ -69,6 +69,7 @@ public class CorsPolicyShouldNotAllowNullOriginTest
                         headers["Access-Control-Allow-Origin"] = "null"; // Noncompliant
                         headers.Add("Access-Control-Allow-Origin", "null"); // Noncompliant
                         headers.Append("Access-Control-Allow-Origin", "null"); // Noncompliant
+                        HeaderDictionaryExtensions.Append(headers, "Access-Control-Allow-Origin", "null"); // Noncompliant
                     }
                 }
             }
@@ -90,6 +91,8 @@ public class CorsPolicyShouldNotAllowNullOriginTest
                         .WithOrigins(configuredOrigin);
                     headers["Access-Control-Allow-Origin"] = configuredOrigin;
                     headers.Add("Other-Header", "null");
+                    Microsoft.AspNetCore.Http.HeaderDictionaryExtensions.Append(headers, "Other-Header", "null");
+                    Microsoft.AspNetCore.Http.HeaderDictionaryExtensions.Append(headers, "Access-Control-Allow-Origin", configuredOrigin);
                 }
             }
             """)
@@ -107,12 +110,23 @@ public class CorsPolicyShouldNotAllowNullOriginTest
                     public CorsPolicyBuilder(string origin) { }
                     public CorsPolicyBuilder WithOrigins(string origin) => this;
                 }
+
+                public static class HeaderDictionaryExtensions
+                {
+                    public static void Append(
+                        Microsoft.AspNetCore.Http.IHeaderDictionary headers,
+                        string key,
+                        string value) { }
+                }
             }
 
             public class Startup
             {
-                public void Configure() =>
+                public void Configure(Microsoft.AspNetCore.Http.IHeaderDictionary headers)
+                {
                     new Custom.CorsPolicyBuilder("null").WithOrigins("null");
+                    Custom.HeaderDictionaryExtensions.Append(headers, "Access-Control-Allow-Origin", "null");
+                }
             }
             """)
             .VerifyNoIssues();

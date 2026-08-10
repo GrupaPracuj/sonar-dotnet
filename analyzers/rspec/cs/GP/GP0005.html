@@ -1,9 +1,12 @@
-<p>An access-control decision should not be based on negating a claim-existence check such as <code>!user.HasClaim(...)</code>.</p>
+<p>GP authorization code should avoid negating a claim-existence check such as <code>!user.HasClaim(...)</code>.</p>
 <h2>Why is this an issue?</h2>
 <p><code>HasClaim(...)</code> (and its <code>GP.Juno</code> equivalents, e.g. <code>HasUserClaim()</code>) answers the question "does this claim
 exist?". Negating that call to decide whether access is granted mixes the existence check with the access decision in a single condition that reads
 awkwardly ("if the claim does NOT exist, then ...") and is easy to get backwards during a review or a later edit. Making the positive check the
 basis of the decision keeps the intent explicit: check what is required, then branch on the result.</p>
+<p>This is a GP readability and review convention, not evidence of an authorization bypass. Denying access when a required claim is absent is a
+standard pattern, and ASP.NET Core policy-based or resource-based authorization may express that decision differently. This rule only asks GP code
+to make the positive requirement explicit.</p>
 <pre>
 if (!user.HasClaim("filestore_access"))
 {

@@ -100,6 +100,56 @@ public class CommitAndPublishShouldNotBeADualWriteTest
             .Verify();
 
     [TestMethod]
+    public void CommitAndPublishShouldNotBeADualWrite_CompliantForDisjointBranches() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderService
+            {
+                private readonly ShopDbContext _context;
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public async System.Threading.Tasks.Task Accept(bool save, System.Threading.CancellationToken cancellationToken)
+                {
+                    if (save)
+                    {
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+                    else
+                    {
+                        await _publisher.Publish(new OrderAccepted(), cancellationToken);
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CommitAndPublishShouldNotBeADualWrite_CompliantForUninvokedNestedFunctions() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderService
+            {
+                private readonly ShopDbContext _context;
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public async System.Threading.Tasks.Task Accept(System.Threading.CancellationToken cancellationToken)
+                {
+                    await _context.SaveChangesAsync(cancellationToken);
+                    System.Func<System.Threading.Tasks.Task> publishLater =
+                        () => _publisher.Publish(new OrderAccepted(), cancellationToken);
+
+                    async System.Threading.Tasks.Task PublishLater()
+                    {
+                        await _publisher.Publish(new OrderAccepted(), cancellationToken);
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void CommitAndPublishShouldNotBeADualWrite_CompliantForCommitOnly() =>
         builder.AddSnippet(
             Stubs + """
