@@ -35,6 +35,10 @@ if (!User.Identity.IsAuthenticated)
 alone rather than guessed at. Only the branch where the recognized check fails is inspected, and only values directly returned through
 semantically resolved ASP.NET Core MVC or Minimal API response factories are considered. Calls that merely share names such as
 <code>Unauthorized</code> or <code>Forbid</code> are ignored.</p>
+<p>The condition is resolved semantically as well: <code>IsInRole</code> must come from a
+<code>System.Security.Principal.IPrincipal</code>, <code>HasClaim</code> from <code>System.Security.Claims.ClaimsPrincipal</code> or
+<code>ClaimsIdentity</code>, and <code>IsAuthenticated</code> from a <code>System.Security.Principal.IIdentity</code>. A domain member that
+happens to share one of those names - a shipment's <code>HasClaim("damage")</code> - is not an authorization check and is not reported.</p>
 <h2>How to fix it</h2>
 <p>Return <code>Forbid()</code> from a permission check and <code>Unauthorized()</code> from an authentication check.</p>
 <h3>Code examples</h3>

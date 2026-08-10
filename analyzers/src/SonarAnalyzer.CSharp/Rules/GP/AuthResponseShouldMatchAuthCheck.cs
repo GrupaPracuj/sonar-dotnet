@@ -21,7 +21,7 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
             return;
         }
 
-        if (!TryGetCheck(ifStatement.Condition, out var checkKind, out var checkPassesWhenTrue))
+        if (!TryGetCheck(ifStatement.Condition, context.Model, out var checkKind, out var checkPassesWhenTrue))
         {
             return;
         }
@@ -40,7 +40,7 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
         }
     }
 
-    private static bool TryGetCheck(ExpressionSyntax condition, out AuthCheckKind kind, out bool passesWhenTrue)
+    private static bool TryGetCheck(ExpressionSyntax condition, SemanticModel model, out AuthCheckKind kind, out bool passesWhenTrue)
     {
         condition = RemoveParentheses(condition);
         passesWhenTrue = true;
@@ -53,13 +53,16 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
         if (condition is InvocationExpressionSyntax
             {
                 Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "IsInRole" or "HasClaim" }
-            })
+            } invocation
+            && GpPrincipalApi.IsAccessCheck(model, invocation))
         {
             kind = AuthCheckKind.Permission;
             return true;
         }
 
-        if (condition is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "IsAuthenticated" })
+        if (condition is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "IsAuthenticated" } memberAccess
+            && model.GetSymbolInfo(memberAccess).Symbol is IPropertySymbol { ContainingType: { } identityType }
+            && GpPrincipalApi.IsIdentityType(identityType))
         {
             kind = AuthCheckKind.Authentication;
             return true;
@@ -106,8 +109,7 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
             return true;
         }
 
-        method = model.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-        return method?.ContainingType?.ToDisplayString() is "Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller";
+        return GpMvcResults.TryGetResultMethod(model, invocation, out method);
     }
 
     private enum AuthCheckKind

@@ -9,16 +9,23 @@ namespace Microsoft.AspNetCore.Mvc
     }
 }
 
-public interface IPrincipal
+namespace Microsoft.AspNetCore.Http
 {
-    bool IsInRole(string role);
+    public interface IResult { }
+
+    public static class Results
+    {
+        public static IResult Unauthorized() => null;
+        public static IResult Forbid() => null;
+        public static IResult Ok() => null;
+    }
 }
 
 namespace Tests.Diagnostics
 {
     public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
     {
-        public IPrincipal User { get; }
+        public System.Security.Claims.ClaimsPrincipal User { get; }
 
         public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
         {
@@ -28,6 +35,20 @@ namespace Tests.Diagnostics
             }
 
             return Ok();
+        }
+    }
+
+    // The Minimal API factory has no bare "Forbid()" counterpart, so the receiver has to survive the fix.
+    public class Endpoint
+    {
+        public Microsoft.AspNetCore.Http.IResult DeleteUser(System.Security.Claims.ClaimsPrincipal user)
+        {
+            if (!user.Identity.IsAuthenticated)
+            {
+                return Microsoft.AspNetCore.Http.Results.Unauthorized(); // Fixed
+            }
+
+            return Microsoft.AspNetCore.Http.Results.Ok();
         }
     }
 }

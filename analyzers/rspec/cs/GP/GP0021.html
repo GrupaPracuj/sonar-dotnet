@@ -21,7 +21,10 @@ catch (InvalidOperationException)
 filter, on general error-handling grounds; reporting those here as well would only put a second issue on the same line. What remains - an empty catch
 of a <em>specific</em> exception type, or one behind a <code>when</code> filter - looks deliberate rather than forgotten, which is exactly why it is
 worth pointing out around an access check.</p>
-<p>The rule checks catches around a <code>try</code> block that directly calls <code>HasClaim</code> or <code>IsInRole</code>. It reports a catch
+<p>The rule checks catches around a <code>try</code> block that directly calls <code>HasClaim</code> or <code>IsInRole</code>. Both are resolved
+semantically - <code>IsInRole</code> has to come from a <code>System.Security.Principal.IPrincipal</code> and <code>HasClaim</code> from
+<code>System.Security.Claims.ClaimsPrincipal</code>/<code>ClaimsIdentity</code> - so a domain member that merely shares the name does not make the
+surrounding <code>try</code> an access check. It reports a catch
 that neither logs the caught exception nor always throws, including a catch that silently returns a fallback value or writes the exception through an
 unrecognized output API. An empty unfiltered <code>catch</code> or <code>catch (Exception)</code> is left to S2486 to avoid duplicate issues.</p>
 <h2>How to fix it</h2>

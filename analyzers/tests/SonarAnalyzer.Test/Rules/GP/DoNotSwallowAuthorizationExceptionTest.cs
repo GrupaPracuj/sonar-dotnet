@@ -5,20 +5,21 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class DoNotSwallowAuthorizationExceptionTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DoNotSwallowAuthorizationException>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DoNotSwallowAuthorizationException>()
+#if NET
+        .AddReferences(new[] { CoreMetadataReference.SystemSecurityClaims })
+#endif
+        ;
 
     [TestMethod]
     public void DoNotSwallowAuthorizationException_NoncompliantForIsInRole() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -38,14 +39,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_NoncompliantForHasClaim() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool HasClaim(string type, string value) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -65,14 +63,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_NoncompliantForFilteredGenericCatch() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -92,14 +87,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_NoncompliantForUnrecognizedOutputCall() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -120,6 +112,7 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_CompliantWhenRecognizedLoggerLogsException() =>
         builder.AddSnippet(
             """
+            using System.Security.Claims;
             using Microsoft.Extensions.Logging;
 
             namespace Microsoft.Extensions.Logging
@@ -132,16 +125,11 @@ public class DoNotSwallowAuthorizationExceptionTest
                 }
             }
 
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
-
             public class Service
             {
                 private readonly Microsoft.Extensions.Logging.ILogger logger;
 
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -161,14 +149,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_NoncompliantWhenCatchReturnsFallback() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -187,14 +172,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_CompliantWhenCatchRethrows() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -215,14 +197,11 @@ public class DoNotSwallowAuthorizationExceptionTest
     public void DoNotSwallowAuthorizationException_CompliantForCatchAllCoveredByS2486() =>
         builder.AddSnippet(
             """
-            public class User
-            {
-                public bool IsInRole(string role) => true;
-            }
+            using System.Security.Claims;
 
             public class Service
             {
-                public bool HasAccess(User user)
+                public bool HasAccess(ClaimsPrincipal user)
                 {
                     try
                     {
@@ -267,4 +246,63 @@ public class DoNotSwallowAuthorizationExceptionTest
             }
             """)
             .VerifyNoIssues();
+
+    // A domain member that happens to be named IsInRole/HasClaim is not an access check, so the try/catch around it is
+    // ordinary error handling.
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_CompliantForLookalikeAccessCheck() =>
+        builder.AddSnippet(
+            """
+            public sealed class Shipment
+            {
+                public bool IsInRole(string role) => true;
+                public bool HasClaim(string type, string value) => true;
+            }
+
+            public class Service
+            {
+                public bool Check(Shipment shipment)
+                {
+                    try
+                    {
+                        return shipment.IsInRole("carrier") && shipment.HasClaim("damage", "total");
+                    }
+                    catch (System.InvalidOperationException)
+                    {
+                    }
+
+                    return false;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A custom principal implementation is still the authorization API.
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_NoncompliantForCustomPrincipalImplementation() =>
+        builder.AddSnippet(
+            """
+            public sealed class TenantPrincipal : System.Security.Principal.IPrincipal
+            {
+                public System.Security.Principal.IIdentity Identity => null;
+                public bool IsInRole(string role) => false;
+            }
+
+            public class Service
+            {
+                public bool HasAccess(TenantPrincipal user)
+                {
+                    try
+                    {
+                        return user.IsInRole("Admin");
+                    }
+                    catch (System.InvalidOperationException) // Noncompliant {{Do not silently swallow an exception around an access check - at least log the failure.}}
+                    {
+                    }
+
+                    return false;
+                }
+            }
+            """)
+            .Verify();
 }

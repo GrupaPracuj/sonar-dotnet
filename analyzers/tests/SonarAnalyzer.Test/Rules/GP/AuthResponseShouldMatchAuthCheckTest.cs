@@ -5,7 +5,11 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class AuthResponseShouldMatchAuthCheckTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.AuthResponseShouldMatchAuthCheck>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.AuthResponseShouldMatchAuthCheck>()
+#if NET
+        .AddReferences(new[] { CoreMetadataReference.SystemSecurityClaims })
+#endif
+        ;
 
     [TestMethod]
     public void AuthResponseShouldMatchAuthCheck_NoncompliantForIsInRoleReturningUnauthorized() =>
@@ -21,14 +25,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IPrincipal
-            {
-                bool IsInRole(string role);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -57,14 +56,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IPrincipal
-            {
-                bool HasClaim(string type, string value);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -93,19 +87,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IIdentity
-            {
-                bool IsAuthenticated { get; }
-            }
-
-            public interface IPrincipal
-            {
-                IIdentity Identity { get; }
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -134,19 +118,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IIdentity
-            {
-                bool IsAuthenticated { get; }
-            }
-
-            public interface IPrincipal
-            {
-                IIdentity Identity { get; }
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -158,6 +132,46 @@ public class AuthResponseShouldMatchAuthCheckTest
                     {
                         return StatusCode(403); // Noncompliant {{This looks like an authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
                     }
+                }
+            }
+            """)
+            .Verify();
+
+    // A custom identity implementation still is one: the rule keys on System.Security.Principal.IIdentity, not on a
+    // single concrete type.
+    [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_NoncompliantForCustomIdentityImplementation() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Forbid() => null;
+                    protected IActionResult Ok() => null;
+                }
+            }
+
+            public sealed class TenantIdentity : System.Security.Principal.IIdentity
+            {
+                public string AuthenticationType => null;
+                public bool IsAuthenticated => false;
+                public string Name => null;
+            }
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public TenantIdentity Identity { get; }
+
+                public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
+                {
+                    if (!Identity.IsAuthenticated)
+                    {
+                        return Forbid(); // Noncompliant {{This looks like an authentication check; return 401 (Unauthorized) instead of 403 (Forbid).}}
+                    }
+
+                    return Ok();
                 }
             }
             """)
@@ -177,14 +191,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IPrincipal
-            {
-                bool IsInRole(string role);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -213,19 +222,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IIdentity
-            {
-                bool IsAuthenticated { get; }
-            }
-
-            public interface IPrincipal
-            {
-                IIdentity Identity { get; }
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -254,20 +253,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IIdentity
-            {
-                bool IsAuthenticated { get; }
-            }
-
-            public interface IPrincipal
-            {
-                IIdentity Identity { get; }
-                bool IsInRole(string role);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -296,20 +284,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IIdentity
-            {
-                bool IsAuthenticated { get; }
-            }
-
-            public interface IPrincipal
-            {
-                IIdentity Identity { get; }
-                bool IsInRole(string role);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -343,14 +320,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IPrincipal
-            {
-                bool IsInRole(string role);
-            }
-
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public IPrincipal User { get; }
+                public System.Security.Claims.ClaimsPrincipal User { get; }
 
                 public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
                 {
@@ -369,11 +341,6 @@ public class AuthResponseShouldMatchAuthCheckTest
     public void AuthResponseShouldMatchAuthCheck_CompliantForLookalikeReturnedResponse() =>
         builder.AddSnippet(
             """
-            public interface IPrincipal
-            {
-                bool IsInRole(string role);
-            }
-
             public sealed class ResultFactory
             {
                 public object Unauthorized() => null;
@@ -381,7 +348,7 @@ public class AuthResponseShouldMatchAuthCheckTest
 
             public class Service
             {
-                public object Execute(IPrincipal user, ResultFactory results)
+                public object Execute(System.Security.Claims.ClaimsPrincipal user, ResultFactory results)
                 {
                     if (!user.IsInRole("Admin"))
                     {
@@ -389,6 +356,55 @@ public class AuthResponseShouldMatchAuthCheckTest
                     }
 
                     return null;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // Domain members that happen to be named like the authorization API are not authorization checks, so the
+    // 401/403 distinction the rule enforces does not apply to them.
+    [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_CompliantForLookalikeCheckedCondition() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Unauthorized() => null;
+                    protected IActionResult Forbid() => null;
+                    protected IActionResult Ok() => null;
+                }
+            }
+
+            public sealed class Shipment
+            {
+                public bool HasClaim(string type, string value) => false;
+                public bool IsInRole(string role) => false;
+                public bool IsAuthenticated => false;
+            }
+
+            public class ShipmentsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Damage(Shipment shipment)
+                {
+                    if (!shipment.HasClaim("damage", "total"))
+                    {
+                        return Unauthorized();
+                    }
+
+                    if (!shipment.IsInRole("carrier"))
+                    {
+                        return Unauthorized();
+                    }
+
+                    if (!shipment.IsAuthenticated)
+                    {
+                        return Forbid();
+                    }
+
+                    return Ok();
                 }
             }
             """)
@@ -408,14 +424,9 @@ public class AuthResponseShouldMatchAuthCheckTest
                 }
             }
 
-            public interface IPrincipal
-            {
-                bool HasClaim(string type, string value);
-            }
-
             public class Endpoint
             {
-                public Microsoft.AspNetCore.Http.IResult Execute(IPrincipal user)
+                public Microsoft.AspNetCore.Http.IResult Execute(System.Security.Claims.ClaimsPrincipal user)
                 {
                     if (!user.HasClaim("permission", "users.delete"))
                     {

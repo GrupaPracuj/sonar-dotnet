@@ -36,7 +36,7 @@ public sealed class DoNotSwallowAuthorizationException : SonarDiagnosticAnalyzer
     private static void AnalyzeTryStatement(SonarSyntaxNodeReportingContext context)
     {
         var tryStatement = (TryStatementSyntax)context.Node;
-        if (!ContainsAccessCheck(tryStatement.Block))
+        if (!ContainsAccessCheck(context.Model, tryStatement.Block))
         {
             return;
         }
@@ -138,8 +138,10 @@ public sealed class DoNotSwallowAuthorizationException : SonarDiagnosticAnalyzer
         catchClause.Filter is null
         && (catchClause.Declaration?.Type is not { } type || model.GetTypeInfo(type).Type.Is(KnownType.System_Exception));
 
-    private static bool ContainsAccessCheck(SyntaxNode node) =>
+    private static bool ContainsAccessCheck(SemanticModel model, SyntaxNode node) =>
         node.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .Any(x => x.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var name } && AccessCheckMethods.Contains(name));
+            .Any(x => x.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var name }
+                      && AccessCheckMethods.Contains(name)
+                      && GpPrincipalApi.IsAccessCheck(model, x));
 }

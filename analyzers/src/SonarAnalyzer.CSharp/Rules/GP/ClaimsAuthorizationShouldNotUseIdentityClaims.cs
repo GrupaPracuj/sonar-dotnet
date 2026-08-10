@@ -34,6 +34,8 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         "Surname"
     };
 
+    private static readonly string[] AuthorizationDecisionWords = { "Access", "Authorize", "Authorized", "Authorization", "Permission" };
+
     private static readonly HashSet<string> JunoAlternativePermissionMethods = new(StringComparer.Ordinal)
     {
         "OrCalledByApi",
@@ -66,7 +68,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
     {
         context.RegisterNodeAction(CheckClaimGuard, SyntaxKind.IfStatement);
         context.RegisterNodeAction(CheckHasClaimInvocation, SyntaxKind.InvocationExpression);
-        context.RegisterNodeAction(CheckJunoClaimLookupInvocation, SyntaxKind.InvocationExpression);
+        context.RegisterNodeAction(CheckClaimLookupInvocation, SyntaxKind.InvocationExpression);
         context.RegisterNodeAction(CheckAuthorizeAttribute, SyntaxKind.Attribute);
     }
 
@@ -135,8 +137,7 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
 
     private static bool IsAccessGrant(ExpressionSyntax expression, SemanticModel model)
     {
-        if (expression is not InvocationExpressionSyntax invocation
-            || model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method)
+        if (expression is not InvocationExpressionSyntax invocation)
         {
             return false;
         }
@@ -146,8 +147,8 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
             return IsSuccessfulResponse(resultMethod.Name, invocation.ArgumentList.Arguments, model);
         }
 
-        return method.ContainingType?.ToDisplayString() is "Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller"
-               && IsSuccessfulResponse(method.Name, invocation.ArgumentList.Arguments, model);
+        return GpMvcResults.TryGetResultMethod(model, invocation, out var mvcMethod)
+               && IsSuccessfulResponse(mvcMethod.Name, invocation.ArgumentList.Arguments, model);
     }
 
     private static bool IsSuccessfulResponse(string methodName, SeparatedSyntaxList<ArgumentSyntax> arguments, SemanticModel model)
@@ -224,13 +225,14 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         }
     }
 
-    private static void CheckJunoClaimLookupInvocation(SonarSyntaxNodeReportingContext context)
+    private static void CheckClaimLookupInvocation(SonarSyntaxNodeReportingContext context)
     {
         if (context.Node is not InvocationExpressionSyntax invocation
             || invocation.Expression is not MemberAccessExpressionSyntax { Name.Identifier.ValueText: var methodName }
             || methodName is not ("FindFirst" or "FindAll")
             || !ResultValueIsAccessed(invocation)
-            || !IsInsideJunoAlternativePermissionPredicate(invocation, context.Model))
+            || !IsClaimsLookupMethod(context.Model, invocation)
+            || !IsRecognizedAuthorizationDecision(invocation, context.Model))
         {
             return;
         }
@@ -288,6 +290,14 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
     private static bool IsClaimsPrincipalMethod(SemanticModel model, InvocationExpressionSyntax invocation) =>
         model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
         && GpJunoTypes.DerivesFrom(method.ContainingType, "System.Security.Claims.ClaimsPrincipal");
+
+    // FindFirst/FindAll only look up claims when they come from the claims API itself. A same-named method on an
+    // unrelated type (a repository, a collection helper) reads something else entirely, so the name alone must never
+    // be enough - the declaring type decides.
+    private static bool IsClaimsLookupMethod(SemanticModel model, InvocationExpressionSyntax invocation) =>
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+        && (GpJunoTypes.DerivesFrom(method.ContainingType, "System.Security.Claims.ClaimsPrincipal")
+            || GpJunoTypes.DerivesFrom(method.ContainingType, "System.Security.Claims.ClaimsIdentity"));
 
     private static bool IsJunoSecurityMethod(SemanticModel model, InvocationExpressionSyntax invocation)
     {
@@ -424,17 +434,17 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         return member switch
         {
             MethodDeclarationSyntax method when model.GetDeclaredSymbol(method)?.ReturnType.SpecialType == SpecialType.System_Boolean =>
-                GpIdentifierWords.ContainsWord(method.Identifier.ValueText, "Access")
-                || GpIdentifierWords.ContainsWord(method.Identifier.ValueText, "Authorize")
-                || GpIdentifierWords.ContainsWord(method.Identifier.ValueText, "Authorization")
-                || GpIdentifierWords.ContainsWord(method.Identifier.ValueText, "Permission"),
+                NamesAnAuthorizationDecision(method.Identifier.ValueText),
             PropertyDeclarationSyntax property when model.GetDeclaredSymbol(property)?.Type.SpecialType == SpecialType.System_Boolean =>
-                GpIdentifierWords.ContainsWord(property.Identifier.ValueText, "Access")
-                || GpIdentifierWords.ContainsWord(property.Identifier.ValueText, "Authorized")
-                || GpIdentifierWords.ContainsWord(property.Identifier.ValueText, "Permission"),
+                NamesAnAuthorizationDecision(property.Identifier.ValueText),
             _ => false
         };
     }
+
+    // The same vocabulary for methods and properties: HasAccess(), IsAuthorized(), CanEditPermission are all the
+    // same kind of decision, so which member shape holds them must not change whether they are recognized.
+    private static bool NamesAnAuthorizationDecision(string identifier) =>
+        Array.Exists(AuthorizationDecisionWords, x => GpIdentifierWords.ContainsWord(identifier, x));
 
     // Accepts both "ClaimTypes.Email" and a qualified "System.Security.Claims.ClaimTypes.Email".
     private static bool IsClaimTypesQualifier(ExpressionSyntax expression) =>

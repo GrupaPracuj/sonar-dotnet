@@ -455,24 +455,8 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
         builder.AddSnippet(
             """
             using System;
+            using System.Security.Claims;
             using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
-
-            public static class ClaimTypes
-            {
-                public const string NameIdentifier = "sub";
-            }
-
-            public class Claim
-            {
-                public string Type { get; set; }
-                public string Value { get; set; }
-            }
-
-            public class ClaimsPrincipal
-            {
-                public Claim FindFirst(string type) => null;
-                public Claim FindFirst(object type) => null;
-            }
 
             public interface IServiceCollection { }
 
@@ -499,24 +483,8 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
         builder.AddSnippet(
             """
             using System;
+            using System.Security.Claims;
             using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
-
-            public static class ClaimTypes
-            {
-                public const string NameIdentifier = "sub";
-            }
-
-            public class Claim
-            {
-                public string Type { get; set; }
-                public string Value { get; set; }
-            }
-
-            public class ClaimsPrincipal
-            {
-                public Claim FindFirst(string type) => null;
-                public Claim FindFirst(object type) => null;
-            }
 
             public interface IServiceCollection { }
 
@@ -713,6 +681,96 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             {
                 public bool HasAccess(User user) =>
                     user.HasClaim(System.Security.Claims.ClaimTypes.Email);
+            }
+            """)
+            .VerifyNoIssues();
+
+    // The shape the rule description uses as its canonical example: a boolean access check that compares the value of
+    // an identity claim read through ClaimsPrincipal.FindFirst.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForFindFirstValueInBooleanAccessCheck() =>
+        builder.AddSnippet(
+            """
+            using System.Security.Claims;
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    user.FindFirst("sub").Value == "a3f1c9d2"; // Noncompliant {{Do not base access control on identity claim 'sub'.}}
+
+                public bool IsAuthorized(ClaimsPrincipal user) =>
+                    user.FindFirst(ClaimTypes.Email)?.Value == "admin@example.com"; // Noncompliant {{Do not base access control on identity claim 'Email'.}}
+            }
+            """)
+            .Verify();
+
+    // Presence, not value: FindFirst(...) != null stays an existence check wherever it appears.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForFindFirstPresenceCheckInBooleanAccessCheck() =>
+        builder.AddSnippet(
+            """
+            using System.Security.Claims;
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    user.FindFirst("sub") != null;
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A non-identity claim is exactly what the rule recommends deciding on, so comparing its value is compliant.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForNonIdentityClaimValueComparison() =>
+        builder.AddSnippet(
+            """
+            using System.Security.Claims;
+
+            public class Access
+            {
+                public bool HasAccess(ClaimsPrincipal user) =>
+                    user.FindFirst("filestore_scope").Value == "delete";
+            }
+            """)
+            .VerifyNoIssues();
+
+    // FindFirst on an unrelated type is not a claim lookup, even inside a boolean access check.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForLookalikeFindFirstOnUnrelatedType() =>
+        builder.AddSnippet(
+            """
+            public class Subscription
+            {
+                public string Value { get; set; }
+            }
+
+            public class SubscriptionRepository
+            {
+                public Subscription FindFirst(string name) => null;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(SubscriptionRepository repository) =>
+                    repository.FindFirst("sub").Value == "a3f1c9d2";
+            }
+            """)
+            .VerifyNoIssues();
+
+    // Reading the same claim for a non-authorization purpose is not an access-control decision.
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForFindFirstValueOutsideAuthorizationDecision() =>
+        builder.AddSnippet(
+            """
+            using System.Security.Claims;
+
+            public class Audit
+            {
+                public string CurrentSubject(ClaimsPrincipal user) =>
+                    user.FindFirst("sub").Value;
+
+                public bool IsFirstLogin(ClaimsPrincipal user) =>
+                    user.FindFirst("sub").Value == "a3f1c9d2";
             }
             """)
             .VerifyNoIssues();
