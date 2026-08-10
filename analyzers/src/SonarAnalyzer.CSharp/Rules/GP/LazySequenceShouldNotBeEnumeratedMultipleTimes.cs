@@ -92,7 +92,13 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
             .Where(IsSwitch)
             .Any(x => CaseBranch(x, first) is { } firstBranch
                       && CaseBranch(x, second) is { } secondBranch
-                      && firstBranch != secondBranch);
+                      && firstBranch != secondBranch
+                      && !CanTransferBetweenSwitchSections(x));
+
+    private static bool CanTransferBetweenSwitchSections(SyntaxNode switchNode) =>
+        switchNode is SwitchStatementSyntax switchStatement
+        && switchStatement.DescendantNodes().OfType<GotoStatementSyntax>()
+            .Any(x => x.IsKind(SyntaxKind.GotoCaseStatement) || x.IsKind(SyntaxKind.GotoDefaultStatement));
 
     private static bool IsSwitch(SyntaxNode node) =>
         node is SwitchStatementSyntax || SwitchExpressionSyntaxWrapper.IsInstance(node);

@@ -306,6 +306,58 @@ public class CancellationShouldNotBeSuppressedTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenDisjunctionCanAcceptCancellation() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderService
+            {
+                public void Process(CancellationToken cancellationToken, bool retryTimeouts)
+                {
+                    try
+                    {
+                        Work(cancellationToken);
+                    }
+                    catch (System.Threading.Tasks.TaskCanceledException) when (!cancellationToken.IsCancellationRequested || retryTimeouts) // Noncompliant
+                    {
+                        System.Console.WriteLine("Suppressed");
+                    }
+                }
+
+                private void Work(CancellationToken cancellationToken) { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantWhenEveryDisjunctRejectsCancellation() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+
+            public class OrderService
+            {
+                public void Process(CancellationToken cancellationToken, bool firstTimeout, bool secondTimeout)
+                {
+                    try
+                    {
+                        Work(cancellationToken);
+                    }
+                    catch (System.Threading.Tasks.TaskCanceledException) when (
+                        (!cancellationToken.IsCancellationRequested && firstTimeout)
+                        || (!cancellationToken.IsCancellationRequested && secondTimeout))
+                    {
+                        throw new System.TimeoutException();
+                    }
+                }
+
+                private void Work(CancellationToken cancellationToken) { }
+            }
+            """)
+            .VerifyNoIssues();
+
     // Any other filter leaves the cancellation signal suppressed just the same.
     [TestMethod]
     public void CancellationShouldNotBeSuppressed_NoncompliantForUnrelatedFilter() =>

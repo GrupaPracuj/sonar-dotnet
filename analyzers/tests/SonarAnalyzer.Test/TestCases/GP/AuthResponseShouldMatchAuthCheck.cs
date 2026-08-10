@@ -19,6 +19,26 @@ namespace Microsoft.AspNetCore.Http
         public static IResult Forbid() => null;
         public static IResult Ok() => null;
     }
+
+    public static class TypedResults
+    {
+        public static HttpResults.Ok Ok() => null;
+        public static HttpResults.ForbidHttpResult Forbid() => null;
+        public static HttpResults.UnauthorizedHttpResult Unauthorized() => null;
+    }
+}
+
+namespace Microsoft.AspNetCore.Http.HttpResults
+{
+    public sealed class Ok { }
+    public sealed class ForbidHttpResult { }
+    public sealed class UnauthorizedHttpResult { }
+
+    public sealed class Results<T1, T2>
+    {
+        public static implicit operator Results<T1, T2>(T1 value) => null;
+        public static implicit operator Results<T1, T2>(T2 value) => null;
+    }
 }
 
 namespace Tests.Diagnostics
@@ -49,6 +69,18 @@ namespace Tests.Diagnostics
             }
 
             return Microsoft.AspNetCore.Http.Results.Ok();
+        }
+
+        public Microsoft.AspNetCore.Http.HttpResults.Results<
+            Microsoft.AspNetCore.Http.HttpResults.Ok,
+            Microsoft.AspNetCore.Http.HttpResults.ForbidHttpResult> NamedHandler(System.Security.Claims.ClaimsPrincipal user)
+        {
+            if (!user.Identity.IsAuthenticated)
+            {
+                return Microsoft.AspNetCore.Http.TypedResults.Forbid(); // Noncompliant
+            }
+
+            return Microsoft.AspNetCore.Http.TypedResults.Ok();
         }
     }
 }

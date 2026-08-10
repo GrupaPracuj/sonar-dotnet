@@ -79,9 +79,11 @@ public sealed class AuthResponseShouldMatchAuthCheckCodeFix : SonarCodeFix
     private static bool IsInsideTypedResultUnion(InvocationExpressionSyntax invocation, SemanticModel model)
     {
         var handler = invocation.Ancestors().OfType<AnonymousFunctionExpressionSyntax>().FirstOrDefault();
-        return handler is not null
-               && model.GetTypeInfo(handler).ConvertedType is INamedTypeSymbol { DelegateInvokeMethod.ReturnType: INamedTypeSymbol returnType }
-               && returnType.Name == "Results"
-               && returnType.ContainingNamespace?.ToDisplayString() == "Microsoft.AspNetCore.Http.HttpResults";
+        var returnType = handler is not null
+            ? (model.GetTypeInfo(handler).ConvertedType as INamedTypeSymbol)?.DelegateInvokeMethod?.ReturnType
+            : (model.GetEnclosingSymbol(invocation.SpanStart) as IMethodSymbol)?.ReturnType;
+        return returnType is INamedTypeSymbol namedType
+               && namedType.Name == "Results"
+               && namedType.ContainingNamespace?.ToDisplayString() == "Microsoft.AspNetCore.Http.HttpResults";
     }
 }

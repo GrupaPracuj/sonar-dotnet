@@ -324,4 +324,30 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantAcrossGotoCase() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public int M(IEnumerable<int> source, int mode)
+                {
+                    switch (mode)
+                    {
+                        case 0:
+                            source.Any();
+                            goto case 1;
+                        case 1:
+                            return source.Count(); // Noncompliant
+                        default:
+                            return 0;
+                    }
+                }
+            }
+            """)
+            .Verify();
 }

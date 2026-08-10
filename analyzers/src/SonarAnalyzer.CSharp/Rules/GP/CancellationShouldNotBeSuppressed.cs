@@ -40,10 +40,28 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
     // so handling it there hides no cancellation signal. Any other filter still leaves the signal suppressed.
     private static bool DistinguishesTimeoutFromCancellation(SemanticModel model, CatchFilterClauseSyntax filter) =>
         filter?.FilterExpression is { } condition
-        && condition.DescendantNodesAndSelf()
-            .OfType<PrefixUnaryExpressionSyntax>()
-            .Where(x => x.IsKind(SyntaxKind.LogicalNotExpression))
-            .Any(x => IsCancellationRequested(model, x.Operand));
+        && GuaranteesCancellationWasNotRequested(model, condition);
+
+    private static bool GuaranteesCancellationWasNotRequested(SemanticModel model, ExpressionSyntax condition)
+    {
+        while (condition is ParenthesizedExpressionSyntax parenthesized)
+        {
+            condition = parenthesized.Expression;
+        }
+
+        return condition switch
+        {
+            PrefixUnaryExpressionSyntax unary when unary.IsKind(SyntaxKind.LogicalNotExpression) =>
+                IsCancellationRequested(model, unary.Operand),
+            BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.LogicalAndExpression) =>
+                GuaranteesCancellationWasNotRequested(model, binary.Left)
+                || GuaranteesCancellationWasNotRequested(model, binary.Right),
+            BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.LogicalOrExpression) =>
+                GuaranteesCancellationWasNotRequested(model, binary.Left)
+                && GuaranteesCancellationWasNotRequested(model, binary.Right),
+            _ => false,
+        };
+    }
 
     private static bool IsCancellationRequested(SemanticModel model, ExpressionSyntax expression) =>
         model.GetSymbolInfo(expression.RemoveParentheses()).Symbol is IPropertySymbol { Name: "IsCancellationRequested" } property

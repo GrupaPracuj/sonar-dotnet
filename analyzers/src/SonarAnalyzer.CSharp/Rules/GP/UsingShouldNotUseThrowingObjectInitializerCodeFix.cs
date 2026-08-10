@@ -30,7 +30,7 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
         if (model is null
             || !initializer.Expressions.All(IsMovableMemberAssignment)
             || initializer.Expressions.OfType<AssignmentExpressionSyntax>()
-                .Any(x => model.GetSymbolInfo(x.Left).Symbol is IPropertySymbol property && IsInitOnly(property)))
+                .Any(x => IsInitializerOnlyMember(model.GetSymbolInfo(x.Left).Symbol)))
         {
             return;
         }
@@ -77,4 +77,15 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
             .Select(x => x.GetSyntax())
             .OfType<PropertyDeclarationSyntax>()
             .Any(x => x.AccessorList?.Accessors.AnyOfKind(SyntaxKindEx.InitAccessorDeclaration) == true);
+
+    private static bool IsInitializerOnlyMember(ISymbol symbol) =>
+        symbol switch
+        {
+            IPropertySymbol property => property.IsRequired() || IsInitOnly(property),
+            IFieldSymbol field => field.DeclaringSyntaxReferences
+                .Select(x => x.GetSyntax().FirstAncestorOrSelf<FieldDeclarationSyntax>())
+                .WhereNotNull()
+                .Any(x => x.Modifiers.Any(y => y.ValueText == "required")),
+            _ => false,
+        };
 }

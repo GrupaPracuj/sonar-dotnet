@@ -24,6 +24,11 @@ namespace Tests.Diagnostics
             using var conn = new InitOnlyDisposable { Value = Compute() }; // Noncompliant
         }
 
+        public void RequiredMemberHasNoFix()
+        {
+            using var conn = new RequiredDisposable { Value = Compute() }; // Noncompliant
+        }
+
         // A nested collection initializer has no statement form, so there is nothing to rewrite it into.
         public void NestedInitializerHasNoFix()
         {
@@ -61,6 +66,12 @@ namespace Tests.Diagnostics
     public class InitOnlyDisposable : IDisposable
     {
         public int Value { get; init; }
+        public void Dispose() { }
+    }
+
+    public class RequiredDisposable : IDisposable
+    {
+        public required int Value { get; set; }
         public void Dispose() { }
     }
 }
