@@ -88,8 +88,11 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
             _ => false,
         };
 
+    // Roslyn decodes RequiredMemberAttribute into the symbol and keeps it out of GetAttributes(), so a field coming
+    // from metadata can only be recognized through IFieldSymbol.IsRequired. The syntax check stays as the fallback for
+    // a source declaration when the running Roslyn is too old to expose that property at all.
     private static bool IsRequired(IFieldSymbol field) =>
-        field.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == "System.Runtime.CompilerServices.RequiredMemberAttribute")
+        field.IsRequired()
         || field.DeclaringSyntaxReferences
             .Select(x => x.GetSyntax().FirstAncestorOrSelf<FieldDeclarationSyntax>())
             .WhereNotNull()

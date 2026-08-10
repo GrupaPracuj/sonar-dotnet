@@ -1,3 +1,5 @@
+using System.IO;
+using Microsoft.CodeAnalysis.CSharp;
 using CS = SonarAnalyzer.CSharp.Rules;
 
 namespace SonarAnalyzer.Test.Rules.GP;
@@ -204,4 +206,60 @@ public class UsingShouldNotUseThrowingObjectInitializerTest
             .WithCodeFix<CS.UsingShouldNotUseThrowingObjectInitializerCodeFix>()
             .WithCodeFixedPaths("UsingShouldNotUseThrowingObjectInitializer.Fixed.cs")
             .VerifyCodeFix();
+
+#if NET
+
+    // Emitted to an image on purpose: Compilation.ToMetadataReference() hands back a CompilationReference, whose
+    // symbols still carry their declaration syntax, so it would not exercise the metadata path at all. The referenced
+    // library needs the attributes that back 'required', which .NET Framework does not carry, hence #if NET.
+    [TestMethod]
+    public void UsingShouldNotUseThrowingObjectInitializer_CodeFixForMembersFromMetadata() =>
+        builder
+            .AddReferences([EmitToImage(
+                """
+                namespace Library
+                {
+                    public class InitOnlyDisposable : System.IDisposable
+                    {
+                        public int Value { get; init; }
+                        public void Dispose() { }
+                    }
+
+                    public class RequiredDisposable : System.IDisposable
+                    {
+                        public required int Value { get; set; }
+                        public void Dispose() { }
+                    }
+
+                    // A required field reaches a different branch than a required property: only the property has an
+                    // IsRequired shim, so the field has to be recognized from its RequiredMemberAttribute.
+                    public class RequiredFieldDisposable : System.IDisposable
+                    {
+                        public required int Value;
+                        public void Dispose() { }
+                    }
+
+                    public class PlainDisposable : System.IDisposable
+                    {
+                        public int Value { get; set; }
+                        public void Dispose() { }
+                    }
+                }
+                """)])
+            .WithBasePath("GP")
+            .AddPaths("UsingShouldNotUseThrowingObjectInitializer_Metadata.cs")
+            .WithCodeFix<CS.UsingShouldNotUseThrowingObjectInitializerCodeFix>()
+            .WithCodeFixedPaths("UsingShouldNotUseThrowingObjectInitializer_Metadata.Fixed.cs")
+            .VerifyCodeFix();
+
+    private static MetadataReference EmitToImage(string code)
+    {
+        var compilation = new SnippetCompiler(code, false, AnalyzerLanguage.CSharp, parseOptions: new CSharpParseOptions(LanguageVersion.Latest)).Compilation;
+        var image = new MemoryStream();
+        compilation.Emit(image).Success.Should().BeTrue("the referenced library has to compile");
+        image.Position = 0;
+        return MetadataReference.CreateFromStream(image);
+    }
+
+#endif
 }
