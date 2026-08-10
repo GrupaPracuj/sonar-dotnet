@@ -1,0 +1,25 @@
+{
+  "title": "HTTP calls should not be made inside a loop",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "EFFICIENT"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "http",
+    "performance"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0096",
+  "sqKey": "GP0096",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

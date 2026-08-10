@@ -1,0 +1,25 @@
+{
+  "title": "Database calls should not be made inside a loop",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "EFFICIENT"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "database",
+    "performance"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0097",
+  "sqKey": "GP0097",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}
