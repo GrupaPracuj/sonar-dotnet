@@ -73,7 +73,9 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
         element is AssignmentExpressionSyntax { Left: SimpleNameSyntax, Right: not InitializerExpressionSyntax };
 
     private static bool IsInitOnly(IPropertySymbol property) =>
-        property.DeclaringSyntaxReferences
+        property.SetMethod?.ReturnTypeCustomModifiers
+            .Any(x => x.Modifier?.ToDisplayString() == "System.Runtime.CompilerServices.IsExternalInit") == true
+        || property.DeclaringSyntaxReferences
             .Select(x => x.GetSyntax())
             .OfType<PropertyDeclarationSyntax>()
             .Any(x => x.AccessorList?.Accessors.AnyOfKind(SyntaxKindEx.InitAccessorDeclaration) == true);
@@ -82,10 +84,14 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
         symbol switch
         {
             IPropertySymbol property => property.IsRequired() || IsInitOnly(property),
-            IFieldSymbol field => field.DeclaringSyntaxReferences
-                .Select(x => x.GetSyntax().FirstAncestorOrSelf<FieldDeclarationSyntax>())
-                .WhereNotNull()
-                .Any(x => x.Modifiers.Any(y => y.ValueText == "required")),
+            IFieldSymbol field => IsRequired(field),
             _ => false,
         };
+
+    private static bool IsRequired(IFieldSymbol field) =>
+        field.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == "System.Runtime.CompilerServices.RequiredMemberAttribute")
+        || field.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax().FirstAncestorOrSelf<FieldDeclarationSyntax>())
+            .WhereNotNull()
+            .Any(x => x.Modifiers.Any(y => y.ValueText == "required"));
 }
