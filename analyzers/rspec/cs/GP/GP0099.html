@@ -1,0 +1,41 @@
+<p>A public or protected property should not return an array.</p>
+<h2>Why is this an issue?</h2>
+<p>An array returned by a property is not write-protected, even when the property itself is read-only: the caller receives a reference to the same
+array instance and can mutate its elements directly, bypassing whatever invariants the owning type is meant to enforce. Callers also commonly
+mistake the property for an indexed collection and re-read it inside a loop, re-evaluating the property (and, in some implementations, re-allocating
+a defensive copy) on every iteration.</p>
+<pre>
+public class Book
+{
+    public string[] Pages { get; }
+}
+</pre>
+<h2>How to fix it</h2>
+<p>Change the property to return a read-only collection type such as <code>ReadOnlyCollection&lt;T&gt;</code> or <code>IReadOnlyList&lt;T&gt;</code>,
+or turn it into a method that returns a defensive copy of the array.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public class Book
+{
+    public string[] Pages { get; } // Noncompliant {{'Pages' returns an array - callers can mutate it through this property. Return a read-only collection, or a method that returns a copy.}}
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public class Book
+{
+    public ReadOnlyCollection&lt;string&gt; Pages { get; }
+}
+</pre>
+<h3>Exceptions</h3>
+<p>Not reported: properties on a type deriving from <code>System.Attribute</code> (an attribute argument can only be an array, never a collection,
+so there is no alternative shape to move to); properties on a type recognized as a message contract (name ending in <code>Dto</code>,
+<code>Request</code>, <code>Response</code>, <code>Contract</code>, <code>Event</code>, <code>Command</code> or <code>Message</code>) - these
+legitimately expose arrays for wire serialization, with no in-process aliasing risk; and <code>override</code> properties, since the property's
+shape is dictated by the member it overrides.</p>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1819">CA1819: Properties should not return arrays</a></li>
+</ul>

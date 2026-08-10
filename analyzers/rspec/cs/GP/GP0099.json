@@ -1,0 +1,24 @@
+{
+  "title": "Properties should not return arrays",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "LOW"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "api-design"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0099",
+  "sqKey": "GP0099",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

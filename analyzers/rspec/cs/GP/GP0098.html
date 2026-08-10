@@ -1,0 +1,39 @@
+<p>A type that is not accessible outside its assembly (<code>internal</code>) and has no subtype anywhere in that assembly should be marked <code>sealed</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>An <code>internal</code> type can only ever be subclassed by code inside the same assembly (or an assembly explicitly granted access through
+<code>[InternalsVisibleTo]</code>). When no such subtype actually exists, marking the type <code>sealed</code> costs nothing and lets the JIT use
+non-virtual dispatch and other sealed-type optimizations. <code>S3260</code> already reports this for <code>private</code> and <code>file</code>-scoped
+types, but does not cover <code>internal</code> types, since their potential subtype can be anywhere in the assembly rather than just the containing
+type or file.</p>
+<pre>
+internal class Repository
+{
+    public void Save() { }
+}
+</pre>
+<h2>How to fix it</h2>
+<p>Mark the type <code>sealed</code>.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+internal class Repository // Noncompliant {{'Repository' has no subtype in this assembly and should be sealed.}}
+{
+    public void Save() { }
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+internal sealed class Repository
+{
+    public void Save() { }
+}
+</pre>
+<h3>Exceptions</h3>
+<p>Not reported: types already <code>sealed</code>, <code>static</code> or <code>abstract</code>; <code>partial</code> types (to avoid reporting once
+per file for the same type); and every type in an assembly that carries <code>[InternalsVisibleTo]</code>, since a friend assembly may then subclass
+a type that has no subtype locally.</p>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1852">CA1852: Seal internal types</a></li>
+</ul>
