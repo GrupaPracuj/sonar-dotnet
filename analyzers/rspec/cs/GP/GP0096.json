@@ -1,5 +1,5 @@
 {
-  "title": "HTTP calls should not be made inside a loop",
+  "title": "HTTP calls should not directly depend on a loop variable",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

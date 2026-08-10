@@ -8,6 +8,23 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
     private const string EntityMessageFormat = "'{0}' is a database entity - return a response contract instead.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, EntityMessageFormat);
+    private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete"];
+    private static readonly HashSet<string> MvcResultMethods = new(StringComparer.Ordinal)
+    {
+        "Accepted",
+        "AcceptedAtAction",
+        "AcceptedAtRoute",
+        "BadRequest",
+        "Conflict",
+        "Created",
+        "CreatedAtAction",
+        "CreatedAtRoute",
+        "Json",
+        "NotFound",
+        "Ok",
+        "StatusCode",
+        "UnprocessableEntity",
+    };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
@@ -19,6 +36,7 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
         {
             var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes);
             start.RegisterNodeAction(c => AnalyzeMethod(c, entities), SyntaxKind.MethodDeclaration);
+            start.RegisterNodeAction(c => AnalyzeResultInvocation(c, entities), SyntaxKind.InvocationExpression);
         });
 
     private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
@@ -39,6 +57,75 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
         {
             context.ReportIssue(Rule, methodDeclaration.ReturnType, element.Name);
         }
+    }
+
+    private static void AnalyzeResultInvocation(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        if (TryGetMinimalApiPayload(context, invocation, out var value)
+            || TryGetMvcPayload(context, invocation, out value))
+        {
+            ReportPayload(context, invocation, value, entities);
+        }
+    }
+
+    private static bool TryGetMinimalApiPayload(SonarSyntaxNodeReportingContext context,
+                                                InvocationExpressionSyntax invocation,
+                                                out ExpressionSyntax value)
+    {
+        value = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+        return value is not null
+            && GpMinimalApi.TryGetResultMethod(context.Model, invocation, out var method)
+            && method.Name is "Ok" or "Json"
+            && GpMinimalApi.TryGetInlineHandler(invocation, context.Model, MinimalApiMapMethods, out _, out _, out _, out _);
+    }
+
+    private static bool TryGetMvcPayload(SonarSyntaxNodeReportingContext context,
+                                         InvocationExpressionSyntax invocation,
+                                         out ExpressionSyntax value)
+    {
+        value = null;
+        if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !MvcResultMethods.Contains(method.Name)
+            || method.ContainingType?.ToDisplayString() is not ("Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller")
+            || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol enclosing
+            || !enclosing.IsControllerActionMethod())
+        {
+            return false;
+        }
+
+        var lookup = new CSharpMethodParameterLookup(invocation, method);
+        value = new[] { "value", "data", "error" }
+            .SelectMany(x => lookup.TryGetSyntax(x, out var arguments)
+                ? arguments.AsEnumerable()
+                : Enumerable.Empty<ArgumentSyntax>())
+            .OfType<ExpressionSyntax>()
+            .FirstOrDefault();
+        return value is not null;
+    }
+
+    private static void ReportPayload(SonarSyntaxNodeReportingContext context,
+                                      InvocationExpressionSyntax invocation,
+                                      ExpressionSyntax value,
+                                      GpEntityTypes entities)
+    {
+        if (context.Model.GetTypeInfo(value).Type is { } valueType
+            && PayloadProblem(valueType, entities) is { } problem)
+        {
+            context.ReportIssue(Rule, invocation, problem.Name);
+        }
+    }
+
+    private static ITypeSymbol PayloadProblem(ITypeSymbol type, GpEntityTypes entities)
+    {
+        if (IsQueryable(type))
+        {
+            return type;
+        }
+
+        return ElementType(type) is { } element && entities.IsEntity(element)
+            ? element
+            : null;
     }
 
     // Task<T>, ValueTask<T> and ActionResult<T> only wrap what the endpoint really returns.

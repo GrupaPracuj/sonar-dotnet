@@ -179,4 +179,53 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForMutuallyExclusiveBranches() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M(IEnumerable<int> source, bool useFirst)
+                {
+                    if (useFirst)
+                    {
+                        foreach (var x in source) { }
+                    }
+                    else
+                    {
+                        foreach (var x in source) { }
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantAfterMutuallyExclusiveBranches() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public void M(IEnumerable<int> source, bool useFirst)
+                {
+                    if (useFirst)
+                    {
+                        foreach (var x in source) { }
+                    }
+                    else
+                    {
+                        foreach (var x in source) { }
+                    }
+
+                    var count = source.Count(); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
 }

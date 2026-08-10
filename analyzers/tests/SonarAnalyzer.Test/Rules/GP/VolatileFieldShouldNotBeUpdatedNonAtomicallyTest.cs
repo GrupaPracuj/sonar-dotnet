@@ -78,6 +78,29 @@ public class VolatileFieldShouldNotBeUpdatedNonAtomicallyTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void VolatileFieldShouldNotBeUpdatedNonAtomically_ComparesFieldAndReceiver() =>
+        builder.AddSnippet(
+            """
+            public class Source
+            {
+                public volatile int Value;
+            }
+
+            public class Target
+            {
+                public volatile int Value;
+
+                public void Copy(Source source, Target other)
+                {
+                    Value = source.Value;
+                    Value = other.Value;
+                    other.Value = other.Value + 1; // Noncompliant {{'Value' is volatile, which does not make this update atomic - use Interlocked or a lock.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void VolatileFieldShouldNotBeUpdatedNonAtomically_CompliantForNonVolatileField() =>
         builder.AddSnippet(
             """
@@ -86,6 +109,24 @@ public class VolatileFieldShouldNotBeUpdatedNonAtomicallyTest
                 private int _processed;
 
                 public void Process() => _processed++;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void VolatileFieldShouldNotBeUpdatedNonAtomically_CompliantForUnstablePropertyReceiver() =>
+        builder.AddSnippet(
+            """
+            public class Counter
+            {
+                public volatile int Value;
+            }
+
+            public class Counters
+            {
+                private Counter Current => new Counter();
+
+                public void Increment() => Current.Value = Current.Value + 1;
             }
             """)
             .VerifyNoIssues();

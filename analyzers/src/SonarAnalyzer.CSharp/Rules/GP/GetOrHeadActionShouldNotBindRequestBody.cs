@@ -9,11 +9,15 @@ public sealed class GetOrHeadActionShouldNotBindRequestBody : SonarDiagnosticAna
     private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapMethods"];
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context) =>
+    protected override void Initialize(SonarAnalysisContext context)
+    {
         context.RegisterNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterNodeAction(AnalyzeMinimalApiParameter, SyntaxKind.Parameter);
+    }
 
     private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context)
     {
@@ -32,6 +36,20 @@ public sealed class GetOrHeadActionShouldNotBindRequestBody : SonarDiagnosticAna
                 context.ReportIssue(Rule, declaration.ParameterList.Parameters[i], httpMethod);
             }
         }
+    }
+
+    private static void AnalyzeMinimalApiParameter(SonarSyntaxNodeReportingContext context)
+    {
+        var parameter = (ParameterSyntax)context.Node;
+        if (context.Model.GetDeclaredSymbol(parameter) is not IParameterSymbol symbol
+            || !symbol.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == FromBodyAttribute)
+            || !GpMinimalApi.TryGetInlineHandler(parameter, context.Model, MinimalApiMapMethods, out _, out var mapInvocation, out var mapMethod, out _)
+            || GpMinimalApi.HttpMethods(mapInvocation, mapMethod, context.Model).FirstOrDefault(x => x is "GET" or "HEAD") is not { } httpMethod)
+        {
+            return;
+        }
+
+        context.ReportIssue(Rule, parameter, httpMethod);
     }
 
     private static string HttpMethod(IMethodSymbol method)

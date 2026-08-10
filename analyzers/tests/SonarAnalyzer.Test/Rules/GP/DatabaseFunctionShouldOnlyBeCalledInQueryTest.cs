@@ -63,7 +63,7 @@ public class DatabaseFunctionShouldOnlyBeCalledInQueryTest
             public class C
             {
                 public bool M(string name) =>
-                    EF.Functions.Like(name, "%foo%"); // Noncompliant {{'Like' is only meaningful inside a query expression translated to SQL - calling it here throws NotSupportedException at runtime.}}
+                    EF.Functions.Like(name, "%foo%"); // Noncompliant {{'Like' is only meaningful inside a query translated by Entity Framework - call it directly inside an inline Queryable lambda.}}
             }
             """)
             .Verify();
@@ -136,17 +136,17 @@ public class DatabaseFunctionShouldOnlyBeCalledInQueryTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DatabaseFunctionShouldOnlyBeCalledInQuery_NoncompliantForDbFunctionAttributeOutsideQuery() =>
+    public void DatabaseFunctionShouldOnlyBeCalledInQuery_CompliantForDbFunctionAttributeOutsideQuery() =>
         builder.AddSnippet(
             Usings + Stubs + """
 
             public class C
             {
                 public bool M() =>
-                    CustomFunctions.IsWeekend(System.DateTime.Now); // Noncompliant {{'IsWeekend' is only meaningful inside a query expression translated to SQL - calling it here throws NotSupportedException at runtime.}}
+                    CustomFunctions.IsWeekend(System.DateTime.Now);
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DatabaseFunctionShouldOnlyBeCalledInQuery_CompliantForDbFunctionAttributeInsideQuery() =>
@@ -162,6 +162,22 @@ public class DatabaseFunctionShouldOnlyBeCalledInQueryTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseFunctionShouldOnlyBeCalledInQuery_NoncompliantInsideStandaloneExpressionTree() =>
+        builder.AddSnippet(
+            Usings + Stubs + """
+
+            public class C
+            {
+                public void M()
+                {
+                    System.Linq.Expressions.Expression<System.Func<Customer, bool>> predicate =
+                        c => EF.Functions.Like(c.Name, "%foo%"); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void DatabaseFunctionShouldOnlyBeCalledInQuery_CompliantForOrdinaryMethodCall() =>

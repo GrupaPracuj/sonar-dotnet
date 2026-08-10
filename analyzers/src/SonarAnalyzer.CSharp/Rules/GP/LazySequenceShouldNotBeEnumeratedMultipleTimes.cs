@@ -38,8 +38,8 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
             return;
         }
 
-        // Sites are collected once, in source order, per symbol - foreach and DescendantNodes() both visit nodes depth-first
-        // in document order, so the first two entries for a symbol are its first two enumerations in the method body.
+        // Sites are collected once, in source order, per symbol. The first site that can execute after an earlier
+        // site is reported; opposite branches of the same if/else are treated as mutually exclusive.
         var enumerationSites = new Dictionary<ISymbol, List<SyntaxNode>>();
         foreach (var node in body.DescendantNodes())
         {
@@ -54,11 +54,32 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
             }
         }
 
-        foreach (var pair in enumerationSites.Where(x => x.Value.Count >= 2).OrderBy(x => x.Value[1].SpanStart))
+        foreach (var pair in enumerationSites.OrderBy(x => x.Value[0].SpanStart))
         {
-            context.ReportIssue(Rule, pair.Value[1], pair.Key.Name);
+            if (FirstRepeatedSite(pair.Value) is { } repeatedSite)
+            {
+                context.ReportIssue(Rule, repeatedSite, pair.Key.Name);
+            }
         }
     }
+
+    private static SyntaxNode FirstRepeatedSite(IReadOnlyList<SyntaxNode> sites)
+    {
+        for (var i = 1; i < sites.Count; i++)
+        {
+            if (sites.Take(i).Any(x => !AreMutuallyExclusive(x, sites[i])))
+            {
+                return sites[i];
+            }
+        }
+        return null;
+    }
+
+    private static bool AreMutuallyExclusive(SyntaxNode first, SyntaxNode second) =>
+        first.Ancestors().OfType<IfStatementSyntax>().Any(ifStatement =>
+            ifStatement.Else is not null
+            && ((ifStatement.Statement.Span.Contains(first.Span) && ifStatement.Else.Statement.Span.Contains(second.Span))
+                || (ifStatement.Statement.Span.Contains(second.Span) && ifStatement.Else.Statement.Span.Contains(first.Span))));
 
     // Local variables and parameters whose DECLARED type is exactly IEnumerable<T> or IQueryable<T>. A concrete collection such as
     // List<T> also implements IEnumerable<T>, but its declared type is List<T>, not the interface, so it is not tracked: once

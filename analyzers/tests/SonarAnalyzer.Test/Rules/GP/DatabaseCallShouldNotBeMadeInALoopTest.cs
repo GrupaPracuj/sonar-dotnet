@@ -57,7 +57,7 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
                 {
                     foreach (var id in ids)
                     {
-                        await connection.ExecuteAsync("UPDATE Items SET Touched = 1 WHERE Id = @id", new { id }); // Noncompliant {{This database call runs once per loop iteration - batch the calls or move it outside the loop.}}
+                        await connection.ExecuteAsync("UPDATE Items SET Touched = 1 WHERE Id = @id", new { id }); // Noncompliant {{This database call directly depends on the loop variable and runs once per iteration - batch the calls or move it outside the loop.}}
                     }
                 }
             }
@@ -70,11 +70,11 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
             Stubs + """
             public class Repository
             {
-                public void UpdateAll(IDbCommand command, int count)
+                public void UpdateAll(IDbCommand[] commands)
                 {
-                    for (int i = 0; i < count; i++)
+                    for (int i = 0; i < commands.Length; i++)
                     {
-                        command.ExecuteNonQuery(); // Noncompliant
+                        commands[i].ExecuteNonQuery(); // Noncompliant
                     }
                 }
             }
@@ -82,7 +82,7 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
             .Verify();
 
     [TestMethod]
-    public void DatabaseCallShouldNotBeMadeInALoop_NoncompliantForSaveChangesInWhile() =>
+    public void DatabaseCallShouldNotBeMadeInALoop_CompliantForSaveChangesInWhile() =>
         builder.AddSnippet(
             Stubs + """
             public class Repository
@@ -91,12 +91,72 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
                 {
                     while (ids.MoveNext())
                     {
+                        context.SaveChanges();
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_NoncompliantForPerContextSaveChanges() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Repository
+            {
+                public void SaveAll(IEnumerable<ShopDbContext> contexts)
+                {
+                    foreach (var context in contexts)
+                    {
                         context.SaveChanges(); // Noncompliant
                     }
                 }
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_CompliantForRetryLoop() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Repository
+            {
+                public async Task<int> ExecuteWithRetry(IDbConnection connection, string sql, int maxAttempts)
+                {
+                    for (var attempt = 0; attempt < maxAttempts; attempt++)
+                    {
+                        try
+                        {
+                            return await connection.ExecuteAsync(sql);
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    return 0;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_CompliantForIndirectLoopVariableDependency() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Repository
+            {
+                public async Task UpdateAll(IDbConnection connection, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        var parameters = new { id };
+                        await connection.ExecuteAsync("UPDATE Items SET Touched = 1 WHERE Id = @id", parameters);
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void DatabaseCallShouldNotBeMadeInALoop_CompliantSaveChangesOutsideLoop() =>

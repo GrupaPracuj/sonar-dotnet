@@ -13,6 +13,13 @@ public async Task&lt;Order&gt; Get(int id) =&gt;
 </pre>
 <p>A type is treated as an entity only on deterministic signals: membership of a <code>DbSet&lt;T&gt;</code>, EF mapping attributes, or inheritance from
 one of the types explicitly named by the <code>entityBaseTypes</code> parameter. A namespace alone is not evidence that a type is persisted.</p>
+<p>For MVC actions, both strongly typed return declarations and entity payloads passed to the official controller result factories such as
+<code>Ok</code>, <code>Json</code>, <code>Created</code>, <code>Accepted</code>, <code>NotFound</code> and <code>StatusCode</code> are checked.
+This covers actions declared as <code>IActionResult</code> without treating same-named application methods as framework results.</p>
+<p>For Minimal APIs, the rule checks only inline handlers registered by the official <code>MapGet</code>, <code>MapPost</code>, <code>MapPut</code>,
+<code>MapPatch</code> and <code>MapDelete</code> extensions. It reports an entity passed directly to official
+<code>Results.Ok</code>, <code>TypedResults.Ok</code>, <code>Results.Json</code> or <code>TypedResults.Json</code>, including entity collections and
+<code>IQueryable</code> payloads. It does not infer arbitrary direct returns, follow named handlers, or inspect nested lambdas and local functions.</p>
 <h2>How to fix it</h2>
 <p>Return a response contract and map the entity onto it, choosing explicitly what the API exposes.</p>
 <h3>Code examples</h3>

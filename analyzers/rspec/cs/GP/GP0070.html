@@ -28,7 +28,7 @@ which makes validation, compatibility handling, and domain constraints explicit 
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 [Flags]
-public enum NotificationChannels // Noncompliant {{'NotificationChannels' is a flags enum exposed by a contract; model the selected values explicitly.}}
+public enum NotificationChannels // Noncompliant {{'NotificationChannels' is a flags enum exposed by a contract - a combined value carries bits a consumer may not recognise, and it cannot report that.}}
 {
     None = 0,
     Email = 1,

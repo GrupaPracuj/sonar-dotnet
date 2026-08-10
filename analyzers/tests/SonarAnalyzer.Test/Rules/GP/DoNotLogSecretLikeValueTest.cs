@@ -126,4 +126,58 @@ public class DoNotLogSecretLikeValueTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_CompliantForCancellationToken() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+            using System.Threading;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogDebug(this ILogger logger, string message, params object[] args) { }
+                }
+            }
+
+            public class Worker
+            {
+                private readonly ILogger _logger;
+
+                public void Stop(CancellationToken cancellationToken) =>
+                    _logger.LogDebug("Stopped: {CancellationToken}", cancellationToken);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_AssociatesPlaceholderWithItsArgument() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+            using System.Threading;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogDebug(this ILogger logger, string message, params object[] args) { }
+                }
+            }
+
+            public class Worker
+            {
+                private readonly ILogger _logger;
+
+                public void Stop(string userId, CancellationToken cancellationToken) =>
+                    _logger.LogDebug("User {UserId}, token {Token}", userId, cancellationToken);
+            }
+            """)
+            .VerifyNoIssues();
 }

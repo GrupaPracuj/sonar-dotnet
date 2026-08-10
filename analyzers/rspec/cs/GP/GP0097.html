@@ -1,4 +1,4 @@
-<p>A database call should not be made inside a <code>for</code>, <code>foreach</code>, <code>while</code> or <code>do</code> loop.</p>
+<p>A database call should not be made once for every element of a loop.</p>
 <h2>Why is this an issue?</h2>
 <p>Executing a query or command once per loop iteration - the classic "N+1" pattern - turns what could be a single round-trip to the database into
 <em>N</em> of them. Each round-trip pays for network latency and connection/command overhead on top of the query itself, so the total cost scales
@@ -25,7 +25,7 @@ async Task UpdateStock(IDbConnection connection, IEnumerable&lt;(int ProductId, 
 {
     foreach (var change in changes)
     {
-        await connection.ExecuteAsync( // Noncompliant {{This database call runs once per loop iteration - batch the calls or move it outside the loop.}}
+        await connection.ExecuteAsync( // Noncompliant {{This database call directly depends on the loop variable and runs once per iteration - batch the calls or move it outside the loop.}}
             "UPDATE Products SET Stock = Stock - @Quantity WHERE Id = @ProductId", change);
     }
 }
@@ -39,17 +39,16 @@ async Task UpdateStock(SqlConnection connection, IEnumerable&lt;StockChange&gt; 
         commandType: CommandType.StoredProcedure);
 </pre>
 <h3>Exceptions</h3>
-<p>Only a call that executes directly and synchronously inside the loop body is reported. A call made from a nested lambda, local function, or
-LINQ query clause - even one invoked from within the loop - is not reported, since it may run once, be deferred, or run on a different schedule
-than the loop itself.</p>
+<p>Only a direct call whose receiver or arguments reference a variable declared by the enclosing loop is reported. This is a deliberately narrow
+signal that the command changes for each element. Retry loops and calls such as <code>context.SaveChanges()</code> that do not directly reference
+the iteration variable are not reported. A call on the iteration variable itself, such as iterating over multiple contexts, is reported.</p>
+<p>A call made from a nested lambda, local function, or LINQ query clause is not attributed to the outer loop. Indirect dependencies through a
+temporary variable are also not followed; these limitations favor fewer false positives over complete detection.</p>
 <p>The rule is intentionally limited to <code>IDbConnection</code>/<code>IDbCommand</code>/<code>IDbTransaction</code> execute methods (which also
 covers Dapper, since its <code>Query</code>/<code>Execute</code> methods are extension methods on those interfaces) and to
 <code>DbContext.SaveChanges</code>/<code>SaveChangesAsync</code>. It does not flag an Entity Framework LINQ query
 (<code>context.Set&lt;T&gt;().FirstOrDefault(...)</code> and similar) executed inside a loop, since telling such a query apart from an equally common
 and legitimate lookup on an already-small, filtered sequence would require more context than a purely syntactic check can reliably obtain.</p>
-<p>This rule does not distinguish a genuine per-item call from a bounded retry loop that repeats the same call after a failure. Such a loop still
-makes a database call once per iteration, so it is reported like any other; if it is a deliberate retry, treat the finding as a false positive
-rather than restructuring it.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

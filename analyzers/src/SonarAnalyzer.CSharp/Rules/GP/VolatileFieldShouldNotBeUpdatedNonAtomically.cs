@@ -65,16 +65,45 @@ public sealed class VolatileFieldShouldNotBeUpdatedNonAtomically : SonarDiagnost
 
         // A compound assignment always reads the field first. A simple assignment only does when the field appears
         // on the right-hand side - "_shouldStop = true" is the atomic write volatile actually guarantees.
-        if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) || ReadsField(context.Model, assignment.Right, field))
+        if (!assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) || ReadsField(context.Model, assignment.Left, assignment.Right, field))
         {
             context.ReportIssue(Rule, assignment, field.Name);
         }
     }
 
-    private static bool ReadsField(SemanticModel model, ExpressionSyntax expression, IFieldSymbol field) =>
-        expression.DescendantNodesAndSelf()
+    private static bool ReadsField(SemanticModel model, ExpressionSyntax target, ExpressionSyntax value, IFieldSymbol field) =>
+        value.DescendantNodesAndSelf()
             .OfType<ExpressionSyntax>()
-            .Any(x => model.GetSymbolInfo(x).Symbol is IFieldSymbol other && other.Name == field.Name && other.IsVolatile);
+            .Where(x => x is not IdentifierNameSyntax { Parent: MemberAccessExpressionSyntax memberAccess } || memberAccess.Name != x)
+            .Any(x => model.GetSymbolInfo(x).Symbol is IFieldSymbol other
+                      && other.Equals(field)
+                      && SameReceiver(model, target, x, field));
+
+    private static bool SameReceiver(SemanticModel model, ExpressionSyntax left, ExpressionSyntax right, IFieldSymbol field)
+    {
+        if (field.IsStatic)
+        {
+            return true;
+        }
+
+        var leftReceiver = Receiver(left);
+        var rightReceiver = Receiver(right);
+        if (IsCurrentInstance(leftReceiver) && IsCurrentInstance(rightReceiver))
+        {
+            return true;
+        }
+
+        return leftReceiver is not null
+            && rightReceiver is not null
+            && model.GetSymbolInfo(leftReceiver).Symbol is ILocalSymbol or IParameterSymbol
+            && model.GetSymbolInfo(leftReceiver).Symbol.Equals(model.GetSymbolInfo(rightReceiver).Symbol);
+    }
+
+    private static ExpressionSyntax Receiver(ExpressionSyntax expression) =>
+        expression is MemberAccessExpressionSyntax memberAccess ? memberAccess.Expression : null;
+
+    private static bool IsCurrentInstance(ExpressionSyntax receiver) =>
+        receiver is null or ThisExpressionSyntax or BaseExpressionSyntax;
 
     private static IFieldSymbol VolatileField(SemanticModel model, ExpressionSyntax expression) =>
         expression is not null && model.GetSymbolInfo(expression).Symbol is IFieldSymbol { IsVolatile: true } field

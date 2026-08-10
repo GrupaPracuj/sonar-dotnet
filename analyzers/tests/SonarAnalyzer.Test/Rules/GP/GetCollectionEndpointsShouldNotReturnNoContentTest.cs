@@ -8,6 +8,47 @@ public class GetCollectionEndpointsShouldNotReturnNoContentTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.GetCollectionEndpointsShouldNotReturnNoContent>()
         .AddReferences(MetadataReferenceFacade.SystemThreadingTasks);
 
+    private const string MinimalApiStubs =
+        """
+        global using Microsoft.AspNetCore.Builder;
+
+        namespace Microsoft.AspNetCore.Routing
+        {
+            public interface IEndpointRouteBuilder { }
+        }
+
+        namespace Microsoft.AspNetCore.Builder
+        {
+            public sealed class RouteHandlerBuilder { }
+
+            public static class EndpointRouteBuilderExtensions
+            {
+                public static RouteHandlerBuilder MapGet<T>(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Func<T> handler) => null;
+            }
+        }
+
+        namespace Microsoft.AspNetCore.Http
+        {
+            public interface IResult { }
+
+            public static class Results
+            {
+                public static IResult NoContent() => null;
+                public static IResult StatusCode(int statusCode) => null;
+                public static IResult Ok<T>(T value) => null;
+            }
+
+            public static class TypedResults
+            {
+                public static IResult NoContent() => null;
+                public static IResult Ok<T>(T value) => null;
+            }
+        }
+        """;
+
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNoContent_NoncompliantForNoContent() =>
         builder.AddSnippet(
@@ -339,6 +380,143 @@ public class GetCollectionEndpointsShouldNotReturnNoContentTest
                 }
             }
             """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_NoncompliantForMinimalApiResultsBlockLambda() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
+                    app.MapGet("/customers/{customerId}/users", () =>
+                    {
+                        if (empty)
+                        {
+                            return Microsoft.AspNetCore.Http.Results.NoContent(); // Noncompliant
+                        }
+
+                        return Microsoft.AspNetCore.Http.Results.Ok(new System.Collections.Generic.List<string>());
+                    });
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .Verify();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_NoncompliantForMinimalApiTypedResultsExpressionLambda() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
+                    app.MapGet("/users", () => empty
+                        ? Microsoft.AspNetCore.Http.TypedResults.NoContent() // Noncompliant
+                        : Microsoft.AspNetCore.Http.TypedResults.Ok(new string[0]));
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .Verify();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_NoncompliantForMinimalApiStatusCode204() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
+                    app.MapGet("/users", () => empty
+                        ? Microsoft.AspNetCore.Http.Results.StatusCode(204) // Noncompliant
+                        : Microsoft.AspNetCore.Http.Results.Ok(new string[0]));
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .Verify();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForMinimalApiReturningSingleObject() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public sealed class User { }
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
+                    app.MapGet("/users/{id}", () => empty
+                        ? Microsoft.AspNetCore.Http.Results.NoContent()
+                        : Microsoft.AspNetCore.Http.Results.Ok(new User()));
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForLookalikeMapGet() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public sealed class CustomApp
+            {
+                public void MapGet<T>(string pattern, System.Func<T> handler) { }
+            }
+
+            public static class Endpoints
+            {
+                public static void Map(CustomApp app, bool empty) =>
+                    app.MapGet("/users", () => empty
+                        ? Microsoft.AspNetCore.Http.Results.NoContent()
+                        : Microsoft.AspNetCore.Http.Results.Ok(new string[0]));
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForNamedMethodHandler() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users", Handle);
+
+                private static Microsoft.AspNetCore.Http.IResult Handle()
+                {
+                    if (System.DateTime.Now.Ticks == 0)
+                    {
+                        return Microsoft.AspNetCore.Http.Results.NoContent();
+                    }
+
+                    return Microsoft.AspNetCore.Http.Results.Ok(new string[0]);
+                }
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForNestedFunctions() =>
+        builder.AddSnippet(
+            MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users", () =>
+                    {
+                        Microsoft.AspNetCore.Http.IResult Local() => Microsoft.AspNetCore.Http.Results.NoContent();
+                        System.Func<Microsoft.AspNetCore.Http.IResult> nested =
+                            () => Microsoft.AspNetCore.Http.TypedResults.NoContent();
+                        return Microsoft.AspNetCore.Http.Results.Ok(new string[0]);
+                    });
+            }
+            """)
+            .WithOptions(LanguageOptions.CSharpLatest)
             .VerifyNoIssues();
 
     [TestMethod]

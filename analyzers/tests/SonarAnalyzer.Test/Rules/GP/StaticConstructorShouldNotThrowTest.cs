@@ -38,6 +38,32 @@ public class StaticConstructorShouldNotThrowTest
             .Verify();
 
     [TestMethod]
+    public void StaticConstructorShouldNotThrow_NoncompliantForStaticFieldInitializerThrowExpression() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                private static readonly string ConnectionString =
+                    System.Environment.GetEnvironmentVariable("CONNECTION_STRING")
+                    ?? throw new System.InvalidOperationException(); // Noncompliant@-2 {{Static constructors should not throw - it permanently poisons 'ConfigurationCache' for the rest of the process.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_NoncompliantForStaticPropertyInitializerThrowExpression() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                public static string ConnectionString { get; } =
+                    System.Environment.GetEnvironmentVariable("CONNECTION_STRING")
+                    ?? throw new System.InvalidOperationException(); // Noncompliant@-2 {{Static constructors should not throw - it permanently poisons 'ConfigurationCache' for the rest of the process.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void StaticConstructorShouldNotThrow_CompliantWhenNoThrow() =>
         builder.AddSnippet(
             """
@@ -79,6 +105,93 @@ public class StaticConstructorShouldNotThrowTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_CompliantWhenRethrowIsCaughtByEnclosingCatchAll() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                static ConfigurationCache()
+                {
+                    try
+                    {
+                        try
+                        {
+                            Initialize();
+                        }
+                        catch (System.InvalidOperationException)
+                        {
+                            throw;
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                private static void Initialize() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_CompliantWhenRethrowIsCaughtByEnclosingExceptionCatch() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                static ConfigurationCache()
+                {
+                    try
+                    {
+                        try
+                        {
+                            Initialize();
+                        }
+                        catch (System.InvalidOperationException)
+                        {
+                            throw;
+                        }
+                    }
+                    catch (System.Exception)
+                    {
+                    }
+                }
+
+                private static void Initialize() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_NoncompliantWhenRethrowHasNoEnclosingCatchAll() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                static ConfigurationCache() // Noncompliant
+                {
+                    try
+                    {
+                        try
+                        {
+                            Initialize();
+                        }
+                        catch (System.InvalidOperationException)
+                        {
+                            throw;
+                        }
+                    }
+                    catch (System.ArgumentException)
+                    {
+                    }
+                }
+
+                private static void Initialize() { }
+            }
+            """)
+            .Verify();
+
     // A throw inside a lambda assigned to a field runs later, if and when the delegate is invoked - not
     // synchronously as part of type initialization - so it does not poison the type.
     [TestMethod]
@@ -93,6 +206,18 @@ public class StaticConstructorShouldNotThrowTest
                 {
                     FailLater = () => throw new System.InvalidOperationException();
                 }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void StaticConstructorShouldNotThrow_CompliantWhenInitializerThrowIsInsideLambda() =>
+        builder.AddSnippet(
+            """
+            public class ConfigurationCache
+            {
+                private static readonly System.Func<string> ReadLater =
+                    () => throw new System.InvalidOperationException();
             }
             """)
             .VerifyNoIssues();

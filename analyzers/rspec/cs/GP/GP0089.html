@@ -23,9 +23,9 @@ using var connection = new SqlConnection();
 connection.ConnectionString = BuildConnectionString();
 </pre>
 <h3>Exceptions</h3>
-<p>Only initializers where at least one assigned value carries a realistic risk of throwing are reported: a method or property call, a member access
-chain, a cast, or an arithmetic expression. An initializer where every assigned value is a literal or a bare identifier/parameter reference is not
-reported, since there is nothing there that can realistically throw.</p>
+<p>An initializer is reported when an assigned value carries a realistic risk of throwing, or when an assignment invokes a property setter that is
+not provably a source auto-property setter. Assignments of literals or bare identifier/parameter references to fields and source auto-properties are
+not reported. Setters from referenced assemblies and explicit setter bodies remain in scope because their behavior cannot be proven harmless.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

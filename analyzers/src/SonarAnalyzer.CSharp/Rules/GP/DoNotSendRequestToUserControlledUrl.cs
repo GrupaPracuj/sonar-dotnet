@@ -26,6 +26,15 @@ public sealed class DoNotSendRequestToUserControlledUrl : SonarDiagnosticAnalyze
         "requestUri",
         "requestUriString",
     };
+    private static readonly HashSet<string> MinimalApiMapMethods = new(StringComparer.Ordinal)
+    {
+        "MapGet",
+        "MapPost",
+        "MapPut",
+        "MapPatch",
+        "MapDelete",
+        "MapMethods",
+    };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -39,12 +48,26 @@ public sealed class DoNotSendRequestToUserControlledUrl : SonarDiagnosticAnalyze
             || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !IsRequestSendingCall(method)
             || UrlExpression(context.Model, invocation, method) is not { } urlExpression
-            || GpUrlExpressionHelper.ActionParameterSteeringDestination(context.Model, urlExpression) is not { } parameterName)
+            || RequestParameterName(context.Model, invocation, urlExpression) is not { } parameterName)
         {
             return;
         }
 
         context.ReportIssue(Rule, urlExpression, parameterName);
+    }
+
+    private static string RequestParameterName(SemanticModel model,
+                                               InvocationExpressionSyntax invocation,
+                                               ExpressionSyntax urlExpression)
+    {
+        if (GpUrlExpressionHelper.ActionParameterSteeringDestination(model, urlExpression) is { } actionParameter)
+        {
+            return actionParameter;
+        }
+
+        return GpMinimalApi.TryGetInlineHandler(invocation, model, MinimalApiMapMethods, out var handler, out _, out _, out _)
+            ? GpUrlExpressionHelper.InlineHandlerParameterSteeringDestination(model, urlExpression, handler)
+            : null;
     }
 
     private static bool IsRequestSendingCall(IMethodSymbol method) =>
@@ -63,7 +86,7 @@ public sealed class DoNotSendRequestToUserControlledUrl : SonarDiagnosticAnalyze
         }
 
         var request = lookup.GetAllArgumentParameterMappings()
-            .FirstOrDefault(x => method.Name == "SendAsync" && x.Symbol.Type.ToDisplayString() == HttpRequestMessage);
+            .FirstOrDefault(x => method.Name is "Send" or "SendAsync" && x.Symbol.Type.ToDisplayString() == HttpRequestMessage);
         return request.Node is null ? null : RequestUriExpression(model, request.Node.Expression);
     }
 

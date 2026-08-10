@@ -100,8 +100,7 @@ public sealed class ContractShouldStayWithinComplexityLimits : ParametrizedDiagn
         var deepest = 0;
         cacheable = true;
         foreach (var nested in GpMessageContracts.DataMembers(type)
-                     .Select(x => ContractType(x.Type))
-                     .Where(x => x is not null)
+                     .SelectMany(x => ContractTypes(x.Type))
                      .GroupBy(x => x.ToDisplayString(), StringComparer.Ordinal)
                      .Select(x => x.First()))
         {
@@ -119,19 +118,35 @@ public sealed class ContractShouldStayWithinComplexityLimits : ParametrizedDiagn
         return deepest;
     }
 
-    private static INamedTypeSymbol ContractType(ITypeSymbol type)
+    private static IEnumerable<INamedTypeSymbol> ContractTypes(ITypeSymbol type)
     {
-        var candidate = type switch
+        if (type is IArrayTypeSymbol array)
         {
-            IArrayTypeSymbol array => array.ElementType,
-            INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } generic => generic.TypeArguments[0],
-            _ => type,
-        };
+            foreach (var nested in ContractTypes(array.ElementType))
+            {
+                yield return nested;
+            }
+            yield break;
+        }
 
-        return candidate is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, SpecialType: SpecialType.None } named
-               && !IsFrameworkType(named)
-            ? named
-            : null;
+        if (type is INamedTypeSymbol { IsGenericType: true } generic
+            && (generic.OriginalDefinition.Is(KnownType.System_Nullable_T) || GpCollectionEndpointHelper.IsCollectionLike(generic)))
+        {
+            foreach (var argument in generic.TypeArguments)
+            {
+                foreach (var nested in ContractTypes(argument))
+                {
+                    yield return nested;
+                }
+            }
+            yield break;
+        }
+
+        if (type is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, SpecialType: SpecialType.None } named
+            && !IsFrameworkType(named))
+        {
+            yield return named;
+        }
     }
 
     private static bool IsFrameworkType(ITypeSymbol type) =>

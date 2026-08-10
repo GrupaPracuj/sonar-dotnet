@@ -36,7 +36,7 @@ public class HttpCallShouldNotBeMadeInALoopTest
                 {
                     foreach (var id in ids)
                     {
-                        await client.GetStringAsync($"/items/{id}"); // Noncompliant {{This HTTP call runs once per loop iteration - batch the requests or move the call outside the loop.}}
+                        await client.GetStringAsync($"/items/{id}"); // Noncompliant {{This HTTP call directly depends on the loop variable and runs once per iteration - batch the requests or move the call outside the loop.}}
                     }
                 }
             }
@@ -61,7 +61,7 @@ public class HttpCallShouldNotBeMadeInALoopTest
             .Verify();
 
     [TestMethod]
-    public void HttpCallShouldNotBeMadeInALoop_NoncompliantInWhile() =>
+    public void HttpCallShouldNotBeMadeInALoop_CompliantInWhileWithoutLoopDeclaredRequestValue() =>
         builder.AddSnippet(
             Stubs + """
             public class Client
@@ -71,18 +71,16 @@ public class HttpCallShouldNotBeMadeInALoopTest
                     var i = 0;
                     while (i < count)
                     {
-                        await client.GetStringAsync($"/items/{i}"); // Noncompliant
+                        await client.GetStringAsync($"/items/{i}");
                         i++;
                     }
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
-    // Retry-with-backoff has the same syntactic shape as N+1: a single call, once per loop iteration. This rule does not
-    // try to tell the two apart - see the rule description's Exceptions section.
     [TestMethod]
-    public void HttpCallShouldNotBeMadeInALoop_NoncompliantForRetryLoop() =>
+    public void HttpCallShouldNotBeMadeInALoop_CompliantForRetryLoop() =>
         builder.AddSnippet(
             Stubs + """
             public class Client
@@ -93,7 +91,7 @@ public class HttpCallShouldNotBeMadeInALoopTest
                     {
                         try
                         {
-                            return await client.GetStringAsync(url); // Noncompliant
+                            return await client.GetStringAsync(url);
                         }
                         catch (Exception)
                         {
@@ -104,7 +102,25 @@ public class HttpCallShouldNotBeMadeInALoopTest
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_CompliantForIndirectLoopVariableDependency() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Client
+            {
+                public async Task GetAll(HttpClient client, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        var url = $"/items/{id}";
+                        await client.GetStringAsync(url);
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void HttpCallShouldNotBeMadeInALoop_CompliantSingleCallOutsideLoop() =>

@@ -1,5 +1,5 @@
 {
-  "title": "Routes should not contain a verb",
+  "title": "Routes should not duplicate HTTP method names",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

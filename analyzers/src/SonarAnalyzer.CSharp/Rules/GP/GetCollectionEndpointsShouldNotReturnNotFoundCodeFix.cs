@@ -6,12 +6,19 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFoundCodeFix : Sonar
     internal const string Title = "Return 200 with an empty collection";
     public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(GetCollectionEndpointsShouldNotReturnNotFound.RuleId);
 
-    protected override Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
+    protected override async Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
     {
         var diagnostic = context.Diagnostics.First();
         if (root.FindNode(diagnostic.Location.SourceSpan) is not InvocationExpressionSyntax invocation)
         {
-            return Task.CompletedTask;
+            return;
+        }
+
+        var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
+        if (model is not null && GpMinimalApi.TryGetResultMethod(model, invocation, out _))
+        {
+            // The empty collection type must match the Minimal API handler's result union, so no universal fix is safe.
+            return;
         }
 
         context.RegisterCodeFix(
@@ -23,7 +30,5 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFoundCodeFix : Sonar
                 return Task.FromResult(context.Document.WithSyntaxRoot(newRoot));
             },
             context.Diagnostics);
-
-        return Task.CompletedTask;
     }
 }

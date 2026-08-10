@@ -32,7 +32,9 @@ if (!User.Identity.IsAuthenticated)
 <p>Either way, the response code tells the client the wrong thing to do next.</p>
 <h3>Exceptions</h3>
 <p>A condition that mixes both kinds of checks, or neither (for example <code>!IsAuthenticated || !IsInRole(...)</code>), is intentionally left
-alone rather than guessed at.</p>
+alone rather than guessed at. Only the branch where the recognized check fails is inspected, and only values directly returned through
+semantically resolved ASP.NET Core MVC or Minimal API response factories are considered. Calls that merely share names such as
+<code>Unauthorized</code> or <code>Forbid</code> are ignored.</p>
 <h2>How to fix it</h2>
 <p>Return <code>Forbid()</code> from a permission check and <code>Unauthorized()</code> from an authentication check.</p>
 <h3>Code examples</h3>

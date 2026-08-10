@@ -19,6 +19,9 @@ such as <code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</cod
 <code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
 name points at, or describes, a secret rather than containing it. For example, <code>ApiKeyId</code>, <code>CredentialReference</code>,
 <code>SecretUri</code> and <code>PasswordLength</code> are not reported.</p>
+<p><code>System.Threading.CancellationToken</code> values are also ignored. Structured-log placeholders are associated positionally with their
+value arguments, so a placeholder such as <code>{Token}</code> does not produce an issue when its corresponding value is a
+<code>CancellationToken</code>.</p>
 <h2>How to fix it</h2>
 <p>Remove the secret from the log call entirely, or replace it with a non-reversible indicator (for example whether a value was present, or its
 length) if that is genuinely useful for diagnostics.</p>

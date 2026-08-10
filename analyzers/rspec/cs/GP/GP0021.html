@@ -21,8 +21,9 @@ catch (InvalidOperationException)
 filter, on general error-handling grounds; reporting those here as well would only put a second issue on the same line. What remains - an empty catch
 of a <em>specific</em> exception type, or one behind a <code>when</code> filter - looks deliberate rather than forgotten, which is exactly why it is
 worth pointing out around an access check.</p>
-<p>Only a <code>catch</code> block with no statements at all is reported, and only when the <code>try</code> block directly calls
-<code>HasClaim</code> or <code>IsInRole</code>.</p>
+<p>The rule checks catches around a <code>try</code> block that directly calls <code>HasClaim</code> or <code>IsInRole</code>. It reports a catch
+that neither logs the caught exception nor always throws, including a catch that silently returns a fallback value or writes the exception through an
+unrecognized output API. An empty unfiltered <code>catch</code> or <code>catch (Exception)</code> is left to S2486 to avoid duplicate issues.</p>
 <h2>How to fix it</h2>
 <p>At minimum, log the exception in the <code>catch</code> block so the failure is visible instead of silent.</p>
 <h3>Code examples</h3>

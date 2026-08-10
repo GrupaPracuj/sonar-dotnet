@@ -19,6 +19,9 @@ public class ReportSender
 <h3>Exceptions</h3>
 <p>A <code>Task.Delay</code> inside a loop is not reported. It is used for far too many legitimate things - polling with backoff, a retry pause, a test
 helper - for the shape alone to mean "this is a scheduled job".</p>
+<p>A timer is reported only when its construction demonstrates that it will repeat: a <code>System.Threading.Timer</code> has a known positive
+period, or a <code>System.Timers.Timer</code> has a known positive interval and is not explicitly configured with
+<code>AutoReset = false</code>. One-shot timers and timers whose period cannot be established from the construction are not reported.</p>
 <h2>How to fix it</h2>
 <p>Register the job through <code>IScheduleJobsRegistry</code>, describing it with a <code>RecurringSchedule</code>, and let Juno decide when and where
 it runs.</p>

@@ -5,7 +5,7 @@ public sealed class DatabaseCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0097";
 
-    private const string MessageFormat = "This database call runs once per loop iteration - batch the calls or move it outside the loop.";
+    private const string MessageFormat = "This database call directly depends on the loop variable and runs once per iteration - batch the calls or move it outside the loop.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -17,7 +17,7 @@ public sealed class DatabaseCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
     private static void Analyze(SonarSyntaxNodeReportingContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (GpLoopCallHelper.IsDirectlyInsideLoop(invocation)
+        if (GpLoopCallHelper.DependsOnDirectLoopVariable(invocation, context.Model)
             && context.Model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
             && GpDbCallHelper.IsDbCall(method))
         {

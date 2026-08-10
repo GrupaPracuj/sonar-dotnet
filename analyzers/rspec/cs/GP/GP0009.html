@@ -5,6 +5,11 @@
 status instead of simply deserializing the response body and checking whether the array is empty. A collection query that legitimately matches zero
 rows is still a successful read - the response contract should stay the same (<code>200</code> with a JSON array) whether that array has items or
 not.</p>
+<p>The rule covers MVC controller actions and inline Minimal API <code>MapGet</code> handlers declared through the official ASP.NET Core mapping
+extensions. For Minimal APIs, it reports <code>Results.NoContent()</code>, <code>TypedResults.NoContent()</code>, and
+<code>Results.StatusCode(204)</code> only when the same inline handler also returns a collection through <code>Results.Ok(...)</code> or
+<code>TypedResults.Ok(...)</code>. Parent-resource route parameters do not suppress the issue. Named method handlers are not followed, and nested
+lambdas or local functions are outside the handler analysis boundary.</p>
 <pre>
 [HttpGet]
 public IActionResult GetUsers() =&gt;
@@ -12,6 +17,8 @@ public IActionResult GetUsers() =&gt;
 </pre>
 <h2>How to fix it</h2>
 <p>Return <code>Ok(...)</code> with an empty collection instead of <code>NoContent()</code>.</p>
+<p>The automatic fix is available for MVC actions only. Minimal API result unions require a collection-specific replacement, so no fix is offered
+for <code>Results</code> or <code>TypedResults</code>.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">

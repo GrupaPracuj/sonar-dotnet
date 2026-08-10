@@ -330,6 +330,105 @@ public class AuthResponseShouldMatchAuthCheckTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_CompliantForWrongResponseInSuccessfulBranch() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Unauthorized() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public interface IPrincipal
+            {
+                bool IsInRole(string role);
+            }
+
+            public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public IPrincipal User { get; }
+
+                public Microsoft.AspNetCore.Mvc.IActionResult DeleteUser()
+                {
+                    if (User.IsInRole("Admin"))
+                    {
+                        return Unauthorized();
+                    }
+
+                    return Forbid();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_CompliantForLookalikeReturnedResponse() =>
+        builder.AddSnippet(
+            """
+            public interface IPrincipal
+            {
+                bool IsInRole(string role);
+            }
+
+            public sealed class ResultFactory
+            {
+                public object Unauthorized() => null;
+            }
+
+            public class Service
+            {
+                public object Execute(IPrincipal user, ResultFactory results)
+                {
+                    if (!user.IsInRole("Admin"))
+                    {
+                        return results.Unauthorized();
+                    }
+
+                    return null;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void AuthResponseShouldMatchAuthCheck_NoncompliantForMinimalApiFailedBranch() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Http
+            {
+                public interface IResult { }
+                public static class Results
+                {
+                    public static IResult Unauthorized() => null;
+                    public static IResult Ok() => null;
+                }
+            }
+
+            public interface IPrincipal
+            {
+                bool HasClaim(string type, string value);
+            }
+
+            public class Endpoint
+            {
+                public Microsoft.AspNetCore.Http.IResult Execute(IPrincipal user)
+                {
+                    if (!user.HasClaim("permission", "users.delete"))
+                    {
+                        return Microsoft.AspNetCore.Http.Results.Unauthorized(); // Noncompliant
+                    }
+
+                    return Microsoft.AspNetCore.Http.Results.Ok();
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void AuthResponseShouldMatchAuthCheck_CodeFix() =>
         builder.WithBasePath("GP")
             .AddPaths("AuthResponseShouldMatchAuthCheck.cs")

@@ -9,7 +9,16 @@ namespace SonarAnalyzer.CSharp.Rules;
 internal static class GpUrlExpressionHelper
 {
     // Returns the name of the enclosing action's parameter that can still steer the destination, or null when none can.
-    internal static string ActionParameterSteeringDestination(SemanticModel model, ExpressionSyntax urlExpression)
+    internal static string ActionParameterSteeringDestination(SemanticModel model, ExpressionSyntax urlExpression) =>
+        ParameterSteeringDestination(urlExpression, x => GpRequestInputHelper.ActionParameterName(model, x));
+
+    internal static string InlineHandlerParameterSteeringDestination(SemanticModel model,
+                                                                     ExpressionSyntax urlExpression,
+                                                                     AnonymousFunctionExpressionSyntax handler) =>
+        ParameterSteeringDestination(urlExpression, x => GpRequestInputHelper.InlineHandlerParameterName(model, x, handler));
+
+    private static string ParameterSteeringDestination(ExpressionSyntax urlExpression,
+                                                       Func<SyntaxNode, string> requestParameterName)
     {
         var literalPrefix = new StringBuilder();
         foreach (var part in Parts(urlExpression))
@@ -18,7 +27,7 @@ internal static class GpUrlExpressionHelper
             {
                 literalPrefix.Append(literal);
             }
-            else if (GpRequestInputHelper.ActionParameterName(model, part.Node) is { } parameterName)
+            else if (requestParameterName(part.Node) is { } parameterName)
             {
                 if (!DestinationIsFixed(literalPrefix.ToString()))
                 {
@@ -32,19 +41,19 @@ internal static class GpUrlExpressionHelper
         return null;
     }
 
-    // The destination stops being caller-controllable once the text so far has moved past the authority into a path.
+    // The destination stops being caller-controllable once the text so far has moved past the authority.
     // A single leading slash is not enough because caller input beginning with slash would form a protocol-relative URL.
     private static bool DestinationIsFixed(string literalPrefix)
     {
         var schemeEnd = literalPrefix.IndexOf("://", StringComparison.Ordinal);
         if (schemeEnd >= 0)
         {
-            return literalPrefix.IndexOf('/', schemeEnd + 3) >= 0;
+            return literalPrefix.IndexOfAny(new[] { '/', '?', '#' }, schemeEnd + 3) >= 0;
         }
 
         if (!literalPrefix.StartsWith("/", StringComparison.Ordinal))
         {
-            return literalPrefix.IndexOf('/') >= 0;
+            return literalPrefix.IndexOfAny(new[] { '/', '?', '#' }) >= 0;
         }
 
         var firstNonSlash = 0;
@@ -54,7 +63,8 @@ internal static class GpUrlExpressionHelper
         }
 
         return (firstNonSlash == 1 && firstNonSlash < literalPrefix.Length)
-               || (firstNonSlash < literalPrefix.Length && literalPrefix.IndexOf('/', firstNonSlash) >= 0);
+               || (firstNonSlash < literalPrefix.Length
+                   && literalPrefix.IndexOfAny(new[] { '/', '?', '#' }, firstNonSlash) >= 0);
     }
 
     // Flattens the expression into the order the pieces appear in the resulting string.

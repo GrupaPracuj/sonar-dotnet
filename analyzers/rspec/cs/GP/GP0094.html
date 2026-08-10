@@ -21,6 +21,10 @@ public IActionResult Search([FromQuery] SearchRequest request) =&gt;
 <h3>Exceptions</h3>
 <p>The rule reports only an explicit ASP.NET <code>FromBodyAttribute</code>. It does not infer binding sources from parameter complexity and deliberately
 does not cover DELETE, whose request-content handling varies between API conventions.</p>
+<p>For Minimal APIs, the rule covers parameters of inline handlers registered with the official <code>MapGet</code> extension and official
+<code>MapMethods</code> registrations whose directly supplied array initializer has a complete element equal to <code>GET</code> or
+<code>HEAD</code>. Constants nested inside conditional or other compound expressions are not treated as method-list elements. Named handlers,
+nested lambdas, indirect method lists and lookalike attributes or mapping APIs are outside this scope.</p>
 <h2>Resources</h2>
 <ul>
   <li>Microsoft Azure Architecture Center - <a href="https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design">Web API design

@@ -26,7 +26,7 @@ internal static class GpLoggingHelper
             _ => [],
         };
 
-    private static IEnumerable<string> ExtractPlaceholderNames(string template)
+    internal static IEnumerable<string> ExtractPlaceholderNames(string template)
     {
         var i = 0;
         while (i < template.Length)

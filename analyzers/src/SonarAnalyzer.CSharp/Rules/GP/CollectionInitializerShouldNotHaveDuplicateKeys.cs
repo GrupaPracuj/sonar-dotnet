@@ -41,7 +41,11 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
                 return;
             }
 
-            ReportDuplicates(context, elements.Select(x => (Compare: FirstOperand(x), Report: (SyntaxNode)x)), DictionaryKeyMessage);
+            ReportDuplicates(
+                context,
+                elements.Select(x => (Compare: FirstOperand(x), Report: (SyntaxNode)x)),
+                DictionaryKeyMessage,
+                UsesOrdinalIgnoreCaseComparer(creation, createdType, context.Model));
         }
         else if (elements.All(x => !IsComplexElement(x)))
         {
@@ -49,7 +53,7 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
                 && context.Model.GetTypeInfo(creation).Type is { } createdType
                 && createdType.DerivesOrImplements(KnownType.System_Collections_Generic_ISet_T))
             {
-                ReportDuplicates(context, elements.Select(x => (Compare: x, Report: (SyntaxNode)x)), CollectionValueMessage);
+                ReportDuplicates(context, elements.Select(x => (Compare: x, Report: (SyntaxNode)x)), CollectionValueMessage, false);
             }
         }
 
@@ -72,7 +76,11 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
     // Only elements whose value is a compile-time constant are ever compared, so two elements that merely look
     // alike (e.g. two different local variables) can never be misidentified as duplicates. Reports once for every
     // element after the first one that shares its constant value with an earlier element.
-    private static void ReportDuplicates(SonarSyntaxNodeReportingContext context, IEnumerable<(ExpressionSyntax Compare, SyntaxNode Report)> elements, string messageFormat)
+    private static void ReportDuplicates(
+        SonarSyntaxNodeReportingContext context,
+        IEnumerable<(ExpressionSyntax Compare, SyntaxNode Report)> elements,
+        string messageFormat,
+        bool ordinalIgnoreCase)
     {
         var seenValues = new List<object>();
         foreach (var (compare, report) in elements)
@@ -83,12 +91,39 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
                 continue;
             }
 
-            if (seenValues.Any(x => Equals(x, constant.Value)))
+            if (seenValues.Any(x => ValuesEqual(x, constant.Value, ordinalIgnoreCase)))
             {
                 context.ReportIssue(Rule, report, string.Format(messageFormat, constant.Value));
             }
 
             seenValues.Add(constant.Value);
         }
+    }
+
+    private static bool ValuesEqual(object first, object second, bool ordinalIgnoreCase) =>
+        ordinalIgnoreCase && first is string firstString && second is string secondString
+            ? string.Equals(firstString, secondString, StringComparison.OrdinalIgnoreCase)
+            : Equals(first, second);
+
+    private static bool UsesOrdinalIgnoreCaseComparer(ExpressionSyntax creation, ITypeSymbol createdType, SemanticModel model)
+    {
+        if (createdType is not INamedTypeSymbol { TypeArguments.Length: 2 } namedType
+            || namedType.TypeArguments[0].SpecialType != SpecialType.System_String
+            || creation is not ObjectCreationExpressionSyntax { ArgumentList: { } argumentList } objectCreation
+            || model.GetSymbolInfo(objectCreation).Symbol is not IMethodSymbol constructor)
+        {
+            return false;
+        }
+
+        var lookup = new CSharpMethodParameterLookup(argumentList, constructor);
+        return argumentList.Arguments.Any(argument =>
+            lookup.TryGetSymbol(argument, out var parameter)
+            && parameter.Name == "comparer"
+            && model.GetSymbolInfo(argument.Expression).Symbol is IPropertySymbol
+            {
+                Name: "OrdinalIgnoreCase",
+                ContainingType: { } containingType,
+            }
+            && containingType.ToDisplayString() == "System.StringComparer");
     }
 }

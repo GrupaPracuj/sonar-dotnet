@@ -9,11 +9,8 @@ public sealed class DoNotScheduleWorkManually : SonarDiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
-    private static readonly HashSet<string> TimerTypes = new(StringComparer.Ordinal)
-    {
-        "System.Threading.Timer",
-        "System.Timers.Timer",
-    };
+    private const string ThreadingTimer = "System.Threading.Timer";
+    private const string TimersTimer = "System.Timers.Timer";
 
     // Third-party schedulers Juno replaces. These simply never match when the library is not referenced.
     private static readonly HashSet<string> SchedulerTypes = new(StringComparer.Ordinal)
@@ -36,10 +33,80 @@ public sealed class DoNotScheduleWorkManually : SonarDiagnosticAnalyzer
     {
         if (ObjectCreationFactory.TryCreate(context.Node, out var creation)
             && creation.TypeSymbol(context.Model) is { } type
-            && TimerTypes.Contains(type.ToDisplayString()))
+            && IsRecurringTimer(creation, type, context.Model))
         {
             context.ReportIssue(Rule, creation.Expression, type.Name);
         }
+    }
+
+    private static bool IsRecurringTimer(IObjectCreation creation, ITypeSymbol type, SemanticModel model) =>
+        type.ToDisplayString() switch
+        {
+            ThreadingTimer => IsRecurringThreadingTimer(creation, model),
+            TimersTimer => IsRecurringTimersTimer(creation, model),
+            _ => false,
+        };
+
+    private static bool IsRecurringThreadingTimer(IObjectCreation creation, SemanticModel model)
+    {
+        if (creation.MethodSymbol(model) is not { } constructor
+            || creation.ArgumentList is not { } argumentList)
+        {
+            return false;
+        }
+
+        var period = new CSharpMethodParameterLookup(argumentList, constructor).GetAllArgumentParameterMappings()
+            .FirstOrDefault(x => x.Symbol.Name == "period");
+        return period.Node is not null && IsKnownPositivePeriod(period.Node.Expression, model);
+    }
+
+    private static bool IsRecurringTimersTimer(IObjectCreation creation, SemanticModel model)
+    {
+        if (creation.InitializerExpressions?
+                .OfType<AssignmentExpressionSyntax>()
+                .Any(x => model.GetSymbolInfo(x.Left).Symbol is IPropertySymbol
+                          {
+                              Name: "AutoReset",
+                              ContainingType: { } containingType,
+                          }
+                          && containingType.ToDisplayString() == TimersTimer
+                          && model.GetConstantValue(x.Right) is { HasValue: true, Value: false }) == true)
+        {
+            return false;
+        }
+
+        if (creation.MethodSymbol(model) is not { } constructor
+            || creation.ArgumentList is not { } argumentList)
+        {
+            return false;
+        }
+
+        var interval = new CSharpMethodParameterLookup(argumentList, constructor).GetAllArgumentParameterMappings()
+            .FirstOrDefault(x => x.Symbol.Name == "interval");
+        return interval.Node is not null
+               && model.GetConstantValue(interval.Node.Expression) is { HasValue: true, Value: IConvertible value }
+               && value.ToDouble(null) > 0;
+    }
+
+    private static bool IsKnownPositivePeriod(ExpressionSyntax expression, SemanticModel model)
+    {
+        if (model.GetConstantValue(expression) is { HasValue: true, Value: IConvertible value })
+        {
+            return value is uint unsigned
+                ? unsigned > 0 && unsigned != uint.MaxValue
+                : value.ToDouble(null) > 0;
+        }
+
+        return expression is InvocationExpressionSyntax invocation
+               && model.GetSymbolInfo(invocation).Symbol is IMethodSymbol
+               {
+                   ContainingType: { } containingType,
+                   Name: "FromTicks" or "FromMilliseconds" or "FromSeconds" or "FromMinutes" or "FromHours" or "FromDays",
+               }
+               && containingType.Is(KnownType.System_TimeSpan)
+               && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } argument
+               && model.GetConstantValue(argument) is { HasValue: true, Value: IConvertible period }
+               && period.ToDouble(null) > 0;
     }
 
     private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)

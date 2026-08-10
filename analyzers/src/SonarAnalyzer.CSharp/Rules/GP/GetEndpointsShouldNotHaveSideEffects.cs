@@ -45,14 +45,17 @@ public sealed class GetEndpointsShouldNotHaveSideEffects : SonarDiagnosticAnalyz
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !IsStateChanging(method)
-            || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol enclosing
-            || !IsHttpGetAction(enclosing))
+            || !IsInGetEndpoint(invocation, context.Model))
         {
             return;
         }
 
         context.ReportIssue(Rule, invocation, method.Name);
     }
+
+    private static bool IsInGetEndpoint(InvocationExpressionSyntax invocation, SemanticModel model) =>
+        (model.GetEnclosingSymbol(invocation.SpanStart) is IMethodSymbol enclosing && IsHttpGetAction(enclosing))
+        || GpMinimalApi.TryGetInlineHandler(invocation, model, "MapGet", out _, out _, out _, out _);
 
     private static bool IsStateChanging(IMethodSymbol method) =>
         (PersistenceMethods.Contains(method.Name) && IsEntityFrameworkTarget(method.ContainingType))
@@ -64,7 +67,10 @@ public sealed class GetEndpointsShouldNotHaveSideEffects : SonarDiagnosticAnalyz
         && (GpJunoTypes.DerivesFrom(type, "Microsoft.EntityFrameworkCore.DbContext")
             || GpJunoTypes.DerivesFrom(type, "System.Data.Entity.DbContext")
             || (type as INamedTypeSymbol)?.ConstructedFrom.Is(KnownType.Microsoft_EntityFrameworkCore_DbSet_TEntity) == true
-            || type.Name is "DbSet" or "EntityFrameworkQueryableExtensions" or "RelationalDatabaseFacadeExtensions");
+            || (type as INamedTypeSymbol)?.OriginalDefinition.ToDisplayString() == "System.Data.Entity.DbSet<TEntity>"
+            || type.ToDisplayString() is "Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions"
+                or "Microsoft.EntityFrameworkCore.RelationalQueryableExtensions"
+                or "Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions");
 
     private static bool IsMessagingTarget(IMethodSymbol method)
     {

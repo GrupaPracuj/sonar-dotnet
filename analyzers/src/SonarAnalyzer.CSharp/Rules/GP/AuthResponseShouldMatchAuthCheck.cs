@@ -9,12 +9,6 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
-    private static readonly HashSet<string> PermissionCheckMethods = new(StringComparer.Ordinal)
-    {
-        "IsInRole",
-        "HasClaim"
-    };
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
@@ -27,69 +21,98 @@ public sealed class AuthResponseShouldMatchAuthCheck : SonarDiagnosticAnalyzer
             return;
         }
 
-        var isPermissionCheck = ContainsPermissionCheck(ifStatement.Condition);
-        var isAuthenticationCheck = ContainsAuthenticationCheck(ifStatement.Condition);
-        if (isPermissionCheck == isAuthenticationCheck)
+        if (!TryGetCheck(ifStatement.Condition, out var checkKind, out var checkPassesWhenTrue))
         {
-            // Neither check recognized, or both (a mixed/ambiguous condition) - do not guess.
             return;
         }
 
-        foreach (var invocation in GetDirectInvocations(ifStatement.Statement).Concat(GetDirectInvocations(ifStatement.Else?.Statement)))
+        var failedBranch = checkPassesWhenTrue ? ifStatement.Else?.Statement : ifStatement.Statement;
+        foreach (var invocation in DirectReturnInvocations(failedBranch))
         {
-            if (isPermissionCheck && IsUnauthorizedResponse(context.Model, invocation))
+            if (checkKind == AuthCheckKind.Permission && IsUnauthorizedResponse(context.Model, invocation))
             {
                 context.ReportIssue(Rule, invocation, "a permission", "403 (Forbid)", "401 (Unauthorized)");
             }
-            else if (isAuthenticationCheck && IsForbiddenResponse(context.Model, invocation))
+            else if (checkKind == AuthCheckKind.Authentication && IsForbiddenResponse(context.Model, invocation))
             {
                 context.ReportIssue(Rule, invocation, "an authentication", "401 (Unauthorized)", "403 (Forbid)");
             }
         }
     }
 
-    private static bool ContainsPermissionCheck(ExpressionSyntax condition) =>
-        condition.DescendantNodesAndSelf()
-            .OfType<InvocationExpressionSyntax>()
-            .Any(x => x.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var name } && PermissionCheckMethods.Contains(name));
-
-    private static bool ContainsAuthenticationCheck(ExpressionSyntax condition) =>
-        condition.DescendantNodesAndSelf()
-            .OfType<MemberAccessExpressionSyntax>()
-            .Any(x => x.Name.Identifier.ValueText == "IsAuthenticated");
-
-    // Stops at a nested/chained if-statement (including an "else if"), which is registered and analyzed on its own -
-    // otherwise a status-code call guarded by an inner condition would be wrongly attributed to this outer one.
-    private static IEnumerable<InvocationExpressionSyntax> GetDirectInvocations(StatementSyntax statement)
+    private static bool TryGetCheck(ExpressionSyntax condition, out AuthCheckKind kind, out bool passesWhenTrue)
     {
-        if (statement is null or IfStatementSyntax)
+        condition = RemoveParentheses(condition);
+        passesWhenTrue = true;
+        if (condition is PrefixUnaryExpressionSyntax { RawKind: (int)SyntaxKind.LogicalNotExpression, Operand: var operand })
         {
-            return Enumerable.Empty<InvocationExpressionSyntax>();
+            condition = RemoveParentheses(operand);
+            passesWhenTrue = false;
         }
 
-        return statement.DescendantNodesAndSelf(x => x is not IfStatementSyntax).OfType<InvocationExpressionSyntax>();
+        if (condition is InvocationExpressionSyntax
+            {
+                Expression: MemberAccessExpressionSyntax { Name.Identifier.ValueText: "IsInRole" or "HasClaim" }
+            })
+        {
+            kind = AuthCheckKind.Permission;
+            return true;
+        }
+
+        if (condition is MemberAccessExpressionSyntax { Name.Identifier.ValueText: "IsAuthenticated" })
+        {
+            kind = AuthCheckKind.Authentication;
+            return true;
+        }
+
+        kind = default;
+        return false;
     }
 
+    private static ExpressionSyntax RemoveParentheses(ExpressionSyntax expression) =>
+        expression is ParenthesizedExpressionSyntax parenthesized ? RemoveParentheses(parenthesized.Expression) : expression;
+
+    private static IEnumerable<InvocationExpressionSyntax> DirectReturnInvocations(StatementSyntax statement) =>
+        statement switch
+        {
+            ReturnStatementSyntax { Expression: InvocationExpressionSyntax invocation } => new[] { invocation },
+            BlockSyntax block => block.Statements
+                .OfType<ReturnStatementSyntax>()
+                .Select(x => x.Expression)
+                .OfType<InvocationExpressionSyntax>(),
+            _ => Enumerable.Empty<InvocationExpressionSyntax>()
+        };
+
     private static bool IsUnauthorizedResponse(SemanticModel model, InvocationExpressionSyntax invocation) =>
-        IsControllerHelperCall(invocation, "Unauthorized") || IsStatusCodeCall(model, invocation, 401);
+        IsResponseMethod(model, invocation, "Unauthorized") || IsStatusCodeCall(model, invocation, 401);
 
     private static bool IsForbiddenResponse(SemanticModel model, InvocationExpressionSyntax invocation) =>
-        IsControllerHelperCall(invocation, "Forbid") || IsStatusCodeCall(model, invocation, 403);
+        IsResponseMethod(model, invocation, "Forbid") || IsStatusCodeCall(model, invocation, 403);
 
-    private static bool IsControllerHelperCall(InvocationExpressionSyntax invocation, string methodName) =>
-        GetInvokedMethodName(invocation) == methodName;
+    private static bool IsResponseMethod(SemanticModel model, InvocationExpressionSyntax invocation, string methodName) =>
+        TryGetResponseMethod(model, invocation, out var method) && method.Name == methodName;
 
     private static bool IsStatusCodeCall(SemanticModel model, InvocationExpressionSyntax invocation, int expectedStatusCode) =>
-        GetInvokedMethodName(invocation) == "StatusCode"
+        TryGetResponseMethod(model, invocation, out var method)
+        && method.Name == "StatusCode"
         && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } codeExpression
         && model.GetConstantValue(codeExpression) is { HasValue: true, Value: int statusCode }
         && statusCode == expectedStatusCode;
 
-    private static string GetInvokedMethodName(InvocationExpressionSyntax invocation) =>
-        invocation.Expression switch
+    private static bool TryGetResponseMethod(SemanticModel model, InvocationExpressionSyntax invocation, out IMethodSymbol method)
+    {
+        if (GpMinimalApi.TryGetResultMethod(model, invocation, out method))
         {
-            IdentifierNameSyntax identifier => identifier.Identifier.ValueText,
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-            _ => string.Empty
-        };
+            return true;
+        }
+
+        method = model.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+        return method?.ContainingType?.ToDisplayString() is "Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller";
+    }
+
+    private enum AuthCheckKind
+    {
+        Authentication,
+        Permission
+    }
 }

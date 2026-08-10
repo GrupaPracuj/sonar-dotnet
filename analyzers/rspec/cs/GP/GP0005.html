@@ -1,20 +1,15 @@
-<p>GP authorization code should avoid negating a claim-existence check such as <code>!user.HasClaim(...)</code>.</p>
+<p>Missing a required claim should never cause access to be granted.</p>
 <h2>Why is this an issue?</h2>
-<p><code>HasClaim(...)</code> (and its <code>GP.Juno</code> equivalents, e.g. <code>HasUserClaim()</code>) answers the question "does this claim
-exist?". Negating that call to decide whether access is granted mixes the existence check with the access decision in a single condition that reads
-awkwardly ("if the claim does NOT exist, then ...") and is easy to get backwards during a review or a later edit. Making the positive check the
-basis of the decision keeps the intent explicit: check what is required, then branch on the result.</p>
-<p>This is a GP readability and review convention, not evidence of an authorization bypass. Denying access when a required claim is absent is a
-standard pattern, and ASP.NET Core policy-based or resource-based authorization may express that decision differently. This rule only asks GP code
-to make the positive requirement explicit.</p>
+<p><code>HasClaim(...)</code> and its <code>GP.Juno</code> equivalents answer whether the caller has a claim. Returning a successful response when
+that check is false reverses the intended authorization condition and can allow an unauthorized caller to access the operation.</p>
 <pre>
 if (!user.HasClaim("filestore_access"))
 {
-    return Forbid();
+    return Ok();
 }
 </pre>
 <h2>How to fix it</h2>
-<p>Invert the condition so the access decision reads from the positive existence check.</p>
+<p>Deny access when the required claim is absent, or grant access only from the branch where the claim is present.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -22,24 +17,30 @@ public IActionResult DeleteFile(User user)
 {
     if (!user.HasClaim("filestore_access")) // Noncompliant
     {
-        return Forbid();
-    }
-
-    return Ok();
-}
-</pre>
-<h4>Compliant solution</h4>
-<pre data-diff-id="1" data-diff-type="compliant">
-public IActionResult DeleteFile(User user)
-{
-    if (user.HasClaim("filestore_access"))
-    {
         return Ok();
     }
 
     return Forbid();
 }
 </pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public IActionResult DeleteFile(User user)
+{
+    if (!user.HasClaim("filestore_access"))
+    {
+        return Forbid();
+    }
+
+    return Ok();
+}
+</pre>
+<h3>Exceptions</h3>
+<p>The rule only reports direct, unambiguous branch decisions: returning an ASP.NET Core MVC 2xx response or a Minimal API
+<code>Results</code>/<code>TypedResults</code> 2xx response from the branch where the claim is absent. Boolean-returning helper methods, negating
+a claim check for another purpose, and correctly returning <code>Forbid</code> when a claim is absent are not reported. Generic
+<code>HasClaim</code> checks are recognized only on <code>System.Security.Claims.ClaimsPrincipal</code> (or a derived type); unrelated domain
+methods that happen to have the same name are ignored.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

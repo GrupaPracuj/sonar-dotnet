@@ -20,6 +20,8 @@ var statusByCode = new Dictionary&lt;int, string&gt;
 <p>Only elements whose key (or value, for a plain set-style element) is a compile-time constant are ever compared. A key that is a local variable, a
 method call, or any other non-constant expression is never flagged, even if it happens to be equal to another element at run time - there is no way to
 know that without executing the program, so the rule stays silent rather than guessing.</p>
+<p>For string-keyed dictionaries, the rule also honors the directly supplied <code>StringComparer.OrdinalIgnoreCase</code> comparer. Other custom or
+culture-sensitive comparer semantics are not inferred.</p>
 <h2>How to fix it</h2>
 <p>Remove the duplicate, or fix the copy-paste mistake that produced two entries with the same key when two different keys were intended.</p>
 <h3>Code examples</h3>

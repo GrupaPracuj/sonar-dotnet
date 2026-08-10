@@ -1,9 +1,9 @@
 {
   "title": "A lazy sequence should not be enumerated more than once",
-  "type": "BUG",
+  "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "RELIABILITY": "MEDIUM"
+      "MAINTAINABILITY": "MEDIUM"
     },
     "attribute": "EFFICIENT"
   },
@@ -17,7 +17,7 @@
     "linq",
     "performance"
   ],
-  "defaultSeverity": "Major",
+  "defaultSeverity": "Minor",
   "ruleSpecification": "GP-0087",
   "sqKey": "GP0087",
   "scope": "Main",

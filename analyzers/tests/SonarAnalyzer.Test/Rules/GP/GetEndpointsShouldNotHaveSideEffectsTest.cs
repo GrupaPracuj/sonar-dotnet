@@ -38,9 +38,34 @@ public class GetEndpointsShouldNotHaveSideEffectsTest
             }
         }
 
+        namespace MassTransit
+        {
+            public interface IPublishEndpoint
+            {
+                System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+            }
+        }
+
         public class OrderConfirmed { }
 
         public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext { }
+        """;
+
+    private const string MinimalApiStubs =
+        """
+        namespace Microsoft.AspNetCore.Routing
+        {
+            public interface IEndpointRouteBuilder { }
+        }
+
+        namespace Microsoft.AspNetCore.Builder
+        {
+            public static class EndpointRouteBuilderExtensions
+            {
+                public static void MapGet<T>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T> handler) { }
+                public static void MapPost<T>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T> handler) { }
+            }
+        }
         """;
 
     [TestMethod]
@@ -127,6 +152,115 @@ public class GetEndpointsShouldNotHaveSideEffectsTest
                     var names = new System.Collections.Generic.List<string>();
                     names.Add("order");
                     return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_CompliantForEntityFrameworkTypeNameLookalikes() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace Shop
+            {
+                public class DbSet
+                {
+                    public void Add(object value) { }
+                }
+
+                public static class EntityFrameworkQueryableExtensions
+                {
+                    public static void ExecuteDelete() { }
+                }
+
+                public static class RelationalDatabaseFacadeExtensions
+                {
+                    public static void ExecuteUpdate() { }
+                }
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly Shop.DbSet values;
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Get()
+                {
+                    values.Add(new object());
+                    Shop.EntityFrameworkQueryableExtensions.ExecuteDelete();
+                    Shop.RelationalDatabaseFacadeExtensions.ExecuteUpdate();
+                    return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_MinimalApiNoncompliant() =>
+        builder.AddSnippet(
+            Stubs + MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(
+                    Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app,
+                    ShopDbContext context,
+                    MassTransit.IPublishEndpoint publisher)
+                {
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/save", () =>
+                    {
+                        context.SaveChanges(); // Noncompliant
+                        return "saved";
+                    });
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/publish", () =>
+                    {
+                        publisher.Publish(new OrderConfirmed()); // Noncompliant
+                        return "published";
+                    });
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_MinimalApiBoundariesAreCompliant() =>
+        builder.AddSnippet(
+            Stubs + MinimalApiStubs + """
+
+            namespace Custom
+            {
+                public static class Endpoints
+                {
+                    public static void MapGet<T>(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, string pattern, System.Func<T> handler) { }
+                }
+            }
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, ShopDbContext context)
+                {
+                    context.SaveChanges();
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(app, "/save", () =>
+                    {
+                        context.SaveChanges();
+                        return "saved";
+                    });
+                    Custom.Endpoints.MapGet(app, "/custom", () =>
+                    {
+                        context.SaveChanges();
+                        return "saved";
+                    });
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/nested", () =>
+                    {
+                        System.Action nested = () => context.SaveChanges();
+                        return "read";
+                    });
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/local", () =>
+                    {
+                        void Save() => context.SaveChanges();
+                        return "read";
+                    });
                 }
             }
             """)

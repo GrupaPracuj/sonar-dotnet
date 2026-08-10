@@ -31,7 +31,7 @@ zero its name only if zero was never a valid value - otherwise renumbering is it
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract but has no named zero fallback for missing/defaulted data.}}
+public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract but has no zero value named Unknown - a consumer cannot represent a value it does not recognise.}}
 {
     Pending = 1,
     Accepted = 2,

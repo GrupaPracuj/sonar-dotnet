@@ -15,6 +15,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
         namespace MassTransit
         {
             public interface ConsumeContext<T> { }
+            public interface IConsumer { }
         }
         """;
 
@@ -54,6 +55,44 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
                 public System.Collections.Generic.IReadOnlyList<Microsoft.EntityFrameworkCore.DbContext> Contexts { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
             }
             """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForReturnType() =>
+        CreateBuilder()
+            .AddSnippet(
+                Stubs + """
+
+                public sealed class ContractFactory
+                {
+                    public Microsoft.EntityFrameworkCore.DbContext Create() => null; // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                }
+                """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForBaseTypeAndInterface() =>
+        CreateBuilder()
+            .AddSnippet(
+                Stubs + """
+
+                public class PersistedContract : Microsoft.EntityFrameworkCore.DbContext { } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+
+                public class ConsumingContract : MassTransit.IConsumer { } // Noncompliant {{'IConsumer' comes from 'MassTransit', which a contract assembly should not depend on.}}
+                """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForTypeConstraint() =>
+        CreateBuilder()
+            .AddSnippet(
+                Stubs + """
+
+                public sealed class ContractFactory<T>
+                    where T : Microsoft.EntityFrameworkCore.DbContext // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                {
+                }
+                """)
             .Verify();
 
     [TestMethod]

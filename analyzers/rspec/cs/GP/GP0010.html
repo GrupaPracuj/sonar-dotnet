@@ -5,6 +5,14 @@
 is a different situation: the route and the resource (the collection) both exist, there just happen to be no items in it right now. Returning
 <code>404</code> in that case conflates "this endpoint doesn't exist" with "this list is empty" and misleads clients into treating a normal, valid
 response as an error.</p>
+<p>The rule covers MVC controller actions and inline Minimal API <code>MapGet</code> handlers. For Minimal APIs, it reports
+<code>Results.NotFound()</code>, <code>TypedResults.NotFound()</code>, and <code>Results.StatusCode(404)</code> only when the same handler also
+returns a collection through <code>Results.Ok(...)</code> or <code>TypedResults.Ok(...)</code>.</p>
+<p>When the route visibly identifies a parent resource, for example <code>/customers/{customerId}/orders</code>, a 404 can legitimately mean that
+the parent customer does not exist. In that case the rule reports only when the 404 branch explicitly checks that the returned collection is empty,
+such as <code>orders.Count == 0</code>, <code>orders.Length == 0</code>, or <code>!orders.Any()</code>. The checked collection must be the same
+symbol that the endpoint returns through <code>Ok(...)</code>; an emptiness check on a cache or another unrelated collection does not establish
+that the response collection is empty.</p>
 <pre>
 [HttpGet]
 public IActionResult GetUsers() =&gt;

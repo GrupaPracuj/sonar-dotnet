@@ -44,6 +44,10 @@ class is imported or fully qualified.</p>
 than an identity leak.</p>
 <p>The complete set of recognized <code>ClaimTypes</code> members is <code>NameIdentifier</code>, <code>Name</code>, <code>Email</code>,
 <code>MobilePhone</code>, <code>Upn</code>, <code>GivenName</code> and <code>Surname</code>.</p>
+<p>Identity-claim value reads are reported only at recognized authorization decisions: boolean members whose names identify access,
+authorization or permission checks, and the supported GP.Juno alternative-permission predicates. Reading an identity claim for diagnostics,
+auditing or personalization outside those sites is not reported. In a claim predicate, both <code>Type</code> and <code>Value</code> must belong
+to the predicate's own claim parameter; similarly named members on another object do not count.</p>
 <h3>Exceptions</h3>
 <p><code>[Authorize(Policy = "sub")]</code>-style policy names are always reported when the policy name matches one of the recognized identity
 claims, since the attribute alone gives no way to tell whether the policy itself only checks presence or also checks value.</p>

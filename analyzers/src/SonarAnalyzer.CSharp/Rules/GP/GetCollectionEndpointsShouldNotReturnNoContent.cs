@@ -11,8 +11,11 @@ public sealed class GetCollectionEndpointsShouldNotReturnNoContent : SonarDiagno
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context) =>
+    protected override void Initialize(SonarAnalysisContext context)
+    {
         context.RegisterNodeAction(AnalyzeReturnStatement, SyntaxKind.ReturnStatement);
+        context.RegisterNodeAction(AnalyzeMinimalApiResult, SyntaxKind.InvocationExpression);
+    }
 
     private static void AnalyzeReturnStatement(SonarSyntaxNodeReportingContext context)
     {
@@ -26,6 +29,36 @@ public sealed class GetCollectionEndpointsShouldNotReturnNoContent : SonarDiagno
         }
 
         context.ReportIssue(Rule, invocation);
+    }
+
+    private static void AnalyzeMinimalApiResult(SonarSyntaxNodeReportingContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        if (!IsMinimalApiNoContentResponse(context.Model, invocation)
+            || !GpMinimalApi.TryGetInlineHandler(invocation, context.Model, "MapGet", out var handler, out _, out _, out _)
+            || !GpMinimalApi.HandlerReturnsCollection(handler, context.Model))
+        {
+            return;
+        }
+
+        context.ReportIssue(Rule, invocation);
+    }
+
+    private static bool IsMinimalApiNoContentResponse(SemanticModel model, InvocationExpressionSyntax invocation)
+    {
+        if (!GpMinimalApi.TryGetResultMethod(model, invocation, out var method))
+        {
+            return false;
+        }
+
+        if (method.Name == "NoContent")
+        {
+            return true;
+        }
+
+        return method.Name == "StatusCode"
+               && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } code
+               && model.GetConstantValue(code) is { HasValue: true, Value: 204 };
     }
 
     private static bool IsNoContentResponse(SemanticModel model, InvocationExpressionSyntax invocation)

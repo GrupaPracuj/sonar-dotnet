@@ -1,10 +1,12 @@
-<p>A property or field representing a date without a time component should not have <code>Utc</code> in its name.</p>
+<p>A property, field or positional record member representing a date without a time component should not have <code>Utc</code> in its name.</p>
 <h2>Why is this an issue?</h2>
 <p>The <code>Utc</code> suffix is a promise about a time zone - it tells the reader "this value carries a specific point in time, expressed in
 Coordinated Universal Time". A date-only value (<code>DateOnly</code>, or the shared <code>GP.Juno.Dates.LocalDate</code>) has no time-of-day and
 therefore no time zone to speak of. Naming it <code>ExpirationDateUtc</code> raises a question the type can't answer: was this truncated from a UTC
 instant, and if so, at which moment of that day? Dropping the suffix removes the false promise and matches the convention that a name only carries
 <code>Utc</code> when the value genuinely is a UTC point in time.</p>
+<p>The same applies to <code>NodaTime.LocalDate</code> and to positional record parameters, which declare public members under their parameter
+names.</p>
 <pre>
 public DateOnly ExpirationDateUtc { get; set; }
 </pre>

@@ -12,8 +12,9 @@ public Task&lt;OrderDto&gt; GetOrder(string id, CancellationToken cancellationTo
 <p>Only the immediately enclosing method's own parameters are considered "available" - a token reachable only through a field, a captured variable, or
 an outer method is not.</p>
 <h3>Exceptions</h3>
-<p>A call that already passes some <code>CancellationToken</code> - even a different one, such as <code>CancellationToken.None</code> - is not
-flagged, since that is a conscious choice already visible at the call site.</p>
+<p>A call that passes the immediately enclosing method's own <code>CancellationToken</code> parameter is not reported. Passing
+<code>CancellationToken.None</code>, <code>default(CancellationToken)</code>, or a newly constructed token suppresses cancellation propagation and
+is reported.</p>
 <h2>How to fix it</h2>
 <p>Pass the method's own <code>CancellationToken</code> parameter to the outgoing call.</p>
 <h3>Code examples</h3>

@@ -40,6 +40,66 @@ public class DoNotScheduleWorkManuallyTest
             .Verify();
 
     [TestMethod]
+    public void DoNotScheduleWorkManually_CompliantForOneShotThreadingTimer() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Threading;
+
+            public class TimeoutSignal
+            {
+                private readonly Timer _timer;
+
+                public TimeoutSignal() =>
+                    _timer = new Timer(_ => Signal(), null, TimeSpan.FromSeconds(1), Timeout.InfiniteTimeSpan);
+
+                private void Signal() { }
+            }
+
+            public class UnsignedTimeoutSignal
+            {
+                private readonly Timer _timer;
+
+                public UnsignedTimeoutSignal() =>
+                    _timer = new Timer(_ => Signal(), null, 1000u, uint.MaxValue);
+
+                private void Signal() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotScheduleWorkManually_CompliantForOneShotTimersTimer() =>
+        builder.AddSnippet(
+            """
+            public class TimeoutSignal
+            {
+                private readonly System.Timers.Timer _timer =
+                    new System.Timers.Timer(1000) { AutoReset = false };
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotScheduleWorkManually_CompliantWhenTimerPeriodIsNotKnown() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Threading;
+
+            public class Poller
+            {
+                private readonly Timer _timer;
+
+                public Poller(TimeSpan period) =>
+                    _timer = new Timer(_ => Poll(), null, TimeSpan.Zero, period);
+
+                private void Poll() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotScheduleWorkManually_NoncompliantForHangfire() =>
         builder.AddSnippet(
             """

@@ -5,7 +5,8 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DatabaseTransactionsShouldNotContainExternalNetworkCalls>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DatabaseTransactionsShouldNotContainExternalNetworkCalls>()
+        .AddReferences(MetadataReferenceFacade.SystemNetHttp);
 
     [TestMethod]
     public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantPublishInsideTransactionForUnknownType() =>
@@ -1197,6 +1198,84 @@ public class DatabaseTransactionsShouldNotContainExternalNetworkCallsTest
                         transaction.Commit();
                     }
                 }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantForLookalikeBeginTransaction() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Net.Http;
+            using System.Threading.Tasks;
+
+            public sealed class TraceScope : IDisposable
+            {
+                public void Dispose() { }
+            }
+
+            public sealed class Tracer
+            {
+                public TraceScope BeginTransaction() => new TraceScope();
+            }
+
+            public class Service
+            {
+                private readonly Tracer _tracer = new Tracer();
+                private readonly HttpClient _client = new HttpClient();
+
+                public async Task Execute()
+                {
+                    using (var span = _tracer.BeginTransaction())
+                    {
+                        await _client.GetAsync("https://example.org");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DatabaseTransactionsShouldNotContainExternalNetworkCalls_CompliantForDeferredNestedCallback() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Net.Http;
+            using System.Threading.Tasks;
+            using GP.Juno.Ado;
+
+            namespace GP.Juno.Abstractions.Ado
+            {
+                public interface ITransactional { }
+            }
+
+            namespace GP.Juno.Ado
+            {
+                public static class TransactionalExtensions
+                {
+                    public static Task RunInTransaction(this GP.Juno.Abstractions.Ado.ITransactional transactional, Func<object, Task> callback) =>
+                        callback(null);
+                }
+            }
+
+            public class Service
+            {
+                private readonly GP.Juno.Abstractions.Ado.ITransactional _transactional;
+                private readonly HttpClient _client;
+
+                public Service(GP.Juno.Abstractions.Ado.ITransactional transactional, HttpClient client)
+                {
+                    _transactional = transactional;
+                    _client = client;
+                }
+
+                public Task Execute() =>
+                    _transactional.RunInTransaction(tx =>
+                    {
+                        Func<Task> deferred = () => _client.GetAsync("https://example.org");
+                        return Task.CompletedTask;
+                    });
             }
             """)
             .VerifyNoIssues();

@@ -5,26 +5,227 @@ namespace SonarAnalyzer.Test.Rules.GP;
 [TestClass]
 public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ClaimsAuthorizationShouldNotUseIdentityClaims>();
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ClaimsAuthorizationShouldNotUseIdentityClaims>()
+#if NET
+        .AddReferences(new[] { CoreMetadataReference.SystemSecurityClaims })
+#endif
+        ;
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NegatedHasClaim() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsStatusCode200() =>
         builder.AddSnippet(
             """
-            public class User
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult StatusCode(int statusCode) => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
             {
                 public bool HasClaim(string type) => true;
             }
 
-            public class Access
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public bool HasAccess(User user)
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(User user)
                 {
-                    return !user.HasClaim("filestore_access"); // Noncompliant {{Do not base access decisions on a negated HasClaim check.}}
+                    if (/*!*/!user.HasClaim("filestore_access")/*Noncompliant*/)
+                    {
+                        return StatusCode(200);
+                    }
+
+                    return Forbid();
                 }
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsSuccessfulMvcResponse() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(User user)
+                {
+                    if (/*!*/!user.HasClaim("filestore_access")/*Noncompliant*/)
+                    {
+                        return Ok();
+                    }
+
+                    return Forbid();
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimInElseGrantsAccess() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(User user)
+                {
+                    if (/*!*/user.HasClaim("filestore_access")/*Noncompliant*/)
+                    {
+                        return Forbid();
+                    }
+                    else
+                    {
+                        return Ok();
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimIsDenied() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(User user)
+                {
+                    if (!user.HasClaim("filestore_access"))
+                    {
+                        return Forbid();
+                    }
+
+                    return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NegationWithoutAccessDecision() =>
+        builder.AddSnippet(
+            """
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class Claims
+            {
+                public bool IsMissing(User user) =>
+                    !user.HasClaim("filestore_access");
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsMinimalApiSuccess() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Http
+            {
+                public interface IResult { }
+
+                public static class TypedResults
+                {
+                    public static IResult Ok() => null;
+                    public static IResult Forbid() => null;
+                }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class Endpoint
+            {
+                public Microsoft.AspNetCore.Http.IResult Get(User user)
+                {
+                    if (/*!*/!user.HasClaim("filestore_access")/*Noncompliant*/)
+                    {
+                        return Microsoft.AspNetCore.Http.TypedResults.Ok();
+                    }
+
+                    return Microsoft.AspNetCore.Http.TypedResults.Forbid();
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_LookalikeSuccessMethodIsNotAccessGrant() =>
+        builder.AddSnippet(
+            """
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(string type) => true;
+            }
+
+            public class ResultFactory
+            {
+                public object Ok() => null;
+
+                public object Build(User user)
+                {
+                    if (!user.HasClaim("filestore_access"))
+                    {
+                        return Ok();
+                    }
+
+                    return null;
+                }
+            }
+            """)
+            .VerifyNoIssues();
 
     // HasClaim(string) is an existence check by construction - there is no value to compare, so it is never
     // flagged regardless of claim name.
@@ -37,7 +238,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
                 public const string NameIdentifier = "sub";
             }
 
-            public class User
+            public class User : System.Security.Claims.ClaimsPrincipal
             {
                 public bool HasClaim(string type) => true;
             }
@@ -67,7 +268,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
                 public string Value { get; set; }
             }
 
-            public class User
+            public class User : System.Security.Claims.ClaimsPrincipal
             {
                 public bool HasClaim(Func<Claim, bool> predicate) => true;
             }
@@ -92,7 +293,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
                 public string Value { get; set; }
             }
 
-            public class User
+            public class User : System.Security.Claims.ClaimsPrincipal
             {
                 public bool HasClaim(Func<Claim, bool> predicate) => true;
             }
@@ -104,6 +305,95 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantWhenValueBelongsToAnotherObject() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class Claim
+            {
+                public string Type { get; set; }
+                public string Value { get; set; }
+            }
+
+            public class Other
+            {
+                public string Value { get; set; }
+            }
+
+            public class User : System.Security.Claims.ClaimsPrincipal
+            {
+                public bool HasClaim(Func<Claim, bool> predicate) => true;
+            }
+
+            public class Access
+            {
+                public bool HasAccess(User user, Other other) =>
+                    user.HasClaim(c => c.Type == "sub" && other.Value == "12345");
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForIdentityReadOutsideAuthorizationDecision() =>
+        builder.AddSnippet(
+            """
+            public class Claim
+            {
+                public string Value { get; set; }
+            }
+
+            namespace GP.Juno.Security
+            {
+                public class ClaimsPrincipal
+                {
+                    public Claim FindUserClaim() => null;
+                }
+            }
+
+            public class Audit
+            {
+                public string GetAuditSubject(GP.Juno.Security.ClaimsPrincipal user) =>
+                    user.FindUserClaim().Value;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForLookalikeHasClaimGuard() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
+            public sealed class Shipment
+            {
+                public bool HasClaim(string claim) => false;
+            }
+
+            public class ShipmentsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(Shipment shipment)
+                {
+                    if (!shipment.HasClaim("damage"))
+                    {
+                        return Ok();
+                    }
+
+                    return Forbid();
+                }
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_IdentityClaimInAuthorizePolicy() =>
@@ -269,12 +559,20 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             """)
             .VerifyNoIssues();
 
-    // The GP0005 (negation) half is unaffected by the existence-vs-value distinction - it is still risky to
-    // negate an existence check regardless of whether GP0006 itself fires.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoNegatedHasApplicationClaim() =>
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoMissingApplicationClaimGrantsAccess() =>
         builder.AddSnippet(
             """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public interface IActionResult { }
+                public abstract class ControllerBase
+                {
+                    protected IActionResult Ok() => null;
+                    protected IActionResult Forbid() => null;
+                }
+            }
+
             namespace GP.Juno.Security
             {
                 public class ClaimsPrincipal
@@ -283,10 +581,17 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
                 }
             }
 
-            public class Access
+            public class FilesController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                public bool HasAccess(GP.Juno.Security.ClaimsPrincipal user) =>
-                    !user.HasApplicationClaim(); // Noncompliant {{Do not base access decisions on a negated HasClaim check.}}
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(GP.Juno.Security.ClaimsPrincipal user)
+                {
+                    if (/*!*/!user.HasApplicationClaim()/*Noncompliant*/)
+                    {
+                        return Ok();
+                    }
+
+                    return Forbid();
+                }
             }
             """)
             .Verify();

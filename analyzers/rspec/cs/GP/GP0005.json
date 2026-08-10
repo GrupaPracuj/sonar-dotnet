@@ -1,5 +1,5 @@
 {
-  "title": "Access checks should not rely on negated HasClaim results",
+  "title": "Missing claims should not grant access",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

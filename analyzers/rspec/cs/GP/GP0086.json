@@ -1,5 +1,5 @@
 {
-  "title": "Database-only functions should only be called inside a query expression",
+  "title": "EF.Functions methods should only be called inside inline Queryable lambdas",
   "type": "BUG",
   "code": {
     "impacts": {

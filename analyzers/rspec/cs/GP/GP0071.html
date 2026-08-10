@@ -19,6 +19,13 @@ catch (Exception ex)
 <p>The rule reports <code>Message</code>, <code>StackTrace</code>, <code>Source</code>, <code>InnerException</code> and <code>ToString()</code> on an
 exception, when the value reaches the response - returned from the action, or passed to a method that builds the body. Logging the same value is a different
 concern and is not reported: the log is where it belongs.</p>
+<p>The analysis follows direct expression wrappers that preserve the detail, such as string interpolation, concatenation, conditional expressions and
+anonymous response objects. It does not follow aliases or arbitrary helper calls. This avoids treating derived values such as
+<code>exception.Message.Length</code> as disclosure of the message itself.</p>
+<p>For Minimal APIs, the rule checks direct handler returns and values passed through the supported wrappers to an official
+<code>Results.*</code> or <code>TypedResults.*</code> factory inside an inline official <code>MapGet</code>, <code>MapPost</code>,
+<code>MapPut</code>, <code>MapPatch</code>, <code>MapDelete</code> or <code>MapMethods</code> handler. Aliases, logging, nested lambdas, local
+functions, named handlers and lookalike APIs are outside this scope.</p>
 <h2>How to fix it</h2>
 <p>Log the exception with its detail, and return a response that carries a stable error code and nothing internal - <code>ProblemDetails</code> with a
 type and a title the client can act on. Where a correlation id is available, returning that gives support a way back to the logged exception without exposing

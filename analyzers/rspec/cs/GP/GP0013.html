@@ -1,36 +1,20 @@
-<p>Route paths should use nouns to identify resources, e.g. <code>/orders</code>, not a verb describing an action, e.g. <code>/getOrders</code> or
-<code>/create-order</code>.</p>
+<p>Route paths should not repeat an HTTP method name, e.g. use <code>/orders</code>, not <code>/get-orders</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>In a resource-oriented API, the action is already expressed by the HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>,
-<code>PATCH</code>, <code>DELETE</code>). Repeating it as a verb in the path is redundant, and when the verb in the path disagrees with the actual
+<p>The action is already expressed by the HTTP method (<code>GET</code>, <code>POST</code>, <code>PUT</code>,
+<code>PATCH</code>, <code>DELETE</code>). Repeating that method name in the path is redundant, and when the verb in the path disagrees with the actual
 HTTP method - for example <code>[HttpPost("get-order")]</code> - it actively misleads anyone reading the route about what the endpoint does.</p>
 <pre>
 [HttpGet("get-orders")]
 public void GetAll() { }
 </pre>
 <h3>Checked verbs</h3>
-<p>The fixed, case-insensitive list is:</p>
-<ul>
-  <li>CRUD and HTTP operations: <code>get</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>remove</code>,
-  <code>add</code>, <code>fetch</code>, <code>list</code>, <code>edit</code>, <code>modify</code>, <code>set</code>, <code>retrieve</code>,
-  <code>save</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>insert</code>.</li>
-  <li>Queries: <code>find</code>, <code>search</code>, <code>query</code>, <code>load</code>, <code>read</code>.</li>
-  <li>Validation: <code>verify</code>, <code>check</code>.</li>
-  <li>Workflow: <code>cancel</code>, <code>approve</code>, <code>reject</code>, <code>confirm</code>, <code>activate</code>,
-  <code>deactivate</code>, <code>enable</code>, <code>disable</code>, <code>start</code>, <code>stop</code>, <code>assign</code>,
-  <code>register</code>.</li>
-  <li>Transfer and notification: <code>upload</code>, <code>download</code>, <code>send</code>, <code>submit</code>, <code>notify</code>,
-  <code>sync</code>, <code>refresh</code>.</li>
-  <li>Generic actions: <code>execute</code>, <code>run</code>, <code>perform</code>, <code>process</code>, <code>generate</code>,
-  <code>calculate</code>.</li>
-</ul>
+<p>The fixed, case-insensitive list is <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code> and <code>delete</code>.</p>
 <h3>Exceptions</h3>
 <p>A word that merely starts with the same letters as a verb, without a real word boundary (<code>-</code>, <code>_</code>, or an uppercase letter)
-after it, is not flagged: <code>addresses</code> is compliant even though it starts with <code>add</code>, and so are <code>checks</code>,
-<code>searches</code> and <code>confirmations</code>. <code>validate</code> is also not flagged because validation can be a distinct operation whose
-semantics are not expressed by the HTTP method alone.</p>
+after it, is not flagged. Workflow and custom-operation segments such as <code>cancel</code>, <code>approve</code> and <code>validate-payment</code>
+are also allowed because their semantics cannot be expressed by choosing a different HTTP method.</p>
 <h2>How to fix it</h2>
-<p>Remove the verb from the path and let the HTTP method express the action; keep the path itself a plural noun for the resource.</p>
+<p>Remove the duplicated HTTP method name from the path and let the HTTP method express it.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">

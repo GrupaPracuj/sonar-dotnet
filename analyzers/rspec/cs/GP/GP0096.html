@@ -1,4 +1,4 @@
-<p>An HTTP call should not be made inside a <code>for</code>, <code>foreach</code>, <code>while</code> or <code>do</code> loop.</p>
+<p>An HTTP call should not be made once for every element of a loop.</p>
 <h2>Why is this an issue?</h2>
 <p>Every call through <code>HttpClient</code> (or an <code>HttpMessageInvoker</code>) pays for a full network round-trip: DNS resolution, a TCP/TLS
 handshake or connection reuse, and the latency of the remote server itself - typically tens of milliseconds at best. Making that call once per loop
@@ -29,7 +29,7 @@ async Task&lt;List&lt;Order&gt;&gt; GetOrders(HttpClient client, IEnumerable&lt;
     var orders = new List&lt;Order&gt;();
     foreach (var id in orderIds)
     {
-        var response = await client.GetAsync($"/orders/{id}"); // Noncompliant {{This HTTP call runs once per loop iteration - batch the requests or move the call outside the loop.}}
+        var response = await client.GetAsync($"/orders/{id}"); // Noncompliant {{This HTTP call directly depends on the loop variable and runs once per iteration - batch the requests or move the call outside the loop.}}
         orders.Add(await response.Content.ReadFromJsonAsync&lt;Order&gt;());
     }
     return orders;
@@ -44,12 +44,10 @@ async Task&lt;List&lt;Order&gt;&gt; GetOrders(HttpClient client, IEnumerable&lt;
 }
 </pre>
 <h3>Exceptions</h3>
-<p>Only a call that executes directly and synchronously inside the loop body is reported. A call made from a nested lambda, local function, or
-LINQ query clause - even one invoked from within the loop - is not reported, since it may run once, be deferred, or run on a different schedule
-than the loop itself.</p>
-<p>This rule does not distinguish a genuine per-item call from a bounded retry loop that calls the same endpoint again after a failure (for example,
-a <code>for (attempt = 0; attempt &lt; maxRetries; attempt++)</code> loop around a single request). Such a loop still makes an HTTP call once per
-iteration, so it is reported like any other; if it is a deliberate retry, treat the finding as a false positive rather than restructuring it.</p>
+<p>Only a direct call whose receiver or arguments reference a variable declared by the enclosing loop is reported. This is a deliberately narrow
+signal that the request changes for each element. Retry and polling loops that repeat the same request are not reported.</p>
+<p>A call made from a nested lambda, local function, or LINQ query clause is not attributed to the outer loop. Indirect dependencies through a
+temporary variable are also not followed; these limitations favor fewer false positives over complete detection.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

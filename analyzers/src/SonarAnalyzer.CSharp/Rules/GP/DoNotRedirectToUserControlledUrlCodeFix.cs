@@ -13,15 +13,22 @@ public sealed class DoNotRedirectToUserControlledUrlCodeFix : SonarCodeFix
         ["RedirectPreserveMethod"] = "LocalRedirectPreserveMethod",
         ["RedirectPermanentPreserveMethod"] = "LocalRedirectPermanentPreserveMethod",
     };
-
-    protected override Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
+    protected override async Task RegisterCodeFixesAsync(SyntaxNode root, SonarCodeFixContext context)
     {
         var diagnostic = context.Diagnostics.First();
-        if (root.FindNode(diagnostic.Location.SourceSpan) is not InvocationExpressionSyntax invocation
+        if (diagnostic.Properties.ContainsKey(DoNotRedirectToUserControlledUrl.MinimalApiDiagnosticProperty)
+            || root.FindNode(diagnostic.Location.SourceSpan) is not InvocationExpressionSyntax invocation
             || invocation.Expression is not IdentifierNameSyntax identifier
             || !LocalCounterparts.TryGetValue(identifier.Identifier.ValueText, out var localName))
         {
-            return Task.CompletedTask;
+            return;
+        }
+
+        var model = await context.Document.GetSemanticModelAsync(context.Cancel).ConfigureAwait(false);
+        if (model?.GetSymbolInfo(invocation, context.Cancel).Symbol is not IMethodSymbol method
+            || !DoNotRedirectToUserControlledUrl.IsMvcRedirectMethod(method))
+        {
+            return;
         }
 
         context.RegisterCodeFix(
@@ -33,7 +40,5 @@ public sealed class DoNotRedirectToUserControlledUrlCodeFix : SonarCodeFix
                 return Task.FromResult(context.Document.WithSyntaxRoot(newRoot));
             },
             context.Diagnostics);
-
-        return Task.CompletedTask;
     }
 }

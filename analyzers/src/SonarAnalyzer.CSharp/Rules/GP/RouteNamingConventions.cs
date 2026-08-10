@@ -22,20 +22,7 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
 
     // Ordered longest-first so prefix matching always reports the longest verb that fits, independently of how the
     // collection happens to be laid out in memory.
-    private static readonly string[] VerbSegments = SortedByLengthDescending(
-        // CRUD / HTTP-method-duplicating verbs
-        "get", "create", "update", "delete", "remove", "add", "fetch", "list", "edit", "modify", "set", "retrieve", "save", "post", "put", "patch", "insert",
-        // Retrieval / query verbs
-        "find", "search", "query", "load", "read",
-        // Validation verbs. "validate" is intentionally excluded because validation is often a distinct operation
-        // whose semantics cannot be expressed by an HTTP method alone.
-        "verify", "check",
-        // Lifecycle / workflow action verbs
-        "cancel", "approve", "reject", "confirm", "activate", "deactivate", "enable", "disable", "start", "stop", "assign", "register",
-        // Transfer / notification verbs
-        "upload", "download", "send", "submit", "notify", "sync", "refresh",
-        // Generic action verbs
-        "execute", "run", "perform", "process", "generate", "calculate");
+    private static readonly string[] VerbSegments = SortedByLengthDescending("delete", "patch", "post", "get", "put");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
         ImmutableArray.Create(KebabCaseRule, NoVerbRule, NoTrailingSlashRule, SecretRouteParameterRule);

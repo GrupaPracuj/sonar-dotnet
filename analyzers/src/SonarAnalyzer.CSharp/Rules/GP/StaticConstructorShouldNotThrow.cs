@@ -11,8 +11,12 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context) =>
+    protected override void Initialize(SonarAnalysisContext context)
+    {
         context.RegisterNodeAction(AnalyzeConstructor, SyntaxKind.ConstructorDeclaration);
+        context.RegisterNodeAction(AnalyzeFieldInitializer, SyntaxKind.VariableDeclarator);
+        context.RegisterNodeAction(AnalyzePropertyInitializer, SyntaxKind.PropertyDeclaration);
+    }
 
     private static void AnalyzeConstructor(SonarSyntaxNodeReportingContext context)
     {
@@ -25,6 +29,28 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
         context.ReportIssue(Rule, constructor.Identifier, constructor.Identifier.ValueText);
     }
 
+    private static void AnalyzeFieldInitializer(SonarSyntaxNodeReportingContext context)
+    {
+        var declarator = (VariableDeclaratorSyntax)context.Node;
+        if (declarator.Initializer is { } initializer
+            && context.Model.GetDeclaredSymbol(declarator) is IFieldSymbol { IsStatic: true } field
+            && ContainsUncaughtThrow(context.Model, initializer))
+        {
+            context.ReportIssue(Rule, declarator.Identifier, field.ContainingType.Name);
+        }
+    }
+
+    private static void AnalyzePropertyInitializer(SonarSyntaxNodeReportingContext context)
+    {
+        var property = (PropertyDeclarationSyntax)context.Node;
+        if (property.Initializer is { } initializer
+            && context.Model.GetDeclaredSymbol(property) is IPropertySymbol { IsStatic: true } symbol
+            && ContainsUncaughtThrow(context.Model, initializer))
+        {
+            context.ReportIssue(Rule, property.Identifier, symbol.ContainingType.Name);
+        }
+    }
+
     // A throw that runs synchronously as part of the type initializer - as opposed to one that only fires later,
     // from inside a local function or lambda the static constructor merely declares (e.g. assigns to a field to
     // run on demand) rather than calls right away while the type is being initialized.
@@ -33,11 +59,13 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
     private static bool ThrowsDirectly(SemanticModel model, ConstructorDeclarationSyntax constructor)
     {
         SyntaxNode body = constructor.Body ?? (SyntaxNode)StyleCop.Analyzers.Lightup.BaseMethodDeclarationSyntaxExtensions.ExpressionBody(constructor);
-        return body is not null
-               && body.DescendantNodes(DoesNotBelongToANestedFunction)
-                   .Where(IsThrow)
-                   .Any(x => !IsCaught(model, x));
+        return body is not null && ContainsUncaughtThrow(model, body);
     }
+
+    private static bool ContainsUncaughtThrow(SemanticModel model, SyntaxNode root) =>
+        root.DescendantNodesAndSelf(DoesNotBelongToANestedFunction)
+            .Where(IsThrow)
+            .Any(x => !IsCaught(model, x));
 
     // A throw inside a lambda or local function exits that function, not the static constructor, so it does not
     // run while the type is being initialized and cannot poison the type.
@@ -55,7 +83,12 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
             _ when ThrowExpressionSyntaxWrapper.IsInstance(throwNode) => ((ThrowExpressionSyntaxWrapper)throwNode).Expression,
             _ => null
         };
-        if (thrownExpression is null || model.GetTypeInfo(thrownExpression).Type is not { } thrownType)
+        if (thrownExpression is null)
+        {
+            return IsCaughtByCatchAll(model, throwNode);
+        }
+
+        if (model.GetTypeInfo(thrownExpression).Type is not { } thrownType)
         {
             return false;
         }
@@ -66,6 +99,15 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
             .SelectMany(x => x.Catches)
             .Any(x => x.Filter is null && Catches(model, x, thrownType));
     }
+
+    private static bool IsCaughtByCatchAll(SemanticModel model, SyntaxNode throwNode) =>
+        throwNode.Ancestors()
+            .OfType<TryStatementSyntax>()
+            .Where(x => x.Block.Span.Contains(throwNode.Span))
+            .SelectMany(x => x.Catches)
+            .Any(x => x.Filter is null
+                      && (x.Declaration is null
+                          || model.GetTypeInfo(x.Declaration.Type).Type.Is(KnownType.System_Exception)));
 
     private static bool Catches(SemanticModel model, CatchClauseSyntax catchClause, ITypeSymbol thrownType) =>
         catchClause.Declaration is null

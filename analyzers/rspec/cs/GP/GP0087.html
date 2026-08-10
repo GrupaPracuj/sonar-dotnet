@@ -28,6 +28,9 @@ void Process(DbContext db)
 <code>IQueryable&lt;T&gt;</code> interface. A variable declared as <code>List&lt;T&gt;</code>, an array, or any other concrete collection type is not
 flagged, even though it also implements <code>IEnumerable&lt;T&gt;</code>: once materialized, repeated enumeration is safe and cheap, so the declared
 type is what actually tells you whether re-enumerating is a concern.</p>
+<p>Enumerations in opposite branches of the same <code>if</code>/<code>else</code> are treated as mutually exclusive and do not by themselves produce
+a finding. The rule otherwise uses local syntactic evidence rather than attempting to prove the concrete runtime source or every possible control-flow
+path, so it is classified as a maintainability/performance code smell rather than a guaranteed runtime bug.</p>
 <h2>How to fix it</h2>
 <p>If the value is needed more than once, materialize it a single time - typically with <code>.ToList()</code> or <code>.ToArray()</code> - and reuse
 the materialized collection for every subsequent enumeration. Which one to use depends on how the result is used afterwards, so this rule does not

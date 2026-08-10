@@ -40,6 +40,7 @@ public class DoNotSendRequestToUserControlledUrlTest
                 public string GetStringAsync(string requestUri) => null;
                 public string GetStringAsync(System.Uri requestUri) => null;
                 public string PostAsync(string requestUri, object content) => null;
+                public string Send(HttpRequestMessage request) => null;
                 public string SendAsync(HttpRequestMessage request) => null;
             }
 
@@ -54,6 +55,34 @@ public class DoNotSendRequestToUserControlledUrlTest
             public class WebClient
             {
                 public string DownloadString(string address) => null;
+            }
+
+            public abstract class WebRequest
+            {
+                public static WebRequest Create(string requestUriString) => null;
+            }
+        }
+        """;
+
+    private const string MinimalApiStubs =
+        """
+
+        namespace Microsoft.AspNetCore.Routing
+        {
+            public interface IEndpointRouteBuilder { }
+        }
+
+        namespace Microsoft.AspNetCore.Builder
+        {
+            public static class EndpointRouteBuilderExtensions
+            {
+                public static void MapGet<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T, TResult> handler) { }
+                public static void MapGet<TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<TResult> handler) { }
+                public static void MapPost<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T, TResult> handler) { }
+                public static void MapPut<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T, TResult> handler) { }
+                public static void MapPatch<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T, TResult> handler) { }
+                public static void MapDelete<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, System.Func<T, TResult> handler) { }
+                public static void MapMethods<T, TResult>(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints, string pattern, string[] httpMethods, System.Func<T, TResult> handler) { }
             }
         }
         """;
@@ -114,6 +143,27 @@ public class DoNotSendRequestToUserControlledUrlTest
                     {
                         RequestUri = new System.Uri(imageUrl) // Noncompliant
                     });
+                    return Ok(content);
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_NoncompliantForSynchronousSend() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class PreviewController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient();
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Preview(string imageUrl)
+                {
+                    var content = _client.Send(new System.Net.Http.HttpRequestMessage(
+                        System.Net.Http.HttpMethod.Get,
+                        imageUrl)); // Noncompliant {{Do not send a request to a URL taken from parameter 'imageUrl' - validate the host against an allowlist first.}}
                     return Ok(content);
                 }
             }
@@ -224,6 +274,111 @@ public class DoNotSendRequestToUserControlledUrlTest
                 private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient();
 
                 public string Fetch(string imageUrl) => _client.GetStringAsync(imageUrl);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_MinimalApiNoncompliant() =>
+        builder.AddSnippet(
+            Stubs + MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    var client = new System.Net.Http.HttpClient();
+                    var invoker = new System.Net.Http.HttpMessageInvoker();
+                    var webClient = new System.Net.WebClient();
+
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/get",
+                        (string url) => client.GetStringAsync(url)); // Noncompliant {{Do not send a request to a URL taken from parameter 'url' - validate the host against an allowlist first.}}
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(app, "/post",
+                        (string host) => client.GetStringAsync($"https://{host}/resource")); // Noncompliant
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPut(app, "/put",
+                        (string address) => webClient.DownloadString(address)); // Noncompliant
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPatch(app, "/patch",
+                        (string requestUri) => System.Net.WebRequest.Create(requestUri)); // Noncompliant
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapDelete(app, "/delete",
+                        (string requestUri) => invoker.SendAsync(new System.Net.Http.HttpRequestMessage(
+                            System.Net.Http.HttpMethod.Get, requestUri))); // Noncompliant
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapMethods(app, "/methods", new[] { "GET", "POST" },
+                        (string requestUri) => client.SendAsync(new System.Net.Http.HttpRequestMessage
+                        {
+                            RequestUri = new System.Uri(requestUri) // Noncompliant
+                        }));
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/sync-send",
+                        (string requestUri) => client.Send(new System.Net.Http.HttpRequestMessage(
+                            System.Net.Http.HttpMethod.Get, requestUri))); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_MinimalApiFixedDestinationIsCompliant() =>
+        builder.AddSnippet(
+            Stubs + MinimalApiStubs + """
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    var client = new System.Net.Http.HttpClient();
+
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/concat",
+                        (string id) => client.GetStringAsync("https://images.internal/images/" + id));
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(app, "/interpolation",
+                        (string id) => client.GetStringAsync($"https://images.internal/images/{id}"));
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/query",
+                        (string query) => client.GetStringAsync("https://images.internal?q=" + query));
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/fragment",
+                        (string fragment) => client.GetStringAsync($"https://images.internal#{fragment}"));
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotSendRequestToUserControlledUrl_MinimalApiBoundariesAreCompliant() =>
+        builder.AddSnippet(
+            Stubs + MinimalApiStubs + """
+
+            namespace Custom
+            {
+                public static class Endpoints
+                {
+                    public static void MapGet<T, TResult>(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, string pattern, System.Func<T, TResult> handler) { }
+                }
+            }
+
+            public static class Endpoints
+            {
+                private static readonly System.Net.Http.HttpClient Client = new System.Net.Http.HttpClient();
+
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, string registrationUrl)
+                {
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/nested",
+                        (string url) =>
+                        {
+                            System.Func<string> nested = () => Client.GetStringAsync(url);
+                            return nested();
+                        });
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/local",
+                        (string url) =>
+                        {
+                            string Fetch() => Client.GetStringAsync(url);
+                            return Fetch();
+                        });
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app,
+                        Client.GetStringAsync(registrationUrl),
+                        () => "ok");
+                    Custom.Endpoints.MapGet(app, "/lookalike",
+                        (string url) => Client.GetStringAsync(url));
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet<string, string>(app, "/named", Fetch);
+                }
+
+                private static string Fetch(string url) => Client.GetStringAsync(url);
             }
             """)
             .VerifyNoIssues();

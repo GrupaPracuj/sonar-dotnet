@@ -1,4 +1,5 @@
-<p>A redirect target that arrives as a parameter of a controller action should be checked to be local before it is used.</p>
+<p>A redirect target that arrives as a parameter of a controller action or an inline Minimal API handler should be checked to be local before it is
+used.</p>
 <h2>Why is this an issue?</h2>
 <p>Microsoft's ASP.NET Core guidance describes the problem and the reason it works:</p>
 <blockquote>
@@ -19,10 +20,16 @@ public IActionResult LogOn(string returnUrl)
 }
 </pre>
 <p>This rule reports a parameter of the enclosing controller action passed to <code>Redirect</code> or <code>RedirectPermanent</code> when that
-parameter can still decide the destination, and the enclosing method contains no local-URL check at all. A parameter appended to a path that is already
-fixed in the code, such as <code>Redirect("/orders/" + id)</code>, cannot leave the site and is not reported.</p>
-<p>It does not follow a value through local variables or fields, and it does not verify that an <code>IsLocalUrl</code> check present in the method
-actually guards this particular redirect.</p>
+parameter can still decide the destination. It also covers the official <code>Microsoft.AspNetCore.Http.Results.Redirect</code> and
+<code>TypedResults.Redirect</code> factories inside inline handlers registered with the framework <code>MapGet</code>, <code>MapPost</code>,
+<code>MapPut</code>, <code>MapPatch</code>, <code>MapDelete</code>, or <code>MapMethods</code> methods. A parameter appended to a path that is already
+fixed in the code, such as <code>Redirect("/orders/" + id)</code>, cannot leave the site and is not reported. A single slash is not enough:
+<code>Results.Redirect("/" + destination)</code> can form a protocol-relative URL and is reported.</p>
+<p>Minimal APIs do not expose the MVC <code>IUrlHelper.IsLocalUrl</code> check. The analysis therefore does not guess that a custom method named
+<code>IsLocalUrl</code> or another arbitrary helper is safe. Prefer a fixed local destination, or validate dynamic destinations with an explicit,
+reviewed allowlist before they reach the redirect expression.</p>
+<p>The analysis does not follow values through local variables, fields, named handlers, nested lambdas, local functions, or other methods, and it does
+not treat endpoint registration arguments as handler input.</p>
 <h2>How to fix it</h2>
 <p>Microsoft states the requirement as:</p>
 <blockquote>
@@ -38,6 +45,11 @@ public IActionResult LogOn(string returnUrl)
 {
     return Redirect(returnUrl); // Noncompliant {{Do not redirect to a URL taken from parameter 'returnUrl' - use LocalRedirect or check it with Url.IsLocalUrl first.}}
 }
+</pre>
+<p>Minimal API:</p>
+<pre>
+app.MapGet("/login", (string returnUrl) =>
+    Results.Redirect(returnUrl)); // Noncompliant
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
@@ -58,6 +70,14 @@ public IActionResult LogOn(string returnUrl)
     return RedirectToAction(nameof(HomeController.Index), "Home");
 }
 </pre>
+<p>For an inline Minimal API handler, redirect to a fixed local destination after rejecting a value that is not on a strict allowlist:</p>
+<pre>
+app.MapGet("/login", (string returnUrl) =>
+    AllowedRedirects.TryGetValue(returnUrl, out var localPath)
+        ? Results.Redirect(localPath)
+        : Results.Redirect("/"));
+</pre>
+<p>The <code>LocalRedirect</code> code fix applies only to MVC controller redirects; it is not offered for Minimal API result factories.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

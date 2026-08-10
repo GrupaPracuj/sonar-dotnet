@@ -32,7 +32,15 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
                 return;
             }
 
-            start.RegisterNodeAction(c => AnalyzeType(c, forbidden), SyntaxKind.PropertyDeclaration, SyntaxKind.FieldDeclaration, SyntaxKind.Parameter);
+            start.RegisterNodeAction(
+                c => AnalyzeType(c, forbidden),
+                SyntaxKind.PropertyDeclaration,
+                SyntaxKind.FieldDeclaration,
+                SyntaxKind.Parameter,
+                SyntaxKind.MethodDeclaration,
+                SyntaxKind.DelegateDeclaration,
+                SyntaxKind.SimpleBaseType,
+                SyntaxKind.TypeConstraint);
         });
 
     private bool IsContractAssembly(Compilation compilation)
@@ -61,6 +69,10 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
             PropertyDeclarationSyntax property => property.Type,
             FieldDeclarationSyntax field => field.Declaration.Type,
             ParameterSyntax parameter => parameter.Type,
+            MethodDeclarationSyntax method => method.ReturnType,
+            DelegateDeclarationSyntax @delegate => @delegate.ReturnType,
+            SimpleBaseTypeSyntax baseType => baseType.Type,
+            TypeConstraintSyntax constraint => constraint.Type,
             _ => null,
         };
 

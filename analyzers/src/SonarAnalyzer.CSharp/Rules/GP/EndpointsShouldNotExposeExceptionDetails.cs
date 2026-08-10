@@ -8,6 +8,7 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
     private const string MessageFormat = "Do not put '{0}' in a response - return a ProblemDetails without internal details.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete", "MapMethods"];
 
     private static readonly HashSet<string> ExceptionDetailMembers = new(StringComparer.Ordinal)
     {
@@ -23,6 +24,7 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
     {
         "Ok",
         "BadRequest",
+        "Unauthorized",
         "Content",
         "Json",
         "Problem",
@@ -31,6 +33,12 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
         "Conflict",
         "NotFound",
         "ValidationProblem",
+        "Created",
+        "CreatedAtAction",
+        "CreatedAtRoute",
+        "Accepted",
+        "AcceptedAtAction",
+        "AcceptedAtRoute",
     };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -42,11 +50,11 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
     {
         var memberAccess = (MemberAccessExpressionSyntax)context.Node;
         if (!ExceptionDetailMembers.Contains(memberAccess.Name.Identifier.ValueText)
+            || IsReceiverOfMoreSpecificExceptionDetail(memberAccess)
             || context.Model.GetTypeInfo(memberAccess.Expression).Type is not { } receiver
             || !IsException(receiver)
-            || !FlowsIntoTheResponse(memberAccess, memberAccess)
-            || context.Model.GetEnclosingSymbol(memberAccess.SpanStart) is not IMethodSymbol enclosing
-            || !enclosing.IsControllerActionMethod())
+            || !FlowsIntoControllerResponse(memberAccess, context.Model)
+               && !FlowsDirectlyIntoMinimalApiResponse(memberAccess, context.Model))
         {
             return;
         }
@@ -67,25 +75,77 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
         return false;
     }
 
-    // Only reported when the value actually reaches the response: returned from the action, or passed to a method
-    // that builds the body. Logging the same value is a different concern and is not reported here.
-    private static bool FlowsIntoTheResponse(SyntaxNode node, MemberAccessExpressionSyntax reported)
+    private static bool FlowsIntoControllerResponse(MemberAccessExpressionSyntax memberAccess, SemanticModel model) =>
+        model.GetEnclosingSymbol(memberAccess.SpanStart) is IMethodSymbol enclosing
+        && enclosing.IsControllerActionMethod()
+        && FlowsIntoTheResponse(memberAccess, model, x => IsMvcResponseFactory(x, model), null);
+
+    private static bool FlowsDirectlyIntoMinimalApiResponse(MemberAccessExpressionSyntax memberAccess, SemanticModel model)
     {
-        foreach (var ancestor in node.Ancestors())
+        return GpMinimalApi.TryGetInlineHandler(memberAccess, model, MinimalApiMapMethods, out var handler, out _, out _, out _)
+               && FlowsIntoTheResponse(memberAccess, model, x => GpMinimalApi.TryGetResultMethod(model, x, out _), handler);
+    }
+
+    private static bool IsReceiverOfMoreSpecificExceptionDetail(MemberAccessExpressionSyntax memberAccess) =>
+        memberAccess.Parent is MemberAccessExpressionSyntax { Expression: var expression, Name.Identifier.ValueText: var name }
+        && expression == memberAccess
+        && ExceptionDetailMembers.Contains(name);
+
+    private static bool IsMvcResponseFactory(InvocationExpressionSyntax invocation, SemanticModel model) =>
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+        && ResponseProducingMethods.Contains(method.Name)
+        && method.ContainingType?.ToDisplayString() is "Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller";
+
+    // Follow only syntax that preserves the exposed value. Calls such as Message.ToUpper() and aliases deliberately
+    // stop the walk: recognizing whether arbitrary transformations sanitize the value requires data-flow analysis.
+    private static bool FlowsIntoTheResponse(MemberAccessExpressionSyntax memberAccess,
+                                             SemanticModel model,
+                                             Func<InvocationExpressionSyntax, bool> isResponseFactory,
+                                             AnonymousFunctionExpressionSyntax minimalApiHandler)
+    {
+        SyntaxNode current = memberAccess.Name.Identifier.ValueText == "ToString"
+                             && memberAccess.Parent is InvocationExpressionSyntax { Expression: var expression } toStringInvocation
+                             && expression == memberAccess
+            ? toStringInvocation
+            : memberAccess;
+
+        while (current.Parent is { } parent)
         {
-            switch (ancestor)
+            switch (parent)
             {
+                case ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax invocation } } when isResponseFactory(invocation):
+                    return true;
                 case ReturnStatementSyntax or ArrowExpressionClauseSyntax:
                     return true;
-                // "ex.ToString()" is itself an invocation wrapping the reported member access - it is the value being
-                // passed on, not the call that builds the response, so the walk continues past it.
-                case InvocationExpressionSyntax invocation when invocation.Expression != reported:
-                    return ResponseProducingMethods.Contains(GpCollectionEndpointHelper.GetInvokedMethodName(invocation));
-                case MethodDeclarationSyntax:
-                    return false;
+                case AnonymousFunctionExpressionSyntax handler when handler == minimalApiHandler && handler.Body == current:
+                    return true;
             }
+
+            if (!IsValuePreservingWrapper(parent, current, model))
+            {
+                return false;
+            }
+
+            current = parent;
         }
 
         return false;
     }
+
+    private static bool IsValuePreservingWrapper(SyntaxNode parent, SyntaxNode current, SemanticModel model) =>
+        parent switch
+        {
+            ParenthesizedExpressionSyntax { Expression: var expression } => expression == current,
+            CastExpressionSyntax { Expression: var expression } => expression == current,
+            ConditionalExpressionSyntax conditional => conditional.WhenTrue == current || conditional.WhenFalse == current,
+            BinaryExpressionSyntax binary when binary.Left == current || binary.Right == current =>
+                model.GetTypeInfo(binary).Type?.SpecialType == SpecialType.System_String,
+            InterpolationSyntax { Expression: var expression } => expression == current,
+            InterpolatedStringExpressionSyntax => true,
+            AnonymousObjectMemberDeclaratorSyntax { Expression: var expression } => expression == current,
+            AnonymousObjectCreationExpressionSyntax => true,
+            InitializerExpressionSyntax => true,
+            ArrayCreationExpressionSyntax or ImplicitArrayCreationExpressionSyntax => true,
+            _ => false,
+        };
 }

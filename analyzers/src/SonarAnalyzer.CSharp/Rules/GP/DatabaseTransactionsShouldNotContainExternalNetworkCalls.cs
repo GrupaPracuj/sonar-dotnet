@@ -76,7 +76,7 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
                                                int firstIndex)
     {
         var initializerExpression = variable.Initializer.Value;
-        var isTransactionStart = IsTransactionStartExpression(initializerExpression);
+        var isTransactionStart = IsTransactionStartExpression(context.Model, initializerExpression);
         var isTransactionScope = IsTransactionScopeExpression(context.Model, initializerExpression);
         if (!isTransactionStart && !isTransactionScope)
         {
@@ -152,24 +152,51 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
 
         return callback switch
         {
-            ParenthesizedLambdaExpressionSyntax { Block: { } block } => block.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>(),
-            SimpleLambdaExpressionSyntax { Block: { } block } => block.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>(),
-            ParenthesizedLambdaExpressionSyntax { ExpressionBody: { } expressionBody } => expressionBody.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>(),
-            SimpleLambdaExpressionSyntax { ExpressionBody: { } expressionBody } => expressionBody.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>(),
-            AnonymousMethodExpressionSyntax { Block: { } block } => block.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>(),
+            ParenthesizedLambdaExpressionSyntax { Block: { } block } => CallbackInvocations(block),
+            SimpleLambdaExpressionSyntax { Block: { } block } => CallbackInvocations(block),
+            ParenthesizedLambdaExpressionSyntax { ExpressionBody: { } expressionBody } => CallbackInvocations(expressionBody),
+            SimpleLambdaExpressionSyntax { ExpressionBody: { } expressionBody } => CallbackInvocations(expressionBody),
+            AnonymousMethodExpressionSyntax { Block: { } block } => CallbackInvocations(block),
             _ => Enumerable.Empty<InvocationExpressionSyntax>()
         };
     }
 
-    private static bool IsTransactionStartExpression(ExpressionSyntax expression)
+    private static IEnumerable<InvocationExpressionSyntax> CallbackInvocations(SyntaxNode body) =>
+        body.DescendantNodesAndSelf(DoesNotBelongToANestedFunction).OfType<InvocationExpressionSyntax>();
+
+    private static bool IsTransactionStartExpression(SemanticModel model, ExpressionSyntax expression)
     {
         var invocation = expression is AwaitExpressionSyntax { Expression: InvocationExpressionSyntax awaitedInvocation }
             ? awaitedInvocation
             : expression as InvocationExpressionSyntax;
 
-        return invocation?.Expression is MemberAccessExpressionSyntax memberAccess
-               && TransactionStartMethods.Contains(memberAccess.Name.Identifier.ValueText);
+        if (invocation is null
+            || model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
+            || !TransactionStartMethods.Contains(method.Name))
+        {
+            return false;
+        }
+
+        var transactionType = UnwrapTask(method.ReturnType);
+        if (method.Name == "BeginTransaction")
+        {
+            return GpJunoTypes.Implements(transactionType, "System.Data.IDbTransaction")
+                   || GpJunoTypes.DerivesFrom(transactionType, "System.Data.Common.DbTransaction");
+        }
+
+        var ownerName = method.ContainingType?.Name ?? string.Empty;
+        var namespaceName = method.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        return (ownerName.IndexOf("Transactional", StringComparison.OrdinalIgnoreCase) >= 0
+                || namespaceName.StartsWith("GP.Juno.Ado", StringComparison.Ordinal))
+               && (GpJunoTypes.Implements(transactionType, "System.IDisposable")
+                   || transactionType?.Name.IndexOf("Transaction", StringComparison.OrdinalIgnoreCase) >= 0);
     }
+
+    private static ITypeSymbol UnwrapTask(ITypeSymbol type) =>
+        type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } named
+        && named.OriginalDefinition.IsAny(KnownType.System_Threading_Tasks_Task_T, KnownType.System_Threading_Tasks_ValueTask_TResult)
+            ? named.TypeArguments[0]
+            : type;
 
     private static bool IsTransactionScopeExpression(SemanticModel model, ExpressionSyntax expression) =>
         ObjectCreationFactory.TryCreate(expression, out var creation)

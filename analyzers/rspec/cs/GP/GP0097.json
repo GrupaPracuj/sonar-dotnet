@@ -1,5 +1,5 @@
 {
-  "title": "Database calls should not be made inside a loop",
+  "title": "Database calls should not directly depend on a loop variable",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

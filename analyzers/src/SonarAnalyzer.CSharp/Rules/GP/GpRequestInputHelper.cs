@@ -27,4 +27,30 @@ internal static class GpRequestInputHelper
 
         return null;
     }
+
+    // Returns the name of an inline Minimal API handler parameter read by the expression.
+    internal static string InlineHandlerParameterName(SemanticModel model,
+                                                      SyntaxNode expression,
+                                                      AnonymousFunctionExpressionSyntax handler)
+    {
+        var parameters = handler switch
+        {
+            SimpleLambdaExpressionSyntax simple => new[] { simple.Parameter },
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters,
+            AnonymousMethodExpressionSyntax { ParameterList: { } parameterList } => parameterList.Parameters,
+            _ => Enumerable.Empty<ParameterSyntax>(),
+        };
+        var parameterSymbols = parameters
+            .Select(x => model.GetDeclaredSymbol(x))
+            .OfType<IParameterSymbol>()
+            .ToArray();
+
+        return expression.DescendantNodesAndSelf()
+            .OfType<IdentifierNameSyntax>()
+            .Select(x => model.GetSymbolInfo(x))
+            .Select(x => x.Symbol)
+            .OfType<IParameterSymbol>()
+            .FirstOrDefault(x => parameterSymbols.Any(y => y.Equals(x)))
+            ?.Name;
+    }
 }

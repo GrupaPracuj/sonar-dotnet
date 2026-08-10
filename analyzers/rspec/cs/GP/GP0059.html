@@ -6,7 +6,8 @@ every consumer of the contracts
 inherits that dependency - and inherits the version of it the producer happened to build against. A consumer that only wanted to read a message now has to
 resolve an ORM.</p>
 <p>The rule reports the use of a forbidden type inside a contract assembly rather than the project reference itself, because that points at the code to
-change instead of at the csproj.</p>
+change instead of at the csproj. It checks member and delegate signatures, method return types, base classes, implemented interfaces and generic type
+constraints, including forbidden types nested inside generic arguments.</p>
 <h3>Exceptions</h3>
 <p>The rule only runs when the assembly's exact name or final name segment matches <code>contractAssemblyNames</code>, which defaults to
 <code>Contracts</code> - so <code>Contracts</code> and names ending in <code>.Contracts</code> are checked, while ordinary service projects are never

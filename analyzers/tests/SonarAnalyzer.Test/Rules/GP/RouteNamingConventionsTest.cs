@@ -386,6 +386,42 @@ public class RouteNamingConventionsTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void RouteNamingConventions_CompliantWorkflowActions() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc.Routing
+            {
+                public interface IRouteTemplateProvider
+                {
+                    string Template { get; }
+                    int? Order { get; }
+                    string Name { get; }
+                }
+            }
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpPostAttribute : System.Attribute, Routing.IRouteTemplateProvider
+                {
+                    public HttpPostAttribute(string template) => Template = template;
+                    public string Template { get; }
+                    public int? Order { get; set; }
+                    public string Name { get; set; }
+                }
+            }
+
+            public class OrdersController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost("orders/{id}/cancel")]
+                public void Cancel(int id) { }
+
+                [Microsoft.AspNetCore.Mvc.HttpPost("orders/{id}/approve")]
+                public void Approve(int id) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void RouteNamingConventions_NoncompliantSecretRouteParameter() =>
         builder.AddSnippet(
             """

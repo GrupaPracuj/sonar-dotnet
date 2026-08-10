@@ -18,9 +18,10 @@ public sealed record ServiceRegistered(string ServiceName, string ApiKey);
 <code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
 name points at, or describes, a secret rather than containing it. For example, <code>ApiKeyId</code>, <code>CredentialReference</code>,
 <code>SecretUri</code> and <code>PasswordLength</code> are not reported.</p>
-<p>Only types whose own name ends with one of the contract suffixes are examined, the same convention the other contract rules use, so an internal
-options class that legitimately carries a secret is not reported. Those suffixes are <code>Dto</code>, <code>Request</code>, <code>Response</code>,
-<code>Contract</code>, <code>Event</code>, <code>Command</code> and <code>Message</code>.</p>
+<p>A type is examined only with concrete message-contract evidence: it is used by a GP.Juno or MassTransit publish/send declaration or call, or it is
+declared in an assembly whose exact name or final name segment matches <code>contractAssemblyNames</code>, which defaults to <code>Contracts</code>.
+Names such as <code>Request</code>, <code>Response</code> or <code>Event</code> are not evidence by themselves, so an HTTP
+<code>LoginRequest.Password</code> is not mistaken for a broker payload.</p>
 <h2>How to fix it</h2>
 <p>Do not move the secret. Send a reference the consumer can exchange for the secret through a channel that authenticates it - a secret identifier, a
 key vault path, or a short-lived token requested by the consumer itself.</p>

@@ -46,15 +46,28 @@ public sealed class UsingShouldNotUseThrowingObjectInitializer : SonarDiagnostic
                 {
                     Initializer: { RawKind: (int)SyntaxKind.ObjectInitializerExpression, Expressions.Count: > 0 } initializer
                 } objectCreation
-                && initializer.Expressions.Any(HasRiskyValue))
+                && initializer.Expressions.Any(x => HasRiskyAssignment(x, context.Model)))
             {
                 context.ReportIssue(Rule, objectCreation, variable.Identifier.ValueText);
             }
         }
     }
 
-    private static bool HasRiskyValue(ExpressionSyntax memberInitializer) =>
-        memberInitializer is AssignmentExpressionSyntax { Right: { } value } && IsRisky(value);
+    private static bool HasRiskyAssignment(ExpressionSyntax memberInitializer, SemanticModel model) =>
+        memberInitializer is AssignmentExpressionSyntax { Left: { } target, Right: { } value }
+        && (SetterMayThrow(target, model) || IsRisky(value));
+
+    private static bool SetterMayThrow(ExpressionSyntax target, SemanticModel model) =>
+        model.GetSymbolInfo(target).Symbol is IPropertySymbol property && !IsSourceAutoProperty(property);
+
+    private static bool IsSourceAutoProperty(IPropertySymbol property) =>
+        property.SetMethod?.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<AccessorDeclarationSyntax>()
+            .Any(x => x.Body is null
+                      && x.ExpressionBody is null
+                      && x.Parent?.Parent is PropertyDeclarationSyntax declaration
+                      && !declaration.Modifiers.Any(SyntaxKind.AbstractKeyword)) == true;
 
     // The "safe, never flag" list is deliberately narrow: a literal, or a bare identifier/parameter read, cannot realistically
     // throw. Anything else - a call, a member access chain, a cast, a binary expression, ... - can, so it is treated as risky.

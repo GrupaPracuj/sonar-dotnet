@@ -51,6 +51,50 @@ public class ContractShouldStayWithinComplexityLimitsTest
             .Verify();
 
     [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_NoncompliantForDepthThroughDictionaryValue() =>
+        CreateBuilder(maxDepth: 1)
+            .AddSnippet(
+            """
+            public sealed class Leaf
+            {
+                public string Value { get; init; }
+            }
+
+            public sealed class Branch
+            {
+                public Leaf Next { get; init; }
+            }
+
+            public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: contract types nested 2 levels deep, above the limit of 1.}}
+            {
+                public System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyDictionary<string, Branch>> Branches { get; init; }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_NoncompliantForReachableTypesThroughDictionaryValue() =>
+        CreateBuilder(maxDepth: 5, maxComplexTypes: 1)
+            .AddSnippet(
+            """
+            public sealed class Leaf
+            {
+                public string Value { get; init; }
+            }
+
+            public sealed class Branch
+            {
+                public Leaf Next { get; init; }
+            }
+
+            public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: 2 contract types reachable, above the limit of 1.}}
+            {
+                public System.Collections.Generic.IReadOnlyDictionary<string, Branch> Branches { get; init; }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void ContractShouldStayWithinComplexityLimits_CompliantWithinDefaultLimits() =>
         builder.AddSnippet(
             """

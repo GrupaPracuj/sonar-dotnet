@@ -171,4 +171,46 @@ public class CollectionInitializerShouldNotHaveDuplicateKeysTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForOrdinalIgnoreCaseComparer() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        { "Header", 1 },
+                        { "header", 2 }, // Noncompliant {{Duplicate key 'header' in dictionary initializer - the second 'Add' call throws ArgumentException at runtime.}}
+                    };
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForOrdinalComparerWithDifferentCase() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Collections.Generic;
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new Dictionary<string, int>(StringComparer.Ordinal)
+                    {
+                        { "Header", 1 },
+                        { "header", 2 },
+                    };
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

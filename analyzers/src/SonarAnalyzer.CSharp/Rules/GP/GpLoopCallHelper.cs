@@ -1,8 +1,7 @@
 namespace SonarAnalyzer.CSharp.Rules;
 
-// Finds whether a call runs directly and synchronously inside a loop, once per iteration - not merely inside a loop somewhere in its ancestry.
-// The ancestor walk stops at the first lambda/local function/member boundary it meets, so a call handed to deferred execution (a callback stored
-// for later, a local function invoked once after the loop, a nested lambda passed to LINQ) is never attributed to the outer loop.
+// Finds calls that directly depend on a variable declared by the enclosing loop. Besides avoiding deferred callbacks,
+// this excludes retry/polling loops whose request does not change between iterations.
 internal static class GpLoopCallHelper
 {
     private static readonly HashSet<SyntaxKind> LoopKinds = new()
@@ -14,9 +13,37 @@ internal static class GpLoopCallHelper
         SyntaxKind.DoStatement
     };
 
-    internal static bool IsDirectlyInsideLoop(SyntaxNode node) =>
-        node.Ancestors().FirstOrDefault(x => LoopKinds.Contains(x.Kind()) || IsScopeBoundary(x)) is { } ancestor
-        && LoopKinds.Contains(ancestor.Kind());
+    internal static bool DependsOnDirectLoopVariable(InvocationExpressionSyntax invocation, SemanticModel model)
+    {
+        var loop = invocation.Ancestors().FirstOrDefault(x => LoopKinds.Contains(x.Kind()) || IsScopeBoundary(x));
+        if (loop is null || !LoopKinds.Contains(loop.Kind()))
+        {
+            return false;
+        }
+
+        var body = LoopBody(loop);
+        return invocation.DescendantNodesAndSelf()
+            .OfType<IdentifierNameSyntax>()
+            .Select(x => model.GetSymbolInfo(x).Symbol)
+            .OfType<ILocalSymbol>()
+            .Any(x => IsDeclaredByLoop(x, loop, body));
+    }
+
+    private static bool IsDeclaredByLoop(ILocalSymbol local, SyntaxNode loop, StatementSyntax body) =>
+        local.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .Any(x => x.AncestorsAndSelf().Contains(loop)
+                      && (body is null || !x.AncestorsAndSelf().Contains(body)));
+
+    private static StatementSyntax LoopBody(SyntaxNode loop) =>
+        loop switch
+        {
+            ForStatementSyntax x => x.Statement,
+            ForEachStatementSyntax x => x.Statement,
+            WhileStatementSyntax x => x.Statement,
+            DoStatementSyntax x => x.Statement,
+            _ => loop.ChildNodes().OfType<StatementSyntax>().LastOrDefault()
+        };
 
     private static bool IsScopeBoundary(SyntaxNode node) =>
         node is AnonymousFunctionExpressionSyntax or MemberDeclarationSyntax or AccessorDeclarationSyntax

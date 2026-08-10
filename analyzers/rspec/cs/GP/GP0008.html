@@ -17,6 +17,10 @@ using (var transaction = await _transactional.StartTransaction())
 (<code>using var transaction = ...</code>) scopes it to the rest of the enclosing block, so the statements that follow the declaration are inside the
 transaction just as they would be inside a block. In either form, calls placed after the <code>Commit()</code> are outside the transaction and are not
 reported. Calling <code>TransactionScope.Complete()</code> does not end its transaction; the scope remains active until it is disposed.</p>
+<p>Transaction-start calls are resolved semantically: ADO.NET <code>BeginTransaction</code> calls must return an
+<code>IDbTransaction</code>/<code>DbTransaction</code>, while the supported <code>StartTransaction</code> shape must come from a transactional
+abstraction and return a transaction type. An unrelated tracing API named <code>BeginTransaction</code> is ignored. Deferred lambdas and local
+functions declared inside a transaction callback are not treated as executed by that callback.</p>
 <h2>How to fix it</h2>
 <p>Move the network/message-bus call after the transaction has committed, or publish it through an outbox so it only fires once the database change
 is durable.</p>

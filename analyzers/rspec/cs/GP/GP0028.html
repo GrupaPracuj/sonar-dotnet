@@ -1,4 +1,5 @@
-<p>A URL that arrives as a parameter of a controller action should not be passed directly to an outbound HTTP call.</p>
+<p>A URL that arrives as a parameter of a controller action or an inline Minimal API handler should not be passed directly to an outbound HTTP
+call.</p>
 <h2>Why is this an issue?</h2>
 <p>When the destination of a server-side request is chosen by the caller, the caller decides what your service connects to. MITRE
 describes the weakness as:</p>
@@ -23,11 +24,15 @@ public async Task&lt;IActionResult&gt; Preview(string imageUrl)
 }
 </pre>
 <p>This rule reports a value the model binder filled from the route, the query string or the body when that value can still steer where the request
-goes - it is the whole URL, or it lands in the part of the URL that decides the host. An identifier substituted into a path segment of an address whose
-host is already fixed in the code, such as <code>$"{_options.ImageServiceBaseUrl}/images/{imageId}"</code>, picks which resource is fetched rather than
-which server answers, and is not reported.</p>
-<p>It also does not follow a value through local variables, fields or other methods, so a URL that takes a longer path to the same call is not reported
-- the absence of an issue here is not proof that the code is free of this weakness.</p>
+goes - it is the whole URL, or it lands in the part of the URL that decides the host. For Minimal APIs, this scope is limited to parameters of inline
+handlers registered with the framework <code>MapGet</code>, <code>MapPost</code>, <code>MapPut</code>, <code>MapPatch</code>,
+<code>MapDelete</code>, or <code>MapMethods</code> methods. An identifier substituted into a path segment of an address whose host is already fixed in
+the code, such as <code>$"{_options.ImageServiceBaseUrl}/images/{imageId}"</code>, picks which resource is fetched rather than which server answers,
+and is not reported.</p>
+<p>The analysis is deliberately shallow. It recognizes direct arguments and the supported string concatenation and interpolation shapes, including
+URLs in directly passed <code>HttpRequestMessage</code> constructors and initializers. It does not follow values through local variables, fields,
+named handlers, nested lambdas, local functions, or other methods, and it does not treat expressions in endpoint registration arguments as handler
+input. The absence of an issue is therefore not proof that the code is free of this weakness.</p>
 <h2>How to fix it</h2>
 <p>Do not let the caller name the destination. Take an identifier instead of a URL and build the address yourself, or - when a URL genuinely has to
 be accepted - resolve its host and compare it against an allowlist of trusted hosts before the request is made. The OWASP guidance is:</p>
@@ -44,6 +49,11 @@ public async Task&lt;IActionResult&gt; Preview(string imageUrl)
     var content = await _httpClient.GetStringAsync(imageUrl); // Noncompliant {{Do not send a request to a URL taken from parameter 'imageUrl' - validate the host against an allowlist first.}}
     return Ok(content);
 }
+</pre>
+<p>The same applies to an inline Minimal API handler:</p>
+<pre>
+app.MapGet("/preview", async (string imageUrl) =>
+    await httpClient.GetStringAsync(imageUrl)); // Noncompliant
 </pre>
 <h4>Compliant solution</h4>
 <p>Accept an identifier and build the URL from configuration you control:</p>

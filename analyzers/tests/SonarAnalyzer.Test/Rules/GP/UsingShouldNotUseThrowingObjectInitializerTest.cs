@@ -55,6 +55,55 @@ public class UsingShouldNotUseThrowingObjectInitializerTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void UsingShouldNotUseThrowingObjectInitializer_NoncompliantForThrowingSetterWithLiteralValue() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class FakeDisposable : IDisposable
+            {
+                public int Value
+                {
+                    get => 0;
+                    set => throw new InvalidOperationException();
+                }
+
+                public void Dispose() { }
+            }
+
+            public class C
+            {
+                public void M()
+                {
+                    using var resource = new FakeDisposable { Value = 42 }; // Noncompliant {{This 'using' constructs 'resource' via an object initializer - if a member assignment throws, the instance is never bound and 'Dispose' is never called. Assign the risky members in separate statements after construction.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void UsingShouldNotUseThrowingObjectInitializer_CompliantForFieldWithLiteralValue() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class FakeDisposable : IDisposable
+            {
+                public int Value;
+                public void Dispose() { }
+            }
+
+            public class C
+            {
+                public void M()
+                {
+                    using var resource = new FakeDisposable { Value = 42 };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void UsingShouldNotUseThrowingObjectInitializer_CompliantWhenNoInitializerAtAll() =>
         builder.AddSnippet(
             """

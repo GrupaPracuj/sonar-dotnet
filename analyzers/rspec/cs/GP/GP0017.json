@@ -1,5 +1,5 @@
 {
-  "title": "Date-only properties should not have 'Utc' in their name",
+  "title": "Date-only members should not have 'Utc' in their name",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
