@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.sonarsource.dotnet</groupId>
     <artifactId>sonar-dotnet</artifactId>
-    <version>10.31-SNAPSHOT</version>
+    <version>${revision}</version>
   </parent>
 
   <artifactId>sonar-csharp-plugin</artifactId>
@@ -107,7 +107,7 @@
   </dependencies>
 
   <build>
-    <finalName>gp-sonar-csharp-plugin-1.0-SNAPSHOT</finalName>
+    <finalName>gp-sonar-csharp-plugin-${project.version}</finalName>
     <resources>
       <resource>
         <directory>../</directory>

@@ -13,11 +13,10 @@ $ErrorActionPreference = "Stop"
 
 function UpdatePom($Path, $Version) {
     Write-Host "Updating version to $Version in $Path"
-    # This is done manually, because mvn tries to resolve parent poms from jfrog and that requires heavy orchestration
-    $Pattern = "<version>.*?-SNAPSHOT</version>"
+    $Pattern = "<revision>.*?</revision>"
     $Content = Get-Content $Path
     If ($Content -match $Pattern) {
-        $Content = $Content -replace $Pattern, "<version>$Version</version>"
+        $Content = $Content -replace $Pattern, "<revision>$Version</revision>"
         Set-Content $Path $Content
     }
     Else {
@@ -28,10 +27,7 @@ function UpdatePom($Path, $Version) {
 function UpdateJava() {
     Write-Host "Updating version in Java files"
     $MavenVersion = If ($BuildNumber -eq 0) { "$ShortVersion-SNAPSHOT" } else { "${PatchVersion}.${BuildNumber}" }
-    $Files = Get-ChildItem -Path . -Filter "pom.xml" -Recurse
-    foreach ($File in $Files) {
-        UpdatePom $File.FullName $MavenVersion
-    }
+    UpdatePom (Resolve-Path ".\pom.xml") $MavenVersion
 }
 
 function UpdateDotNet() {
