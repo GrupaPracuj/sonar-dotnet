@@ -1,52 +1,56 @@
-<p>A consumer should await everything it starts, so the broker only sees the message as handled once the work is actually done.</p>
+<p>Do not start asynchronous work in a message consumer and then finish <code>Consume</code> without waiting for that work.</p>
 <h2>Why is this an issue?</h2>
-<p>The broker's contract with a consumer is the returned task. MassTransit's documentation states it directly:</p>
-<blockquote>
-  The <code>Consume</code> method returns a <code>Task</code> that is awaited by MassTransit. MassTransit automatically renews the message lock until the
-  control returns from the consumer's <code>Consume</code> method to prevent message redelivery.
-</blockquote>
-<blockquote>
-  When the <code>Consume</code> method completes, MassTransit acknowledges the message so that the broker can remove it from the queue.
-</blockquote>
-<p>So any work that is still running at that moment has lost the only safety net it had. If it then fails, there is no redelivery, no error queue and no exception anyone
-sees: the message was already acknowledged as successfully handled.</p>
-<p>Fire-and-forget work also outlives the scope it was started in. The <code>ConsumeContext</code> is disposed when <code>Consume</code> returns, taking
-the scoped dependency-injection container with it, so a <code>DbContext</code> captured by the abandoned task is disposed underneath it. During shutdown it
-is worse: the host stops, and work that nothing is awaiting is simply killed mid-flight.</p>
+<p>MassTransit considers a message handled when the <code>Task</code> returned by <code>Consume</code> completes. It can then acknowledge the message and
+remove it from the queue.</p>
+<p>If <code>Consume</code> calls an asynchronous method without awaiting or returning its task, these two operations become disconnected:</p>
+<ol>
+  <li>The asynchronous operation starts.</li>
+  <li><code>Consume</code> returns before that operation finishes.</li>
+  <li>MassTransit acknowledges the message as successfully handled.</li>
+  <li>The operation may fail afterwards, but the message will not be retried or moved to the error queue.</li>
+</ol>
+<p>This is commonly called <em>fire-and-forget</em>. It is particularly unsafe in a consumer because the abandoned task may also use scoped objects such
+as a <code>DbContext</code> after the consumer scope has been disposed, or be interrupted during application shutdown.</p>
 <pre>
 public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context)
 {
-    _ = ProcessAsync(context.Message);            // nothing awaits this
-    Task.Run(() =&gt; Notify(context.Message));      // nor this
-    return Task.CompletedTask;                     // message acknowledged immediately
+    _ = SaveOrderAsync(context.Message); // asynchronous work starts
+    return Task.CompletedTask;            // Consume finishes before SaveOrderAsync
 }
 </pre>
-<p>The rule reports, inside a consumer, a call that returns a <code>Task</code> or <code>ValueTask</code> and is neither awaited nor returned - whether it
-is discarded with <code>_ =</code>, left as a bare expression statement, or wrapped in <code>Task.Run</code>.</p>
+<p>The rule reports a call inside a MassTransit consumer when all of the following are true:</p>
+<ul>
+  <li>the call returns <code>Task</code>, <code>Task&lt;T&gt;</code>, <code>ValueTask</code> or <code>ValueTask&lt;T&gt;</code>;</li>
+  <li>the call is written as a standalone statement, such as <code>SaveOrderAsync(message);</code>, or explicitly discarded with
+  <code>_ = SaveOrderAsync(message);</code>;</li>
+  <li>the task is therefore neither awaited nor returned from <code>Consume</code>.</li>
+</ul>
 <h3>Exceptions</h3>
-<p><code>async void</code> is not reported here: S3168 reports it already, on every method rather than only in consumers.</p>
-<p>A task that is stored, passed on, or later awaited through a variable is not reported, since the work is still tracked by something.</p>
+<p>A task returned directly from <code>Consume</code> is compliant: MassTransit awaits that task. Assigning a task to a named variable is not reported
+either, because it may be awaited later. Calls returning <code>void</code> and code outside a consumer are outside this rule.</p>
+<p><code>async void</code> is handled by rule S3168.</p>
 <h2>How to fix it</h2>
-<p>Await the work, or return its task. If it genuinely must happen out of band, publish a message for it so the broker keeps the guarantee instead of
-dropping it.</p>
+<p>Await the operation before completing <code>Consume</code>, or return its task directly. This keeps message acknowledgement, retries and the consumer
+lifetime tied to the actual work.</p>
+<p>If the operation intentionally needs an independent lifetime, publish a separate message for it instead of starting an untracked task.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context)
 {
-    _ = ProcessAsync(context.Message); // Noncompliant {{Await this call - the message is acknowledged when Consume returns, so work nothing awaits is lost without a trace.}}
+    _ = SaveOrderAsync(context.Message); // Noncompliant {{Await this call - the message is acknowledged when Consume returns, so work nothing awaits is lost without a trace.}}
     return Task.CompletedTask;
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 public Task Consume(ConsumeContext&lt;OrderAccepted&gt; context) =&gt;
-    ProcessAsync(context.Message);
+    SaveOrderAsync(context.Message);
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
-  <li>MassTransit - <a href="https://masstransit.massient.com/documentation/concepts/consumers">Consumers</a></li>
+  <li>MassTransit - <a href="https://masstransit.io/documentation/concepts/consumers">Consumers</a></li>
   <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/async-scenarios">Asynchronous programming
   scenarios</a></li>
 </ul>

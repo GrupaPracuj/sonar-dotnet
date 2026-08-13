@@ -48,12 +48,12 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
         builder.AddSnippet(
             Stubs + """
 
-            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount);
+            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
 
             public static class Startup
             {
                 public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
-                    appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+                    appConfig.Publishes<PaymentReceived>();
             }
             """)
             .Verify();
@@ -79,14 +79,41 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
         builder.AddSnippet(
             Stubs + """
 
-            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount);
+            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
 
             public class PaymentService
             {
                 private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                 public System.Threading.Tasks.Task Record(PaymentReceived @event) =>
-                    _publisher.Publish(@event); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+                    _publisher.Publish(@event);
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_ReportsTypeOnlyOnceForMultiplePublishes() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(System.Guid PaymentId); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+
+            public class PaymentService
+            {
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public async System.Threading.Tasks.Task Record(PaymentReceived @event)
+                {
+                    await _publisher.Publish(@event);
+                    await _publisher.Publish(@event);
+                    await _publisher.Publish(new PaymentReceived(@event.PaymentId));
+                }
+            }
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
             }
             """)
             .Verify();
@@ -97,6 +124,21 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             Stubs + """
 
             public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount, System.DateTimeOffset OccurredAt);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantWithOccurredAtUtc() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount, System.DateTimeOffset OccurredAtUtc);
 
             public static class Startup
             {
@@ -132,23 +174,7 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
         builder.AddSnippet(
             Stubs + """
 
-            public sealed record PaymentReceived(System.Guid PaymentId, System.DateTime OccurredAt);
-
-            public static class Startup
-            {
-                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
-                    appConfig.Publishes<PaymentReceived>(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
-            }
-            """)
-            .Verify();
-
-    [TestMethod]
-    public void PublishedEventShouldCarryOccurrenceTime_CompliantForConfiguredName() =>
-        CreateBuilderWithNames("RecordedAt")
-            .AddSnippet(
-            Stubs + """
-
-            public sealed record PaymentReceived(System.Guid PaymentId, System.DateTimeOffset RecordedAt);
+            public sealed record PaymentReceived(System.Guid PaymentId, System.DateTime OccurredAt); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
 
             public static class Startup
             {
@@ -156,7 +182,28 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
                     appConfig.Publishes<PaymentReceived>();
             }
             """)
-            .VerifyNoIssues();
+            .Verify();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForOtherTimeNames() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentOccurredOn(System.Guid PaymentId, System.DateTimeOffset OccurredOn); // Noncompliant
+            public sealed record PaymentTimestamp(System.Guid PaymentId, System.DateTimeOffset Timestamp); // Noncompliant
+            public sealed record PaymentRecordedAt(System.Guid PaymentId, System.DateTimeOffset RecordedAt); // Noncompliant
+
+            public static class Startup
+            {
+                public static void Register(GP.Juno.Configuration.AppConfig appConfig)
+                {
+                    appConfig.Publishes<PaymentOccurredOn>();
+                    appConfig.Publishes<PaymentTimestamp>();
+                    appConfig.Publishes<PaymentRecordedAt>();
+                }
+            }
+            """)
+            .Verify();
 
     // A contract that is never published is not reported.
     [TestMethod]
@@ -167,9 +214,4 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount);
             """)
             .VerifyNoIssues();
-
-    private static VerifierBuilder CreateBuilderWithNames(string occurrenceTimeNames) =>
-        new VerifierBuilder()
-            .AddAnalyzer(() => new CS.PublishedEventShouldCarryOccurrenceTime { OccurrenceTimeNames = occurrenceTimeNames })
-            .WithOptions(LanguageOptions.CSharpLatest);
 }

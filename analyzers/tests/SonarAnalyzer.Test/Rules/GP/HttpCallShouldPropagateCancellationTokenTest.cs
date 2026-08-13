@@ -77,6 +77,34 @@ public class HttpCallShouldPropagateCancellationTokenTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_CompliantInsideLocalFunction() =>
+        builder.WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+            HttpClientStubs + """
+
+            public class OrderClient
+            {
+                private readonly System.Net.Http.HttpClient _httpClient;
+
+                public System.Threading.Tasks.Task<string> GetOrder(System.Threading.CancellationToken cancellation) =>
+                    Wrapper(_httpClient, cancellation);
+
+                private static async System.Threading.Tasks.Task<string> Wrapper(
+                    System.Net.Http.HttpClient client,
+                    System.Threading.CancellationToken cancellation)
+                {
+                    return await Async(client, cancellation);
+
+                    static System.Threading.Tasks.Task<string> Async(
+                        System.Net.Http.HttpClient client,
+                        System.Threading.CancellationToken cancellation) =>
+                        client.GetStringAsync("/orders", cancellation);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void HttpCallShouldPropagateCancellationToken_NoncompliantForSuppressedTokens() =>
         builder.WithOptions(LanguageOptions.CSharpLatest)
             .AddSnippet(

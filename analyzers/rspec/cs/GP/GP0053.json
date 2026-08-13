@@ -1,5 +1,5 @@
 {
-  "title": "Consumers should await all the work they start",
+  "title": "Message consumers should await asynchronous calls",
   "type": "BUG",
   "code": {
     "impacts": {

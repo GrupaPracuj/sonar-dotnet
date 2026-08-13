@@ -8,6 +8,7 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     private const string MessageFormat = "Bind configuration to a typed class instead of reading it by key.";
 
     private const string ConfigurationInterface = "Microsoft.Extensions.Configuration.IConfiguration";
+    private const string ServiceCollectionInterface = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -23,7 +24,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     private static void AnalyzeElementAccess(SonarSyntaxNodeReportingContext context)
     {
         var elementAccess = (ElementAccessExpressionSyntax)context.Node;
-        if (IsConfiguration(context.Model.GetTypeInfo(elementAccess.Expression).Type))
+        if (IsConfiguration(context.Model.GetTypeInfo(elementAccess.Expression).Type)
+            && !IsServiceRegistrationMethod(context.Model, elementAccess))
         {
             context.ReportIssue(Rule, elementAccess);
         }
@@ -39,7 +41,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
         }
 
         // GetValue is an extension method on IConfiguration, so the receiver carries the type.
-        if (IsConfiguration(method.ReceiverType) || (method.Parameters.Length > 0 && IsConfiguration(method.Parameters[0].Type)))
+        if ((IsConfiguration(method.ReceiverType) || (method.Parameters.Length > 0 && IsConfiguration(method.Parameters[0].Type)))
+            && !IsServiceRegistrationMethod(context.Model, invocation))
         {
             context.ReportIssue(Rule, invocation);
         }
@@ -49,4 +52,15 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     // which is the pattern this rule steers towards.
     private static bool IsConfiguration(ITypeSymbol type) =>
         GpJunoTypes.Implements(type, ConfigurationInterface);
+
+    // The composition root is where configuration is intentionally converted into concrete dependencies. Reading
+    // a single value while registering a framework service (for example an EF connection string) does not leak the
+    // configuration bag into runtime application code.
+    private static bool IsServiceRegistrationMethod(SemanticModel model, SyntaxNode node) =>
+        model.GetEnclosingSymbol(node.SpanStart) is IMethodSymbol method
+        && (IsServiceCollection(method.ReturnType)
+            || method.Parameters.Any(x => IsServiceCollection(x.Type)));
+
+    private static bool IsServiceCollection(ITypeSymbol type) =>
+        type?.ToDisplayString() == ServiceCollectionInterface;
 }

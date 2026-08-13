@@ -30,7 +30,10 @@ public class ContractShouldNotBePersistedAsEntityTest
             public class DbContext { }
         }
 
-        public sealed record OrderAcceptedContract(System.Guid OrderId);
+        namespace Contracts
+        {
+            public sealed record OrderAccepted(System.Guid OrderId);
+        }
 
         public class AcceptedOrderRecord
         {
@@ -45,7 +48,7 @@ public class ContractShouldNotBePersistedAsEntityTest
 
             public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
             {
-                public Microsoft.EntityFrameworkCore.DbSet<OrderAcceptedContract> AcceptedOrders { get; set; } // Noncompliant {{'OrderAcceptedContract' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+                public Microsoft.EntityFrameworkCore.DbSet<Contracts.OrderAccepted> AcceptedOrders { get; set; } // Noncompliant {{'OrderAccepted' is a message contract - persisting it makes the wire format and the schema the same thing.}}
             }
             """)
             .Verify();
@@ -58,7 +61,7 @@ public class ContractShouldNotBePersistedAsEntityTest
             public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
             {
                 public void Configure(Microsoft.EntityFrameworkCore.ModelBuilder modelBuilder) =>
-                    modelBuilder.Entity<OrderAcceptedContract>(); // Noncompliant {{'OrderAcceptedContract' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+                    modelBuilder.Entity<Contracts.OrderAccepted>(); // Noncompliant {{'OrderAccepted' is a message contract - persisting it makes the wire format and the schema the same thing.}}
             }
             """)
             .Verify();
@@ -69,10 +72,13 @@ public class ContractShouldNotBePersistedAsEntityTest
         builder.AddSnippet(
             Stubs + """
 
-            [System.ComponentModel.DataAnnotations.Schema.Table("accepted_orders")]
-            public sealed class OrderAcceptedEvent // Noncompliant {{'OrderAcceptedEvent' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+            namespace Contracts
             {
-                public System.Guid OrderId { get; set; }
+                [System.ComponentModel.DataAnnotations.Schema.Table("accepted_orders")]
+                public sealed class MappedOrder // Noncompliant {{'MappedOrder' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+                {
+                    public System.Guid OrderId { get; set; }
+                }
             }
             """)
             .Verify();
@@ -88,6 +94,49 @@ public class ContractShouldNotBePersistedAsEntityTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotBePersistedAsEntity_CompliantForContractSuffixAlone() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record CustomerResponse(System.Guid Id);
+
+            public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
+            {
+                public Microsoft.EntityFrameworkCore.DbSet<CustomerResponse> Customers { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotBePersistedAsEntity_NoncompliantForPublishedTypeOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace MassTransit
+            {
+                public interface IPublishEndpoint
+                {
+                    System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+                }
+            }
+
+            public sealed record OrderPublished(System.Guid OrderId);
+
+            public class ShopDbContext : Microsoft.EntityFrameworkCore.DbContext
+            {
+                public Microsoft.EntityFrameworkCore.DbSet<OrderPublished> Orders { get; set; } // Noncompliant {{'OrderPublished' is a message contract - persisting it makes the wire format and the schema the same thing.}}
+            }
+
+            public class OrderService
+            {
+                private readonly MassTransit.IPublishEndpoint publisher;
+
+                public System.Threading.Tasks.Task Publish(OrderPublished message) => publisher.Publish(message);
+            }
+            """)
+            .Verify();
 
     // A custom attribute that happens to share a name with an EF mapping attribute (Table, Key, Column, ForeignKey,
     // PrimaryKey) but lives in a different namespace carries no EF semantics and must not trigger the rule.

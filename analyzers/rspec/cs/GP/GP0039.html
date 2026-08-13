@@ -18,6 +18,10 @@ public class OrderService
 </pre>
 <p>Note that <code>IConfiguration</code> itself is not the problem and is not reported - it is how binding is done. Only reading a value out of it by
 key is.</p>
+<h3>Exceptions</h3>
+<p>A direct read inside a method that registers an <code>IServiceCollection</code> is not reported. Such a composition-root method is responsible for
+turning configuration into concrete framework dependencies; reading one value there, for example an EF Core connection string, does not expose
+<code>IConfiguration</code> to runtime application services.</p>
 <h2>How to fix it</h2>
 <p>Declare a configuration class for the section, bind it once during registration, and inject the class.</p>
 <h3>Code examples</h3>

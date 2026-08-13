@@ -12,9 +12,12 @@ public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Curr
 appConfig.Publishes&lt;PaymentReceived&gt;();
 </pre>
 <p>The rule looks at the types actually registered for publishing or passed to a publish call, so a contract that is never published is not reported. It
-requires a <code>DateTimeOffset</code> member whose name is one of those in the <code>occurrenceTimeNames</code> parameter, which defaults to
-<code>OccurredAt,OccurredOn,Timestamp</code>. <code>DateTimeOffset</code> rather than <code>DateTime</code> is deliberate and matches S6566: an instant
-crossing a service boundary needs its offset.</p>
+requires a <code>DateTimeOffset</code> member named <code>OccurredAt</code> or <code>OccurredAtUtc</code>. Names such as <code>OccurredOn</code> and
+<code>Timestamp</code> are not accepted. <code>DateTimeOffset</code> rather than <code>DateTime</code> is deliberate and matches S6566: an instant crossing
+a service boundary needs its offset.</p>
+<p>The issue is reported once on the event type declaration, regardless of how many registrations or publish calls use that type. When the event is
+declared in a referenced assembly whose source is not part of the current analysis, one issue is reported on the first publish use instead because the
+declaration is not available to the analyzer.</p>
 <h3>Exceptions</h3>
 <p>Only publishing is checked, not sending. A command says what should happen next, so it has no occurrence time to state.</p>
 <h2>How to fix it</h2>
@@ -22,9 +25,11 @@ crossing a service boundary needs its offset.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency);
+public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
 
-appConfig.Publishes&lt;PaymentReceived&gt;(); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+appConfig.Publishes&lt;PaymentReceived&gt;();
+await publisher.Publish(new PaymentReceived(paymentId, amount, currency));
+await publisher.Publish(new PaymentReceived(paymentId, amount, currency)); // No duplicate issue
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">

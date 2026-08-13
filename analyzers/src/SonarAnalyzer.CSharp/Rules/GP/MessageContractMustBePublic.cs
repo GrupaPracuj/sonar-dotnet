@@ -33,7 +33,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !MessagingMethods.Contains(method.Name)
             || !GpMessageContracts.IsMessagingMethod(method)
-            || MessageType(context.Model, invocation, method) is not { } messageType
+            || GpMessageContracts.MessagingPayloadType(context.Model, invocation, MessagingMethods) is not { } messageType
             || !IsDeclaredInThisAssembly(messageType, context.Compilation)
             || messageType.EffectiveAccessibility == Accessibility.Public)
         {
@@ -65,9 +65,4 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
     private static bool IsDeclaredInThisAssembly(ITypeSymbol type, Compilation compilation) =>
         type.ContainingAssembly is { } assembly && assembly.Name == compilation.AssemblyName;
 
-    private static ITypeSymbol MessageType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method) =>
-        method.TypeArguments.FirstOrDefault()
-        ?? (invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } firstArgument
-            ? model.GetTypeInfo(firstArgument).Type
-            : null);
 }

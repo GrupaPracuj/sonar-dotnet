@@ -27,13 +27,21 @@ public sealed class ContractShouldStayWithinComplexityLimits : ParametrizedDiagn
     public int MaxComplexTypes { get; set; } = DefaultMaxComplexTypes;
 
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
-        context.RegisterNodeAction(AnalyzeTypeDeclaration, SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration, SyntaxKind.StructDeclaration);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(
+                c => AnalyzeTypeDeclaration(c, contracts),
+                SyntaxKind.ClassDeclaration,
+                SyntaxKindEx.RecordDeclaration,
+                SyntaxKind.StructDeclaration);
+        });
 
-    private void AnalyzeTypeDeclaration(SonarSyntaxNodeReportingContext context)
+    private void AnalyzeTypeDeclaration(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         if (context.Node is not TypeDeclarationSyntax { Identifier: var identifier } declaration
-            || !GpMessageContracts.HasContractName(identifier.ValueText)
-            || context.Model.GetDeclaredSymbol(declaration) is not { } type)
+            || context.Model.GetDeclaredSymbol(declaration) is not { } type
+            || !contracts.IsContract(type))
         {
             return;
         }

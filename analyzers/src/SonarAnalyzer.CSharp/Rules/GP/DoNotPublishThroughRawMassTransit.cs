@@ -5,7 +5,7 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0034";
 
-    private const string MessageFormat = "Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's '{0}'.";
+    private const string MessageFormat = "Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's '{0}'.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -46,7 +46,8 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !SendingMethods.Contains(method.Name)
-            || !IsMassTransitSender(method))
+            || !IsMassTransitSender(method)
+            || IsJunoEventStreamReceiver(context.Model, invocation))
         {
             return;
         }
@@ -76,4 +77,24 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
 
     private static bool IsMassTransitSenderInterface(ITypeSymbol type) =>
         type.ContainingNamespace?.ToDisplayString() == MassTransitNamespace && SendingTypeNames.Contains(type.Name);
+
+    private static bool IsJunoEventStreamReceiver(SemanticModel model, InvocationExpressionSyntax invocation) =>
+        invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax { Expression: { } receiver } => IsJunoEventStreamType(model.GetTypeInfo(receiver).Type),
+            MemberBindingExpressionSyntax => invocation.FirstAncestorOrSelf<ConditionalAccessExpressionSyntax>() is { Expression: { } receiver }
+                                             && IsJunoEventStreamType(model.GetTypeInfo(receiver).Type),
+            _ => false,
+        };
+
+    private static bool IsJunoEventStreamType(ITypeSymbol type) =>
+        IsWithinJunoEventStream(type)
+        || (type?.AllInterfaces.Any(IsWithinJunoEventStream) ?? false);
+
+    private static bool IsWithinJunoEventStream(ITypeSymbol type)
+    {
+        var containingNamespace = type?.ContainingNamespace?.ToDisplayString();
+        return containingNamespace == "GP.Juno.EventStream"
+               || containingNamespace?.StartsWith("GP.Juno.EventStream.", StringComparison.Ordinal) == true;
+    }
 }

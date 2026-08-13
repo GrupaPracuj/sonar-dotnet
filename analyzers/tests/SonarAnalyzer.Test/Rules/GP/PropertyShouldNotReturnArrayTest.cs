@@ -20,12 +20,34 @@ public class PropertyShouldNotReturnArrayTest
             .Verify();
 
     [TestMethod]
-    public void PropertyShouldNotReturnArray_NoncompliantForProtectedProperty() =>
+    public void PropertyShouldNotReturnArray_CompliantForProtectedSetter() =>
         builder.AddSnippet(
             """
             public class Book
             {
-                protected int[] Scores { get; set; } // Noncompliant
+                protected int[] Scores { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForPublicSetter() =>
+        builder.AddSnippet(
+            """
+            public class Book
+            {
+                public int[] Scores { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantForPrivateSetter() =>
+        builder.AddSnippet(
+            """
+            public class Book
+            {
+                public int[] Scores { get; private set; } // Noncompliant
             }
             """)
             .Verify();
@@ -66,6 +88,17 @@ public class PropertyShouldNotReturnArrayTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForBinaryPayload() =>
+        builder.AddSnippet(
+            """
+            public class ApplicationFile
+            {
+                public byte[] Content { get; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void PropertyShouldNotReturnArray_CompliantForAttributeType() =>
         builder.AddSnippet(
             """
@@ -80,9 +113,47 @@ public class PropertyShouldNotReturnArrayTest
     public void PropertyShouldNotReturnArray_CompliantForMessageContractType() =>
         builder.AddSnippet(
             """
+            namespace Contracts
+            {
+                public class UpdateOrder
+                {
+                    public int[] ItemIds { get; }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantForRequestSuffixAlone() =>
+        builder.AddSnippet(
+            """
             public class UpdateOrderRequest
             {
-                public int[] ItemIds { get; set; }
+                public int[] ItemIds { get; } // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForControllerResponseOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute { }
+                public abstract class ControllerBase { }
+                public class ActionResult<T> { }
+            }
+
+            public sealed class OrderView
+            {
+                public int[] ItemIds { get; }
+            }
+
+            public sealed class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.ActionResult<OrderView> Get() => null;
             }
             """)
             .VerifyNoIssues();

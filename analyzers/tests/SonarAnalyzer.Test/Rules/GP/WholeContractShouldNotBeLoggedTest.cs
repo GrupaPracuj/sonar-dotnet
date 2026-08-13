@@ -20,7 +20,10 @@ public class WholeContractShouldNotBeLoggedTest
             }
         }
 
-        public sealed record OrderAcceptedContract(System.Guid OrderId, string Status);
+        namespace Contracts
+        {
+            public sealed record OrderAccepted(System.Guid OrderId, string Status);
+        }
         """;
 
     [TestMethod]
@@ -32,8 +35,8 @@ public class WholeContractShouldNotBeLoggedTest
             {
                 private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
-                public void Handle(OrderAcceptedContract message) =>
-                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received {Message}", message); // Noncompliant {{Do not log the whole contract 'OrderAcceptedContract' - log the fields the diagnosis needs.}}
+                public void Handle(Contracts.OrderAccepted message) =>
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received {Message}", message); // Noncompliant {{Do not log the whole contract 'OrderAccepted' - log the fields the diagnosis needs.}}
             }
             """)
             .Verify();
@@ -48,7 +51,7 @@ public class WholeContractShouldNotBeLoggedTest
             {
                 private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
-                public void Handle(OrderAcceptedContract message) =>
+                public void Handle(Contracts.OrderAccepted message) =>
                     Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(
                         _logger, "Received order {OrderId} with status {Status}", message.OrderId, message.Status);
             }
@@ -82,7 +85,7 @@ public class WholeContractShouldNotBeLoggedTest
 
             public class OrderConsumer
             {
-                public void Handle(OrderAcceptedContract message) => System.Console.WriteLine(message);
+                public void Handle(Contracts.OrderAccepted message) => System.Console.WriteLine(message);
             }
             """)
             .VerifyNoIssues();
@@ -96,7 +99,7 @@ public class WholeContractShouldNotBeLoggedTest
             {
                 private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
-                public void Handle(OrderAcceptedContract message)
+                public void Handle(Contracts.OrderAccepted message)
                 {
                     Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, $"Received {message}"); // Noncompliant
                     Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received " + message); // Noncompliant
@@ -114,7 +117,7 @@ public class WholeContractShouldNotBeLoggedTest
             {
                 private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
-                public void Handle(OrderAcceptedContract message)
+                public void Handle(Contracts.OrderAccepted message)
                 {
                     Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, $"Received {message.OrderId}");
                     Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received " + message.Status);
@@ -122,4 +125,50 @@ public class WholeContractShouldNotBeLoggedTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void WholeContractShouldNotBeLogged_CompliantForContractSuffixAlone() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record CustomerResponse(System.Guid CustomerId);
+
+            public class CustomerService
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+
+                public void Handle(CustomerResponse response) =>
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Received {Response}", response);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void WholeContractShouldNotBeLogged_NoncompliantForSentTypeOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace MassTransit
+            {
+                public interface ISendEndpoint
+                {
+                    System.Threading.Tasks.Task Send<T>(T message) where T : class;
+                }
+            }
+
+            public sealed record OrderAccepted(System.Guid OrderId);
+
+            public class OrderService
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+                private readonly MassTransit.ISendEndpoint sender;
+
+                public System.Threading.Tasks.Task Send(OrderAccepted message)
+                {
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Sending {Message}", message); // Noncompliant {{Do not log the whole contract 'OrderAccepted' - log the fields the diagnosis needs.}}
+                    return sender.Send(message);
+                }
+            }
+            """)
+            .Verify();
 }

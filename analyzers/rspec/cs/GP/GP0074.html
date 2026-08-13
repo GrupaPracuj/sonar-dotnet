@@ -10,9 +10,10 @@ indexed fields the investigation actually needs.</p>
 <pre>
 _logger.LogInformation("Received {Message}", message);   // whatever the contract carries, now and later
 </pre>
-<p>The rule reports a logging argument whose type is a contract - the same naming convention the other contract rules use. It also follows direct string
-interpolation and concatenation, because those forms still render the whole object into the log message. Passing individual fields is never reported, no
-matter whether they are supplied as structured logging arguments, interpolated, or concatenated.</p>
+<p>The rule reports a logging argument whose type is a source contract. A type is a contract when it is declared in a <code>Contracts</code> or
+<code>*.Contracts</code> namespace, is an actual ASP.NET controller or Minimal API response payload, or is published, sent, responded with or registered
+through GP.Juno or MassTransit. Type names and suffixes are not evidence. The rule also follows direct string interpolation and concatenation, because
+those forms still render the whole object into the log message. Passing individual fields is never reported.</p>
 <h2>How to fix it</h2>
 <p>Log the few fields the diagnosis needs, named as template placeholders so they stay queryable. An identifier and a status are usually enough to find the
 message itself if more is required.</p>

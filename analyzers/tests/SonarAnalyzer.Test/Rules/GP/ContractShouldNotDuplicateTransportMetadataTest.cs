@@ -8,11 +8,25 @@ public class ContractShouldNotDuplicateTransportMetadataTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.ContractShouldNotDuplicateTransportMetadata>()
         .WithOptions(LanguageOptions.CSharpLatest);
 
+    private const string MessagingStub =
+        """
+        namespace GP.Juno.Abstractions
+        {
+            public interface ISender
+            {
+                System.Threading.Tasks.Task Send<T>(T message) where T : class;
+            }
+        }
+        """;
+
     [TestMethod]
     public void ContractShouldNotDuplicateTransportMetadata_NoncompliantForMessageId() =>
         builder.AddSnippet(
             """
-            public sealed record OrderAcceptedContract(System.Guid OrderId, System.Guid MessageId); // Noncompliant@-0 {{'MessageId' duplicates transport metadata - read it from the consume context instead.}}
+            namespace GP.Orders.Contracts
+            {
+                public sealed record OrderAccepted(System.Guid OrderId, System.Guid MessageId); // Noncompliant@-0 {{'MessageId' duplicates transport metadata - read it from the consume context instead.}}
+            }
             """)
             .Verify();
 
@@ -20,12 +34,15 @@ public class ContractShouldNotDuplicateTransportMetadataTest
     public void ContractShouldNotDuplicateTransportMetadata_NoncompliantForProperties() =>
         builder.AddSnippet(
             """
-            public class OrderAcceptedEvent
+            namespace Contracts
             {
-                public System.Guid OrderId { get; init; }
-                public System.Guid ConversationId { get; init; } // Noncompliant {{'ConversationId' duplicates transport metadata - read it from the consume context instead.}}
-                public System.DateTimeOffset SentTime { get; init; } // Noncompliant {{'SentTime' duplicates transport metadata - read it from the consume context instead.}}
-                public string SourceAddress { get; init; } // Noncompliant {{'SourceAddress' duplicates transport metadata - read it from the consume context instead.}}
+                public class OrderAccepted
+                {
+                    public System.Guid OrderId { get; init; }
+                    public System.Guid ConversationId { get; init; } // Noncompliant {{'ConversationId' duplicates transport metadata - read it from the consume context instead.}}
+                    public System.DateTimeOffset SentTime { get; init; } // Noncompliant {{'SentTime' duplicates transport metadata - read it from the consume context instead.}}
+                    public string SourceAddress { get; init; } // Noncompliant {{'SourceAddress' duplicates transport metadata - read it from the consume context instead.}}
+                }
             }
             """)
             .Verify();
@@ -35,11 +52,41 @@ public class ContractShouldNotDuplicateTransportMetadataTest
     public void ContractShouldNotDuplicateTransportMetadata_CompliantForDomainIdentifiers() =>
         builder.AddSnippet(
             """
-            public sealed record OrderAcceptedContract(
-                System.Guid OrderId,
-                System.Guid ProcessId,
-                string CustomerReference,
-                System.DateTimeOffset OccurredAt);
+            namespace Contracts
+            {
+                public sealed record OrderAccepted(
+                    System.Guid OrderId,
+                    System.Guid ProcessId,
+                    string CustomerReference,
+                    System.DateTimeOffset OccurredAt);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_NoncompliantForSentMessageOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            MessagingStub + """
+
+            public sealed record OrderAccepted(System.Guid OrderId, System.Guid RequestId); // Noncompliant@-0 {{'RequestId' duplicates transport metadata - read it from the consume context instead.}}
+
+            public sealed class OrderService
+            {
+                private readonly GP.Juno.Abstractions.ISender sender;
+
+                public System.Threading.Tasks.Task Send(OrderAccepted message) => sender.Send(message);
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_CompliantForSqlDtoNameAlone() =>
+        builder.AddSnippet(
+            """
+            namespace Database.Sql
+            {
+                internal sealed record GratisInfoDto(System.Guid RequestId);
+            }
             """)
             .VerifyNoIssues();
 

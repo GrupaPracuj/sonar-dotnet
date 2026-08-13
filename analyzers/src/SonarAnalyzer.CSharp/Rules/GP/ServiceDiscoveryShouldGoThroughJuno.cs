@@ -35,7 +35,7 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
     private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (IsInsideJuno(context)
+        if (IsInsideDiscoveryProvider(context)
             || context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !IsDiscoveryMethod(method))
         {
@@ -47,7 +47,7 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
 
     private static void AnalyzeObjectCreation(SonarSyntaxNodeReportingContext context)
     {
-        if (!IsInsideJuno(context)
+        if (!IsInsideDiscoveryProvider(context)
             && ObjectCreationFactory.TryCreate(context.Node, out var creation)
             && creation.TypeSymbol(context.Model) is { } type
             && DiscoveryRegistrationTypes.Contains(type.ToDisplayString())
@@ -70,8 +70,22 @@ public sealed class ServiceDiscoveryShouldGoThroughJuno : SonarDiagnosticAnalyze
         || (GpJunoTypes.Implements(method.ContainingType, "Consul.IAgentEndpoint")
             && AgentDiscoveryMethods.Contains(method.Name));
 
-    // Juno is the layer that is supposed to wrap Consul, so its own code is not reported.
+    // Juno and dedicated discovery-provider assemblies are the layers that are supposed to wrap Consul. The latter
+    // are identified by their implementation of Akka's discovery abstraction, not by a project or namespace name.
+    private static bool IsInsideDiscoveryProvider(SonarSyntaxNodeReportingContext context) =>
+        IsInsideJuno(context)
+        || ContainsAkkaDiscoveryProvider(context.Compilation.Assembly.GlobalNamespace);
+
     private static bool IsInsideJuno(SonarSyntaxNodeReportingContext context) =>
         context.Model.GetEnclosingSymbol(context.Node.SpanStart)?.ContainingNamespace?.ToDisplayString() is { } containingNamespace
         && (containingNamespace == "GP.Juno" || containingNamespace.StartsWith("GP.Juno.", StringComparison.Ordinal));
+
+    private static bool ContainsAkkaDiscoveryProvider(INamespaceSymbol root) =>
+        root.GetTypeMembers().Any(IsAkkaDiscoveryProvider)
+        || root.GetNamespaceMembers().Any(ContainsAkkaDiscoveryProvider);
+
+    private static bool IsAkkaDiscoveryProvider(INamedTypeSymbol type) =>
+        type.ToDisplayString() != "Akka.Cluster.Discovery.DiscoveryService"
+        && GpJunoTypes.DerivesFrom(type, "Akka.Cluster.Discovery.DiscoveryService")
+        || type.GetTypeMembers().Any(IsAkkaDiscoveryProvider);
 }

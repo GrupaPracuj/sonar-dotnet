@@ -68,6 +68,38 @@ public class IdentifierShouldUseStandardCompoundWordSpellingTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void IdentifierShouldUseStandardCompoundWordSpelling_CompliantForUnderscorePrefixedPrivateField() =>
+        builder.AddSnippet(
+            """
+            public class FileProcessableChecker
+            {
+                private readonly string _externalSystemId;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void IdentifierShouldUseStandardCompoundWordSpelling_PreservesPrivateFieldUnderscoreInSuggestion() =>
+        builder.AddSnippet(
+            """
+            public class FileProcessableChecker
+            {
+                private readonly string _externalSystemID; // Noncompliant {{Rename '_externalSystemID' to '_externalSystemId' - that is the standard spelling for this compound word.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void IdentifierShouldUseStandardCompoundWordSpelling_CompliantForInternalSeparators() =>
+        builder.AddSnippet(
+            """
+            public class M20260729_1400_AddCommonOffersCompanyIdIndex
+            {
+            }
+            """)
+            .VerifyNoIssues();
+
     // A method whose name is fixed by an override is not the author's free choice - the base signature dictates it.
     [TestMethod]
     public void IdentifierShouldUseStandardCompoundWordSpelling_CompliantForOverride() =>

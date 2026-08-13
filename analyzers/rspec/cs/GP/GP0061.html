@@ -12,6 +12,10 @@ public sealed record OrderAccepted(Guid OrderId, Guid MessageId, DateTimeOffset 
 <p>The rule checks these exact, case-sensitive member names: <code>MessageId</code>, <code>ConversationId</code>, <code>CorrelationId</code>,
 <code>RequestId</code>, <code>InitiatorId</code>, <code>SentTime</code>, <code>SourceAddress</code>, <code>DestinationAddress</code>,
 <code>ResponseAddress</code>, <code>FaultAddress</code> and <code>HostInfo</code>.</p>
+<h3>What is considered a contract?</h3>
+<p>The rule does not infer contracts from type names. It checks source types declared in a <code>Contracts</code> or <code>*.Contracts</code> namespace,
+actual ASP.NET controller or Minimal API response payloads, and types published, sent, responded with or registered through GP.Juno or MassTransit.
+Declarations from referenced projects are not reported.</p>
 <h3>Exceptions</h3>
 <p>A field with a genuinely separate business meaning is not the same thing as a copy of the metadata - if the value is the identifier of something in the
 domain, name it after that (<code>OrderId</code>, <code>ProcessId</code>) and the rule will not match it.</p>

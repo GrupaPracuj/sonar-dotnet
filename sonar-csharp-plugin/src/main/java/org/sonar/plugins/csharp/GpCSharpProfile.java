@@ -21,7 +21,7 @@ import org.sonarsource.dotnet.shared.plugins.PluginMetadata;
 import org.sonarsource.dotnet.shared.plugins.RoslynRules;
 
 /**
- * Built-in quality profile activating every GP rule.
+ * Built-in quality profile activating GP rules intended for organization-wide use.
  *
  * <p>Deliberately <em>not</em> named "Sonar way": that name belongs to the official C# plugin's profile, and this
  * plugin contributes an additional rule repository alongside it rather than replacing it. A separate name keeps the

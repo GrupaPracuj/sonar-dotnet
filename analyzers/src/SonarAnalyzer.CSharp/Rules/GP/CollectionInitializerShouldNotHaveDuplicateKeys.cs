@@ -32,11 +32,12 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
 
         if (elements.All(IsComplexElement))
         {
-            // The "{key, value}" shape: only report when the created type is actually a dictionary, so an
-            // unrelated type with its own two-argument Add(a, b) overload is left alone.
+            // A dictionary subtype can expose an unrelated Add overload whose first argument is not the key.
+            // Collection initializers bind each element to its actual Add method, so verify that signature rather
+            // than inferring argument roles from the created type alone.
             if (initializer.Parent is not ExpressionSyntax creation
                 || context.Model.GetTypeInfo(creation).Type is not { } createdType
-                || !ImplementsDictionary(createdType))
+                || !UsesDictionaryAdd(elements, createdType, context.Model))
             {
                 return;
             }
@@ -69,9 +70,23 @@ public sealed class CollectionInitializerShouldNotHaveDuplicateKeys : SonarDiagn
     private static ExpressionSyntax FirstOperand(ExpressionSyntax complexElement) =>
         ((InitializerExpressionSyntax)complexElement).Expressions[0];
 
-    private static bool ImplementsDictionary(ITypeSymbol type) =>
-        type.DerivesOrImplements(KnownType.System_Collections_Generic_IDictionary_TKey_TValue)
-        || type.AllInterfaces.Any(x => x.ToDisplayString() == NonGenericDictionaryFullName);
+    private static bool UsesDictionaryAdd(SeparatedSyntaxList<ExpressionSyntax> elements, ITypeSymbol createdType, SemanticModel model)
+    {
+        var genericDictionary = createdType.AllInterfaces.FirstOrDefault(x =>
+            x.ConstructedFrom.Is(KnownType.System_Collections_Generic_IDictionary_TKey_TValue));
+        if (genericDictionary is { TypeArguments.Length: 2 })
+        {
+            return elements.All(x =>
+                model.GetCollectionInitializerSymbolInfo(x).Symbol is IMethodSymbol { Parameters.Length: 2 } add
+                && add.Parameters[0].Type.Equals(genericDictionary.TypeArguments[0])
+                && add.Parameters[1].Type.Equals(genericDictionary.TypeArguments[1]));
+        }
+
+        return createdType.AllInterfaces.Any(x => x.ToDisplayString() == NonGenericDictionaryFullName)
+               && elements.All(x =>
+                   model.GetCollectionInitializerSymbolInfo(x).Symbol is IMethodSymbol { Parameters.Length: 2 } add
+                   && add.Parameters.All(p => p.Type.SpecialType == SpecialType.System_Object));
+    }
 
     // Only elements whose value is a compile-time constant are ever compared, so two elements that merely look
     // alike (e.g. two different local variables) can never be misidentified as duplicates. Reports once for every

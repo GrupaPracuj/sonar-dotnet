@@ -16,6 +16,14 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
         "SequenceEqual", "Single", "SingleOrDefault", "Sum", "ToArray", "ToDictionary", "ToHashSet", "ToList", "ToLookup",
     };
 
+    private static readonly HashSet<string> DeferredEnumerableMethods = new(StringComparer.Ordinal)
+    {
+        "Append", "Cast", "Chunk", "Concat", "DefaultIfEmpty", "Distinct", "DistinctBy", "Except", "ExceptBy",
+        "GroupBy", "GroupJoin", "Intersect", "IntersectBy", "Join", "OfType", "Order", "OrderBy", "OrderByDescending",
+        "Prepend", "Range", "Repeat", "Reverse", "Select", "SelectMany", "Skip", "SkipLast", "SkipWhile", "Take",
+        "TakeLast", "TakeWhile", "ThenBy", "ThenByDescending", "Union", "UnionBy", "Where", "Zip",
+    };
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context)
@@ -41,7 +49,11 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
         // Sites are collected once, in source order, per symbol. The first site that can execute after an earlier
         // site is reported; opposite branches of the same if/else are treated as mutually exclusive.
         var enumerationSites = new Dictionary<ISymbol, List<SyntaxNode>>();
-        foreach (var node in body.DescendantNodes())
+        foreach (var node in body.DescendantNodes(x =>
+                     x.Kind() is not (SyntaxKindEx.LocalFunctionStatement
+                         or SyntaxKind.SimpleLambdaExpression
+                         or SyntaxKind.ParenthesizedLambdaExpression
+                         or SyntaxKind.AnonymousMethodExpression)))
         {
             if (EnumeratedSymbol(context.Model, node) is { } symbol && trackedSymbols.Contains(symbol))
             {
@@ -112,9 +124,9 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
     private static bool IsCaseBranch(SyntaxNode node) =>
         node is SwitchSectionSyntax || SwitchExpressionArmSyntaxWrapper.IsInstance(node);
 
-    // Local variables and parameters whose DECLARED type is exactly IEnumerable<T> or IQueryable<T>. A concrete collection such as
-    // List<T> also implements IEnumerable<T>, but its declared type is List<T>, not the interface, so it is not tracked: once
-    // materialized, repeated enumeration is safe.
+    // IQueryable<T> is intrinsically re-executable. IEnumerable<T>, however, says nothing about the runtime source:
+    // Dapper and many repositories return a buffered List<T> behind that interface. Track IEnumerable<T> only when
+    // its initializer proves deferred execution instead of guessing from the interface alone.
     private static HashSet<ISymbol> TrackedLazySequenceSymbols(SemanticModel model, ParameterListSyntax parameterList, BlockSyntax body)
     {
         var symbols = new HashSet<ISymbol>();
@@ -123,16 +135,30 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
         {
             foreach (var parameter in parameterList.Parameters)
             {
-                if (model.GetDeclaredSymbol(parameter) is IParameterSymbol parameterSymbol && IsLazySequenceType(parameterSymbol.Type))
+                if (model.GetDeclaredSymbol(parameter) is IParameterSymbol parameterSymbol && IsQueryableType(parameterSymbol.Type))
                 {
                     symbols.Add(parameterSymbol);
                 }
             }
         }
 
-        foreach (var declarator in body.DescendantNodes().OfType<VariableDeclaratorSyntax>())
+        foreach (var declarator in body.DescendantNodes(x =>
+                     x.Kind() is not (SyntaxKindEx.LocalFunctionStatement
+                         or SyntaxKind.SimpleLambdaExpression
+                         or SyntaxKind.ParenthesizedLambdaExpression
+                         or SyntaxKind.AnonymousMethodExpression))
+                 .OfType<VariableDeclaratorSyntax>()
+                 .OrderBy(x => x.SpanStart))
         {
-            if (model.GetDeclaredSymbol(declarator) is ILocalSymbol localSymbol && IsLazySequenceType(localSymbol.Type))
+            if (model.GetDeclaredSymbol(declarator) is not ILocalSymbol localSymbol)
+            {
+                continue;
+            }
+
+            if (IsQueryableType(localSymbol.Type)
+                || (IsEnumerableType(localSymbol.Type)
+                    && declarator.Initializer?.Value is { } initializer
+                    && IsProvablyLazy(model, initializer, symbols)))
             {
                 symbols.Add(localSymbol);
             }
@@ -141,8 +167,50 @@ public sealed class LazySequenceShouldNotBeEnumeratedMultipleTimes : SonarDiagno
         return symbols;
     }
 
-    private static bool IsLazySequenceType(ITypeSymbol type) =>
-        type.Is(KnownType.System_Collections_Generic_IEnumerable_T) || type.Is(KnownType.System_Linq_IQueryable);
+    private static bool IsProvablyLazy(SemanticModel model, ExpressionSyntax expression, HashSet<ISymbol> knownLazySymbols)
+    {
+        expression = expression.RemoveParentheses() as ExpressionSyntax ?? expression;
+        if (model.GetSymbolInfo(expression).Symbol is { } symbol && knownLazySymbols.Contains(symbol))
+        {
+            return true;
+        }
+
+        if (expression is CastExpressionSyntax cast)
+        {
+            return IsProvablyLazy(model, cast.Expression, knownLazySymbols);
+        }
+
+        if (expression is ConditionalExpressionSyntax conditional)
+        {
+            return IsProvablyLazy(model, conditional.WhenTrue, knownLazySymbols)
+                   && IsProvablyLazy(model, conditional.WhenFalse, knownLazySymbols);
+        }
+
+        return expression is InvocationExpressionSyntax invocation
+               && model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+               && (IsDeferredEnumerableMethod(method) || IsIteratorMethod(method));
+    }
+
+    private static bool IsDeferredEnumerableMethod(IMethodSymbol method) =>
+        method.ContainingType?.ToDisplayString() == "System.Linq.Enumerable"
+        && DeferredEnumerableMethods.Contains(method.Name);
+
+    private static bool IsIteratorMethod(IMethodSymbol method) =>
+        method.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .Any(x => x.DescendantNodes(n =>
+                    n.Kind() is not (SyntaxKindEx.LocalFunctionStatement
+                        or SyntaxKind.SimpleLambdaExpression
+                        or SyntaxKind.ParenthesizedLambdaExpression
+                        or SyntaxKind.AnonymousMethodExpression))
+                .OfType<YieldStatementSyntax>()
+                .Any());
+
+    private static bool IsEnumerableType(ITypeSymbol type) =>
+        type.Is(KnownType.System_Collections_Generic_IEnumerable_T);
+
+    private static bool IsQueryableType(ITypeSymbol type) =>
+        type.Is(KnownType.System_Linq_IQueryable);
 
     // A foreach over the tracked symbol, or a LINQ extension method called directly on the tracked symbol (not on the result of
     // an earlier call in the same chain - GetSymbolInfo on a MemberAccessExpression's receiver only resolves to the tracked

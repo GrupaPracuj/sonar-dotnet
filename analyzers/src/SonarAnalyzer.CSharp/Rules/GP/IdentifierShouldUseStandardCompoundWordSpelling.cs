@@ -73,11 +73,15 @@ public sealed class IdentifierShouldUseStandardCompoundWordSpelling : SonarDiagn
 
     private static void Report(SonarSyntaxNodeReportingContext context, SyntaxToken identifier)
     {
-        if (GpIdentifierWords.TryFixCompoundWord(identifier.ValueText, out var suggested))
+        if (!HasInternalUnderscore(identifier.ValueText)
+            && GpIdentifierWords.TryFixCompoundWord(identifier.ValueText, out var suggested))
         {
             context.ReportIssue(Rule, identifier, identifier.ValueText, suggested);
         }
     }
+
+    private static bool HasInternalUnderscore(string identifier) =>
+        identifier.TrimStart('_').Contains('_');
 
     // A parameter of an override or of an interface implementation can be renamed without breaking anything at
     // compile time - parameter names are not part of a signature - but the new name then disagrees with the

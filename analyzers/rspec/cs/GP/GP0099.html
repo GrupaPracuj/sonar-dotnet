@@ -1,4 +1,4 @@
-<p>A public or protected property should not return an array.</p>
+<p>A public or protected property without an equally accessible setter should not return an array.</p>
 <h2>Why is this an issue?</h2>
 <p>An array returned by a property is not write-protected, even when the property itself is read-only: the caller receives a reference to the same
 array instance and can mutate its elements directly, bypassing whatever invariants the owning type is meant to enforce. Callers also commonly
@@ -29,10 +29,12 @@ public class Book
 }
 </pre>
 <h3>Exceptions</h3>
-<p>Not reported: properties on a type deriving from <code>System.Attribute</code> (an attribute argument can only be an array, never a collection,
-so there is no alternative shape to move to); properties on a type recognized as a message contract (name ending in <code>Dto</code>,
-<code>Request</code>, <code>Response</code>, <code>Contract</code>, <code>Event</code>, <code>Command</code> or <code>Message</code>) - these
-legitimately expose arrays for wire serialization, with no in-process aliasing risk; and <code>override</code> properties, since the property's
+<p>Not reported: properties with a public or protected setter, because their mutability is already an explicit part of the API; properties on a type
+deriving from <code>System.Attribute</code> (an attribute argument can only be an array, never a collection,
+so there is no alternative shape to move to); one-dimensional <code>byte[]</code> properties used for binary payloads, where collection wrappers are
+not compatible with common file and stream APIs and defensive copying can be prohibitively expensive; properties on a source type semantically recognized
+as a message or HTTP response contract - these legitimately expose arrays for wire serialization, with no in-process aliasing risk; and
+<code>override</code> properties, since the property's
 shape is dictated by the member it overrides.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>

@@ -24,43 +24,47 @@ public sealed class ContractShouldNotBePersistedAsEntity : SonarDiagnosticAnalyz
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context)
-    {
-        context.RegisterNodeAction(AnalyzeDbSetProperty, SyntaxKind.PropertyDeclaration);
-        context.RegisterNodeAction(AnalyzeEntityConfiguration, SyntaxKind.InvocationExpression);
-        context.RegisterNodeAction(AnalyzeMappedContract, SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration);
-    }
+    protected override void Initialize(SonarAnalysisContext context) =>
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeDbSetProperty(c, contracts), SyntaxKind.PropertyDeclaration);
+            start.RegisterNodeAction(c => AnalyzeEntityConfiguration(c, contracts), SyntaxKind.InvocationExpression);
+            start.RegisterNodeAction(c => AnalyzeMappedContract(c, contracts), SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration);
+        });
 
     // public DbSet<OrderAcceptedContract> ...
-    private static void AnalyzeDbSetProperty(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeDbSetProperty(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
         if (context.Model.GetTypeInfo(declaration.Type).Type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } dbSet
             && dbSet.ConstructedFrom.Is(KnownType.Microsoft_EntityFrameworkCore_DbSet_TEntity)
-            && GpMessageContracts.HasContractName(dbSet.TypeArguments[0].Name))
+            && dbSet.TypeArguments[0] is INamedTypeSymbol entityType
+            && contracts.IsContract(entityType))
         {
-            context.ReportIssue(Rule, declaration.Type, dbSet.TypeArguments[0].Name);
+            context.ReportIssue(Rule, declaration.Type, entityType.Name);
         }
     }
 
     // modelBuilder.Entity<OrderAcceptedContract>()
-    private static void AnalyzeEntityConfiguration(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeEntityConfiguration(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { Name: "Entity", TypeArguments.Length: 1 } method
             && (method.ContainingType?.ToDisplayString() ?? string.Empty).StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal)
-            && GpMessageContracts.HasContractName(method.TypeArguments[0].Name))
+            && method.TypeArguments[0] is INamedTypeSymbol entityType
+            && contracts.IsContract(entityType))
         {
-            context.ReportIssue(Rule, invocation, method.TypeArguments[0].Name);
+            context.ReportIssue(Rule, invocation, entityType.Name);
         }
     }
 
     // A contract carrying EF mapping attributes is being mapped even without a DbSet.
-    private static void AnalyzeMappedContract(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeMappedContract(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         if (context.Node is not TypeDeclarationSyntax { Identifier: var identifier } declaration
-            || !GpMessageContracts.HasContractName(identifier.ValueText)
             || context.Model.GetDeclaredSymbol(declaration) is not { } type
+            || !contracts.IsContract(type)
             || !HasEntityMappingAttribute(type))
         {
             return;

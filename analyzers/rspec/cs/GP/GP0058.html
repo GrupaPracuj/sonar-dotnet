@@ -1,35 +1,53 @@
-<p>A collection on a contract should be a materialized read-only collection, not a lazy or queryable sequence.</p>
+<p>A contract should not expose a database query or asynchronous sequence for the serializer to execute.</p>
 <h2>Why is this an issue?</h2>
-<p><code>IEnumerable&lt;T&gt;</code> promises nothing about when its items are produced. On a contract that matters, because the serializer is what ends up
-enumerating it - so whatever work backs the sequence runs during serialization, outside the code that built the message and outside its error handling. If
-the sequence was a LINQ query over a <code>DbContext</code>, the database is queried at that point; if the scope has already been disposed, the publish
-fails with an exception that points at the serializer rather than at the cause.</p>
-<p><code>IQueryable&lt;T&gt;</code> is the same problem with a provider attached, and <code>IAsyncEnumerable&lt;T&gt;</code> cannot be serialized
-synchronously at all. All three also hide whether the sequence can be enumerated twice, which serializers and retries both do.</p>
+<p><code>IQueryable&lt;T&gt;</code> carries a query provider and expression tree rather than a completed result. If it is placed on a contract, the
+serializer executes the query while enumerating the property. This happens outside the code that built the response or message; a disposed
+<code>DbContext</code> then causes serialization to fail, while a live context performs database work at an unexpected boundary.</p>
+<p><code>IAsyncEnumerable&lt;T&gt;</code> likewise represents work that happens while its items are consumed and is not a stable, already-produced
+payload.</p>
 <p>A materialized read-only collection removes the question: the items exist, the count is known, and enumerating it again is free and identical.</p>
 <pre>
-public sealed class OrderAcceptedContract
+namespace GP.Orders.Contracts;
+
+public sealed class OrderAccepted
 {
-    public IEnumerable&lt;OrderLine&gt; Lines { get; init; }
+    public IQueryable&lt;OrderLine&gt; Lines { get; init; }
 }
 </pre>
+<h3>What is considered a contract?</h3>
+<p>The rule does not infer a contract from the type's name. A type is considered a contract when at least one of the following is true:</p>
+<ul>
+  <li>it is declared directly in a namespace named <code>Contracts</code> or ending in <code>.Contracts</code>, such as
+  <code>GP.Orders.Contracts</code>;</li>
+  <li>it is returned from an ASP.NET controller action or Minimal API endpoint, including responses wrapped in <code>Task&lt;T&gt;</code>,
+  <code>ValueTask&lt;T&gt;</code> or <code>ActionResult&lt;T&gt;</code>, and payloads passed to standard MVC, <code>Results</code> or
+  <code>TypedResults</code> response factories;</li>
+  <li>it is published or sent through GP.Juno or MassTransit using <code>Publish</code>, <code>PublishBatch</code>, <code>Send</code>,
+  <code>RespondAsync</code>, <code>Publishes</code> or <code>Sends</code>.</li>
+</ul>
+<p>A similarly named method on an unrelated application type does not make its argument a contract.</p>
 <h3>Exceptions</h3>
-<p><code>IReadOnlyCollection&lt;T&gt;</code>, <code>IReadOnlyList&lt;T&gt;</code>, arrays and concrete collections are not reported. Mutable collection
-types are outside this rule's scope - it is about when the items materialize, not about who can change them.</p>
+<p><code>IEnumerable&lt;T&gt;</code> is not reported merely because its interface permits deferred execution. It commonly contains an already
+materialized list, and the declaration alone cannot prove otherwise. <code>IReadOnlyCollection&lt;T&gt;</code>, <code>IReadOnlyList&lt;T&gt;</code>,
+arrays and concrete collections are also not reported.</p>
 <h2>How to fix it</h2>
 <p>Declare the property as <code>IReadOnlyList&lt;T&gt;</code> or <code>IReadOnlyCollection&lt;T&gt;</code> and materialize the sequence when the message is
 built.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public sealed class OrderAcceptedContract
+namespace GP.Orders.Contracts;
+
+public sealed class OrderAccepted
 {
-    public IEnumerable&lt;OrderLine&gt; Lines { get; init; } // Noncompliant {{'Lines' is a lazy sequence - the serializer would enumerate it; use IReadOnlyList<T>.}}
+    public IQueryable&lt;OrderLine&gt; Lines { get; init; } // Noncompliant {{'Lines' exposes a deferred query or asynchronous sequence; materialize it as IReadOnlyList<T> before serialization.}}
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public sealed class OrderAcceptedContract
+namespace GP.Orders.Contracts;
+
+public sealed class OrderAccepted
 {
     public IReadOnlyList&lt;OrderLine&gt; Lines { get; init; }
 }

@@ -125,11 +125,25 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
         }
     }
 
-    // Only looks at the immediately enclosing method's own parameters - a token available via a field or a
-    // wrapping local function is not considered "available" for this check.
-    internal static IParameterSymbol AvailableCancellationToken(SemanticModel model, SyntaxNode node) =>
-        node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is { } methodDeclaration
-        && model.GetDeclaredSymbol(methodDeclaration) is IMethodSymbol method
-            ? method.Parameters.FirstOrDefault(IsCancellationToken)
-            : null;
+    // Use the token of the nearest callable scope. A local function parameter is a different symbol from the outer
+    // method parameter passed into it, even when both are named "cancellation"; comparing against the outer symbol
+    // would therefore report a correctly propagated token inside the local function.
+    internal static IParameterSymbol AvailableCancellationToken(SemanticModel model, SyntaxNode node)
+    {
+        foreach (var ancestor in node.Ancestors())
+        {
+            IMethodSymbol method = ancestor switch
+            {
+                MethodDeclarationSyntax methodDeclaration => model.GetDeclaredSymbol(methodDeclaration),
+                _ when LocalFunctionStatementSyntaxWrapper.IsInstance(ancestor) => model.GetDeclaredSymbol(ancestor) as IMethodSymbol,
+                _ => null,
+            };
+            if (method is not null)
+            {
+                return method.Parameters.FirstOrDefault(IsCancellationToken);
+            }
+        }
+
+        return null;
+    }
 }

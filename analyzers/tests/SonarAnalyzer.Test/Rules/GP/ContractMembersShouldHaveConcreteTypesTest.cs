@@ -23,6 +23,8 @@ public class ContractMembersShouldHaveConcreteTypesTest
             }
         }
 
+        namespace Contracts
+        {
         public interface IPaymentMethod { }
 
         public abstract class PricingStrategy { }
@@ -39,6 +41,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             {
                 public IPaymentMethod Payment { get; init; } // Noncompliant {{'Payment' is declared as the interface 'IPaymentMethod', so a consumer cannot tell what to deserialize it into.}}
             }
+            }
             """)
             .Verify();
 
@@ -51,6 +54,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             {
                 public PricingStrategy Pricing { get; init; } // Noncompliant {{'Pricing' is declared as the abstract type 'PricingStrategy', so a consumer cannot tell what to deserialize it into.}}
             }
+            }
             """)
             .Verify();
 
@@ -60,6 +64,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             Stubs + """
 
             public sealed record OrderAcceptedContract(System.Guid OrderId, IPaymentMethod Payment); // Noncompliant@-0 {{'Payment' is declared as the interface 'IPaymentMethod', so a consumer cannot tell what to deserialize it into.}}
+            }
             """)
             .Verify();
 
@@ -73,6 +78,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
                 System.Collections.Generic.IReadOnlyList<string> Tags,
                 System.Collections.Generic.IReadOnlyCollection<int> Quantities,
                 System.Collections.Generic.IReadOnlyDictionary<string, string> Metadata);
+            }
             """)
             .VerifyNoIssues();
 
@@ -85,6 +91,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             public sealed class OrderAcceptedContract
             {
                 public System.Collections.Generic.IEnumerable<string> Tags { get; init; }
+            }
             }
             """)
             .VerifyNoIssues();
@@ -101,6 +108,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             public sealed class OrderAcceptedContract
             {
                 public PaymentMethodBase Payment { get; init; }
+            }
             }
             """)
             .VerifyNoIssues();
@@ -120,6 +128,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
 
             public sealed record PaymentAcceptedContract(
                 [System.Text.Json.Serialization.JsonConverter(typeof(PaymentConverter))] IPaymentMethod Payment);
+            }
             """)
             .VerifyNoIssues();
 
@@ -143,6 +152,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
                 [Custom.JsonConverter(typeof(PaymentConverter))]
                 public IPaymentMethod Payment { get; init; } // Noncompliant
             }
+            }
             """)
             .Verify();
 
@@ -152,6 +162,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
             Stubs + """
 
             public sealed record OrderAcceptedContract(System.Guid OrderId, PaymentMethodContract Payment);
+            }
             """)
             .VerifyNoIssues();
 
@@ -167,6 +178,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
                 public sealed class OrderAcceptedContract
                 {
                     public IPaymentMethod Payment { get; init; }
+                }
                 }
                 """)
             .VerifyNoIssues();
@@ -184,6 +196,7 @@ public class ContractMembersShouldHaveConcreteTypesTest
                 {
                     public System.Collections.Generic.IReadOnlyList<string> Tags { get; init; } // Noncompliant {{'Tags' is declared as the interface 'IReadOnlyList', so a consumer cannot tell what to deserialize it into.}}
                 }
+                }
                 """)
             .Verify();
 
@@ -191,11 +204,50 @@ public class ContractMembersShouldHaveConcreteTypesTest
     public void ContractMembersShouldHaveConcreteTypes_CompliantForNonContractType() =>
         builder.AddSnippet(
             Stubs + """
+            }
 
             public sealed class OrderProcessor
             {
-                public IPaymentMethod Payment { get; init; }
+                public Contracts.IPaymentMethod Payment { get; init; }
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_CompliantForInternalApplicationCommandName() =>
+        builder.AddSnippet(
+            """
+            public interface Caller { }
+
+            internal sealed record CreateInvitationCommand(string Email, Caller Caller);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractMembersShouldHaveConcreteTypes_NoncompliantForPublishedTypeOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Abstractions
+            {
+                public interface IPublisher
+                {
+                    System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+                }
+            }
+
+            public interface IPaymentMethod { }
+
+            public sealed class PaymentPublished
+            {
+                public IPaymentMethod Payment { get; init; } // Noncompliant {{'Payment' is declared as the interface 'IPaymentMethod', so a consumer cannot tell what to deserialize it into.}}
+            }
+
+            public sealed class PaymentService
+            {
+                private readonly GP.Juno.Abstractions.IPublisher publisher;
+
+                public System.Threading.Tasks.Task Publish(PaymentPublished message) => publisher.Publish(message);
+            }
+            """)
+            .Verify();
 }

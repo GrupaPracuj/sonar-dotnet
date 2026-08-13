@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Tests.Diagnostics
@@ -18,11 +19,11 @@ namespace Tests.Diagnostics
             }
         }
 
-        public void SwallowsTaskCanceled()
+        public void SwallowsTaskCanceled(CancellationToken cancellationToken)
         {
             try
             {
-                Work();
+                Work(cancellationToken);
             }
             catch (TaskCanceledException) // Fixed
             {
@@ -44,5 +45,6 @@ namespace Tests.Diagnostics
         }
 
         private void Work() { }
+        private void Work(CancellationToken cancellationToken) { }
     }
 }

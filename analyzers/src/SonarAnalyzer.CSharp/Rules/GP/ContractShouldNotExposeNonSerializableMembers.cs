@@ -32,18 +32,21 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context)
-    {
-        context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
-        context.RegisterNodeAction(AnalyzeField, SyntaxKind.FieldDeclaration);
-        context.RegisterNodeAction(AnalyzeRecordParameters, SyntaxKindEx.RecordDeclaration, SyntaxKindEx.RecordStructDeclaration);
-    }
+    protected override void Initialize(SonarAnalysisContext context) =>
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeProperty(c, contracts), SyntaxKind.PropertyDeclaration);
+            start.RegisterNodeAction(c => AnalyzeField(c, contracts), SyntaxKind.FieldDeclaration);
+            start.RegisterNodeAction(c => AnalyzeRecordParameters(c, contracts), SyntaxKindEx.RecordDeclaration, SyntaxKindEx.RecordStructDeclaration);
+        });
 
-    private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (GpMessageContracts.IsContractMember(declaration)
-            && context.Model.GetDeclaredSymbol(declaration) is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, GetMethod.DeclaredAccessibility: Accessibility.Public } property
+        if (context.Model.GetDeclaredSymbol(declaration) is
+                { DeclaredAccessibility: Accessibility.Public, IsStatic: false, GetMethod.DeclaredAccessibility: Accessibility.Public, ContainingType: { } containingType } property
+            && contracts.IsContract(containingType)
             && !IsIgnored(property)
             && BannedType(context.Model, declaration.Type) is { } typeName)
         {
@@ -52,20 +55,20 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
     }
 
     // A positional parameter of a record - class or struct - is a public member of the serialized instance just as much as a property is.
-    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
-        if (context.Node is not TypeDeclarationSyntax { Identifier.ValueText: var typeName } declaration
-            || !GpMessageContracts.HasContractName(typeName)
+        if (context.Node is not TypeDeclarationSyntax declaration
             || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
-            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList
+            || context.Model.GetDeclaredSymbol(declaration) is not { } recordType
+            || !contracts.IsContract(recordType))
         {
             return;
         }
 
         foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
         {
-            if (context.Model.GetDeclaredSymbol(declaration) is { } recordType
-                && recordType.GetMembers(parameter.Identifier.ValueText).OfType<IPropertySymbol>().FirstOrDefault() is { } property
+            if (recordType.GetMembers(parameter.Identifier.ValueText).OfType<IPropertySymbol>().FirstOrDefault() is { } property
                 && !IsIgnored(property)
                 && BannedType(context.Model, parameter.Type) is { } bannedType)
             {
@@ -74,13 +77,15 @@ public sealed class ContractShouldNotExposeNonSerializableMembers : SonarDiagnos
         }
     }
 
-    private static void AnalyzeField(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeField(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (FieldDeclarationSyntax)context.Node;
-        if (!GpMessageContracts.IsContractMember(declaration)
-            || declaration.Modifiers.All(x => !x.IsKind(SyntaxKind.PublicKeyword))
+        if (declaration.Modifiers.All(x => !x.IsKind(SyntaxKind.PublicKeyword))
             // A static or const field is not part of the serialized instance, so it is not part of the contract.
             || declaration.Modifiers.Any(x => x.IsKind(SyntaxKind.StaticKeyword) || x.IsKind(SyntaxKind.ConstKeyword))
+            || declaration.Parent is not TypeDeclarationSyntax containingDeclaration
+            || context.Model.GetDeclaredSymbol(containingDeclaration) is not { } containingType
+            || !contracts.IsContract(containingType)
             || BannedType(context.Model, declaration.Declaration.Type) is not { } typeName)
         {
             return;

@@ -18,14 +18,15 @@ public sealed class ContractShouldNotInheritDomainType : ParametrizedDiagnosticA
         context.RegisterCompilationStartAction(start =>
         {
             var entities = GpEntityTypes.Create(start.Compilation, EntityBaseTypes);
-            start.RegisterNodeAction(c => AnalyzeTypeDeclaration(c, entities), SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration);
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeTypeDeclaration(c, entities, contracts), SyntaxKind.ClassDeclaration, SyntaxKindEx.RecordDeclaration);
         });
 
-    private static void AnalyzeTypeDeclaration(SonarSyntaxNodeReportingContext context, GpEntityTypes entities)
+    private static void AnalyzeTypeDeclaration(SonarSyntaxNodeReportingContext context, GpEntityTypes entities, GpSemanticContractDetector contracts)
     {
-        if (context.Node is not TypeDeclarationSyntax { Identifier.ValueText: var typeName, BaseList: not null } declaration
-            || !GpMessageContracts.HasContractName(typeName)
-            || context.Model.GetDeclaredSymbol(declaration) is not { BaseType: { } baseType }
+        if (context.Node is not TypeDeclarationSyntax { BaseList: not null } declaration
+            || context.Model.GetDeclaredSymbol(declaration) is not { BaseType: { } baseType } type
+            || !contracts.IsContract(type)
             // Only a base class counts. Inheriting another contract or implementing a marker interface is fine.
             || baseType.SpecialType == SpecialType.System_Object
             || !entities.IsEntity(baseType))

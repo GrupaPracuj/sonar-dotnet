@@ -14,6 +14,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             using System.IO;
 
+            namespace Contracts;
+
             public class UploadRequest
             {
                 public Stream File { get; set; } // Noncompliant {{'File' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
@@ -26,6 +28,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
         builder.AddSnippet(
             """
             using System.Threading.Tasks;
+
+            namespace Contracts;
 
             public class OrderResponse
             {
@@ -40,6 +44,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             using System;
 
+            namespace Contracts;
+
             public class OrderContract
             {
                 public Action Callback { get; set; } // Noncompliant {{'Callback' has type 'System.Action', which does not serialize to JSON meaningfully - remove it from this contract.}}
@@ -52,6 +58,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
         builder.AddSnippet(
             """
             using System.IO;
+
+            namespace Contracts;
 
             public class UploadRequest
             {
@@ -66,6 +74,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             using System.IO;
 
+            namespace Contracts;
+
             public class UploadRequest
             {
                 public static readonly Stream Empty = null;
@@ -77,6 +87,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_CompliantOutsideSerializedPropertySurface() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public class UploadRequest
             {
                 public static System.IO.Stream Shared { get; }
@@ -100,16 +112,19 @@ public class ContractShouldNotExposeNonSerializableMembersTest
                 public sealed class JsonIgnoreAttribute : System.Attribute { }
             }
 
-            public class UploadRequest
+            namespace Contracts
             {
-                [System.Text.Json.Serialization.JsonIgnore]
-                public System.IO.Stream SystemTextJsonFile { get; set; }
+                public class UploadRequest
+                {
+                    [System.Text.Json.Serialization.JsonIgnore]
+                    public System.IO.Stream SystemTextJsonFile { get; set; }
 
-                [Newtonsoft.Json.JsonIgnore]
-                public System.IO.Stream NewtonsoftFile { get; set; }
+                    [Newtonsoft.Json.JsonIgnore]
+                    public System.IO.Stream NewtonsoftFile { get; set; }
 
-                [Newtonsoft.Json.JsonIgnore]
-                public System.IO.Stream IgnoredField;
+                    [Newtonsoft.Json.JsonIgnore]
+                    public System.IO.Stream IgnoredField;
+                }
             }
             """)
             .VerifyNoIssues();
@@ -120,10 +135,13 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             public sealed class JsonIgnoreAttribute : System.Attribute { }
 
-            public class UploadRequest
+            namespace Contracts
             {
-                [JsonIgnore]
-                public System.IO.Stream File { get; set; } // Noncompliant@-1 {{'File' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                public class UploadRequest
+                {
+                    [global::JsonIgnore]
+                    public System.IO.Stream File { get; set; } // Noncompliant@-1 {{'File' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                }
             }
             """)
             .Verify();
@@ -133,6 +151,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
         builder.AddSnippet(
             """
             using System.IO;
+
+            namespace Contracts;
 
             public class UploadRequest
             {
@@ -146,6 +166,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForRuntimeObjects() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public class OrderRequest
             {
                 public System.Exception Failure { get; set; } // Noncompliant {{'Failure' has type 'System.Exception', which does not serialize to JSON meaningfully - remove it from this contract.}}
@@ -160,6 +182,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForDerivedException() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public class OrderRequest
             {
                 public System.InvalidOperationException Failure { get; set; } // Noncompliant {{'Failure' has type 'System.InvalidOperationException', which does not serialize to JSON meaningfully - remove it from this contract.}}
@@ -172,11 +196,14 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForCustomDelegate() =>
         builder.AddSnippet(
             """
-            public delegate void OrderHandler(int id);
-
-            public class OrderContract
+            namespace Contracts
             {
-                public OrderHandler Handler { get; set; } // Noncompliant {{'Handler' has type 'OrderHandler', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                public delegate void OrderHandler(int id);
+
+                public class OrderContract
+                {
+                    public OrderHandler Handler { get; set; } // Noncompliant {{'Handler' has type 'Contracts.OrderHandler', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                }
             }
             """)
             .Verify();
@@ -185,6 +212,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_CompliantForOrdinaryProperties() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public class OrderDto
             {
                 public string Id { get; set; }
@@ -213,6 +242,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             using System.IO;
 
+            namespace Contracts;
+
             public sealed record UploadRequest(string FileName, Stream Content); // Noncompliant@-0 {{'Content' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
             """)
             .Verify();
@@ -221,6 +252,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_CompliantForRecordParameterOfSerializableType() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public sealed record UploadRequest(string FileName, byte[] Content);
             """)
             .VerifyNoIssues();
@@ -232,6 +265,8 @@ public class ContractShouldNotExposeNonSerializableMembersTest
             """
             using System.IO;
 
+            namespace Contracts;
+
             public readonly record struct UploadRequest(string FileName, Stream Content); // Noncompliant@-0 {{'Content' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
             """)
             .Verify();
@@ -240,20 +275,47 @@ public class ContractShouldNotExposeNonSerializableMembersTest
     public void ContractShouldNotExposeNonSerializableMembers_CompliantForRecordStructParameterOfSerializableType() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public readonly record struct UploadRequest(string FileName, byte[] Content);
             """)
             .VerifyNoIssues();
 
-    // An event or a command is as much a contract as a request is, so the same member is reported there too.
     [TestMethod]
-    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForEventNamedContract() =>
+    public void ContractShouldNotExposeNonSerializableMembers_CompliantForEventSuffixAlone() =>
         builder.AddSnippet(
             """
             using System.IO;
 
             public sealed class OrderAcceptedEvent
             {
-                public Stream Payload { get; set; } // Noncompliant {{'Payload' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+                public Stream Payload { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotExposeNonSerializableMembers_NoncompliantForPublishedTypeOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            """
+            namespace MassTransit
+            {
+                public interface IPublishEndpoint
+                {
+                    System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+                }
+            }
+
+            public sealed class OrderAccepted
+            {
+                public System.IO.Stream Payload { get; set; } // Noncompliant {{'Payload' has type 'System.IO.Stream', which does not serialize to JSON meaningfully - remove it from this contract.}}
+            }
+
+            public sealed class OrderService
+            {
+                private readonly MassTransit.IPublishEndpoint publisher;
+
+                public System.Threading.Tasks.Task Publish(OrderAccepted message) => publisher.Publish(message);
             }
             """)
             .Verify();

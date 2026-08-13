@@ -1,4 +1,4 @@
-<p>A message should be published or sent through Juno's <code>IPublisher</code> or <code>IMessageSender</code>, not through MassTransit's
+<p>A message should be published or sent through Juno's <code>IPublisher</code>, <code>IMessageSender</code> or <code>EventStream</code>, not through MassTransit's
 <code>IPublishEndpoint</code>/<code>ISendEndpointProvider</code>/<code>IBus</code> or a raw RabbitMQ connection.</p>
 <h2>Why is this an issue?</h2>
 <p>Juno wraps MassTransit rather than hiding it, and the wrapper is where the conventions live: the message-type naming and schema headers, the
@@ -17,10 +17,12 @@ public class OrderService
 <h3>Exceptions</h3>
 <p>Consuming is not wrapped and is not reported: implementing MassTransit's <code>IConsumer&lt;T&gt;</code> is the sanctioned way to handle a message,
 and Juno's own examples do exactly that. Bus configuration during start-up is not reported either - that is where MassTransit is supposed to be
-referenced.</p>
+referenced. Calls made through <code>GP.Juno.EventStream.EventStream</code> are also not reported. That interface intentionally inherits MassTransit's
+sending interfaces but remains a Juno-managed entry point used by Juno's own examples and decorators.</p>
 <h2>How to fix it</h2>
 <p>Inject <code>GP.Juno.Abstractions.EventStream.IPublisher</code> to publish an event, or
-<code>GP.Juno.Abstractions.Massaging.IMessageSender</code> when you need to send to a specific endpoint or attach headers and metadata.</p>
+<code>GP.Juno.Abstractions.Massaging.IMessageSender</code> when you need to send to a specific endpoint or attach headers and metadata.
+Existing code built around Juno's combined bus abstraction may use <code>GP.Juno.EventStream.EventStream</code>.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -29,7 +31,7 @@ public class OrderService
     private readonly IPublishEndpoint _publishEndpoint;
 
     public Task Save(OrderAccepted @event) =&gt;
-        _publishEndpoint.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'Publish'.}}
+        _publishEndpoint.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's 'Publish'.}}
 }
 </pre>
 <h4>Compliant solution</h4>

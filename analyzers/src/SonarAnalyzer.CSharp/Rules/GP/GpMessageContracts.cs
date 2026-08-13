@@ -3,11 +3,6 @@ namespace SonarAnalyzer.CSharp.Rules;
 // Shared shapes for the message-contract rules: what counts as a consumer, and which type a publish call publishes.
 internal static class GpMessageContracts
 {
-    private static readonly HashSet<string> ContractNameSuffixes = new(StringComparer.Ordinal)
-    {
-        "Dto", "Request", "Response", "Contract", "Event", "Command", "Message"
-    };
-
     // Registration (AppConfig.Publishes<T>) and the publish call itself, so a contract is found whichever way the
     // service declares it. Sending is excluded on purpose: a command has no occurrence time to state.
     private static readonly HashSet<string> PublishMethods = new(StringComparer.Ordinal)
@@ -62,32 +57,41 @@ internal static class GpMessageContracts
         && model.GetDeclaredSymbol(methodDeclaration) is { } method
         && IsConsumeMethod(method);
 
-    internal static bool HasContractName(string typeName) =>
-        ContractNameSuffixes.Any(x => typeName.EndsWith(x, StringComparison.Ordinal));
-
-    internal static bool IsContractMember(MemberDeclarationSyntax member) =>
-        member.Parent is TypeDeclarationSyntax { Identifier.ValueText: var typeName } && HasContractName(typeName);
-
-    // The type an event-publishing call publishes, taken from the generic argument or the first argument.
+    // The type an event-publishing call publishes, taken from the final generic argument or the first argument.
+    // MassTransit state-machine overloads use Publish<TSaga, TData, TMessage>, so TMessage is not always first.
     internal static INamedTypeSymbol PublishedType(SemanticModel model, InvocationExpressionSyntax invocation)
+        => MessagingPayloadType(model, invocation, PublishMethods);
+
+    internal static INamedTypeSymbol MessagingPayloadType(
+        SemanticModel model,
+        InvocationExpressionSyntax invocation,
+        HashSet<string> supportedMethods)
     {
         if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
-            || !PublishMethods.Contains(method.Name)
+            || !supportedMethods.Contains(method.Name)
             || !IsMessagingMethod(method))
         {
             return null;
         }
 
-        if (method.TypeArguments.FirstOrDefault() is INamedTypeSymbol typeArgument)
+        if (method.TypeArguments.LastOrDefault() is INamedTypeSymbol typeArgument)
         {
             return typeArgument;
         }
 
-        return invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } firstArgument
-               && model.GetTypeInfo(firstArgument).Type is INamedTypeSymbol argumentType
-               && argumentType.SpecialType != SpecialType.System_Object
-            ? argumentType
-            : null;
+        if (invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } firstArgument
+            && model.GetTypeInfo(firstArgument).Type is INamedTypeSymbol argumentType
+            && argumentType.SpecialType != SpecialType.System_Object)
+        {
+            return argumentType;
+        }
+
+        return invocation.ArgumentList.Arguments
+            .Select(x => x.Expression)
+            .OfType<TypeOfExpressionSyntax>()
+            .Select(x => model.GetTypeInfo(x.Type).Type)
+            .OfType<INamedTypeSymbol>()
+            .FirstOrDefault();
     }
 
     internal static string DescribeShapelessType(ITypeSymbol type)

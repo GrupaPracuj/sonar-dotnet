@@ -14,6 +14,10 @@ anywhere. The condition for it working is explicit:</p>
 </blockquote>
 <p>Even with discriminators configured, a derived type nobody declared throws: "Undeclared types will result in a runtime exception." Either way, the shape
 has to be a deliberate decision, written down on the type - not an accident of declaring the member as an interface.</p>
+<h3>What is considered a contract?</h3>
+<p>The rule does not infer contracts from type names. It checks source types declared in a <code>Contracts</code> or <code>*.Contracts</code> namespace,
+actual ASP.NET controller or Minimal API response payloads, and types published, sent, responded with or registered through GP.Juno or MassTransit.
+Declarations from referenced projects are not reported.</p>
 <pre>
 public sealed class OrderAcceptedContract
 {

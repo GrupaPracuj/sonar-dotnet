@@ -1,10 +1,9 @@
 namespace SonarAnalyzer.CSharp.Rules;
 
 // Attribute properties are exempt (an attribute constructor argument can only be an array, never a collection, so
-// there is no alternative shape to move to) and so are message contracts (GpMessageContracts) - this org's DTOs
-// legitimately expose arrays for wire serialization with no in-process aliasing risk, and flagging every one of
-// them would flood the contract assemblies for no benefit. 'override' is excluded too: the property's shape is
-// dictated by the base member, so the finding would be unfixable at that site.
+// there is no alternative shape to move to), as are byte arrays used for binary payloads and message contracts.
+// 'override' is excluded too: the property's shape is dictated by the base member, so the
+// finding would be unfixable at that site.
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
 {
@@ -17,16 +16,22 @@ public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
-        context.RegisterNodeAction(Analyze, SyntaxKind.PropertyDeclaration);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => Analyze(c, contracts), SyntaxKind.PropertyDeclaration);
+        });
 
-    private static void Analyze(SonarSyntaxNodeReportingContext context)
+    private static void Analyze(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
         if (declaration.Modifiers.Any(SyntaxKind.OverrideKeyword)
             || context.Model.GetDeclaredSymbol(declaration) is not { } property
             || property.GetMethod?.EffectiveAccessibility is not (Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal)
-            || property.Type is not IArrayTypeSymbol
-            || IsExcludedContainingType(property.ContainingType))
+            || property.SetMethod?.EffectiveAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal
+            || property.Type is not IArrayTypeSymbol arrayType
+            || arrayType is { Rank: 1, ElementType.SpecialType: SpecialType.System_Byte }
+            || IsExcludedContainingType(property.ContainingType, contracts))
         {
             return;
         }
@@ -34,6 +39,6 @@ public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
         context.ReportIssue(Rule, declaration.Identifier, property.Name);
     }
 
-    private static bool IsExcludedContainingType(INamedTypeSymbol containingType) =>
-        containingType.DerivesFrom(KnownType.System_Attribute) || GpMessageContracts.HasContractName(containingType.Name);
+    private static bool IsExcludedContainingType(INamedTypeSymbol containingType, GpSemanticContractDetector contracts) =>
+        containingType.DerivesFrom(KnownType.System_Attribute) || contracts.IsContract(containingType);
 }

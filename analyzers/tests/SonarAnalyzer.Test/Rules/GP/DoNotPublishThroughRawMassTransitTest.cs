@@ -10,6 +10,7 @@ public class DoNotPublishThroughRawMassTransitTest
 
     private const string Stubs =
         """
+        using MassTransit;
         using System.Threading;
         using System.Threading.Tasks;
 
@@ -36,6 +37,12 @@ public class DoNotPublishThroughRawMassTransitTest
             {
                 Task Consume(T message);
             }
+
+            public static class SendEndpointProviderExtensions
+            {
+                public static Task Send<T>(this ISendEndpointProvider provider, T message) where T : class =>
+                    Task.CompletedTask;
+            }
         }
 
         namespace GP.Juno.Abstractions.EventStream
@@ -44,6 +51,11 @@ public class DoNotPublishThroughRawMassTransitTest
             {
                 Task Publish<T>(T @event, CancellationToken cancellationToken = default) where T : class;
             }
+        }
+
+        namespace GP.Juno.EventStream
+        {
+            public interface EventStream : MassTransit.IPublishEndpoint, MassTransit.ISendEndpointProvider { }
         }
 
         public class OrderAccepted { }
@@ -59,7 +71,7 @@ public class DoNotPublishThroughRawMassTransitTest
                 private readonly MassTransit.IPublishEndpoint _publishEndpoint;
 
                 public Task Save(OrderAccepted @event) =>
-                    _publishEndpoint.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'Publish'.}}
+                    _publishEndpoint.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's 'Publish'.}}
             }
             """)
             .Verify();
@@ -74,7 +86,7 @@ public class DoNotPublishThroughRawMassTransitTest
                 private readonly MassTransit.IBus _bus;
 
                 public Task Save(OrderAccepted @event) =>
-                    _bus.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'Publish'.}}
+                    _bus.Publish(@event); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's 'Publish'.}}
             }
             """)
             .Verify();
@@ -89,7 +101,7 @@ public class DoNotPublishThroughRawMassTransitTest
                 private readonly MassTransit.ISendEndpointProvider _provider;
 
                 public Task<MassTransit.ISendEndpoint> Endpoint() =>
-                    _provider.GetSendEndpoint(new System.Uri("queue:orders")); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'GetSendEndpoint'.}}
+                    _provider.GetSendEndpoint(new System.Uri("queue:orders")); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's 'GetSendEndpoint'.}}
             }
             """)
             .Verify();
@@ -117,7 +129,7 @@ public class DoNotPublishThroughRawMassTransitTest
                 private readonly MassTransit.IRequestClient<OrderAccepted> _client;
 
                 public Task<MassTransit.Response<OrderStatus>> Ask(OrderAccepted request) =>
-                    _client.GetResponse<OrderStatus>(request); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender) instead of MassTransit's 'GetResponse'.}}
+                    _client.GetResponse<OrderStatus>(request); // Noncompliant {{Publish through Juno (IPublisher / IMessageSender / EventStream) instead of MassTransit's 'GetResponse'.}}
             }
             """)
             .Verify();
@@ -149,4 +161,42 @@ public class DoNotPublishThroughRawMassTransitTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotPublishThroughRawMassTransit_CompliantForJunoEventStream() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderService
+            {
+                private readonly GP.Juno.EventStream.EventStream _eventStream;
+
+                public Task Publish(OrderAccepted @event) =>
+                    _eventStream.Publish(@event);
+
+                public Task Send(OrderAccepted command) =>
+                    _eventStream.Send(command);
+
+                public Task<MassTransit.ISendEndpoint> Endpoint() =>
+                    _eventStream.GetSendEndpoint(new System.Uri("queue:orders"));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotPublishThroughRawMassTransit_NoncompliantForUnrelatedWrapper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface OwnEventStream : MassTransit.IPublishEndpoint { }
+
+            public class OrderService
+            {
+                private readonly OwnEventStream _eventStream;
+
+                public Task Publish(OrderAccepted @event) =>
+                    _eventStream.Publish(@event); // Noncompliant
+            }
+            """)
+            .Verify();
 }

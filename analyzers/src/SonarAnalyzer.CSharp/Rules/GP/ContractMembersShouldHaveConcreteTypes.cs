@@ -38,26 +38,34 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
 
     protected override void Initialize(SonarParametrizedAnalysisContext context)
     {
-        context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
-        context.RegisterNodeAction(AnalyzeRecordParameters, SyntaxKindEx.RecordDeclaration);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeProperty(c, contracts), SyntaxKind.PropertyDeclaration);
+            start.RegisterNodeAction(c => AnalyzeRecordParameters(c, contracts), SyntaxKindEx.RecordDeclaration);
+        });
     }
 
-    private void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
+    private void AnalyzeProperty(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (GpMessageContracts.IsContractMember(declaration)
-            && context.Model.GetDeclaredSymbol(declaration) is { } property)
+        if (context.Model.GetDeclaredSymbol(declaration) is { ContainingType: { } containingType } property
+            && contracts.IsContract(containingType))
         {
             Report(context, declaration.Identifier, property.Type, property);
         }
     }
 
-    private void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context)
+    private void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
-        if (context.Node is not TypeDeclarationSyntax { Identifier.ValueText: var typeName } declaration
-            || !GpMessageContracts.HasContractName(typeName)
+        if (context.Node is not TypeDeclarationSyntax declaration
             || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
             || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+        {
+            return;
+        }
+
+        if (context.Model.GetDeclaredSymbol(declaration) is not { } type || !contracts.IsContract(type))
         {
             return;
         }

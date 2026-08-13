@@ -14,10 +14,13 @@ internal sealed class GpContractEnums
 
     internal bool IsEmpty => enumsUsedByContracts.Count == 0;
 
-    internal static GpContractEnums Create(Compilation compilation)
+    internal static GpContractEnums Create(GpSemanticContractDetector contracts) =>
+        Create(contracts.SourceContracts);
+
+    private static GpContractEnums Create(IEnumerable<INamedTypeSymbol> contractTypes)
     {
         var result = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var contract in ContractTypes(compilation.Assembly.GlobalNamespace))
+        foreach (var contract in contractTypes)
         {
             foreach (var member in GpMessageContracts.DataMembers(contract))
             {
@@ -63,43 +66,4 @@ internal sealed class GpContractEnums
         }
     }
 
-    private static IEnumerable<INamedTypeSymbol> ContractTypes(INamespaceSymbol root)
-    {
-        foreach (var type in root.GetTypeMembers())
-        {
-            if (GpMessageContracts.HasContractName(type.Name))
-            {
-                yield return type;
-            }
-
-            foreach (var nestedType in ContractTypes(type))
-            {
-                yield return nestedType;
-            }
-        }
-
-        foreach (var nestedNamespace in root.GetNamespaceMembers())
-        {
-            foreach (var type in ContractTypes(nestedNamespace))
-            {
-                yield return type;
-            }
-        }
-    }
-
-    private static IEnumerable<INamedTypeSymbol> ContractTypes(INamedTypeSymbol root)
-    {
-        foreach (var type in root.GetTypeMembers())
-        {
-            if (GpMessageContracts.HasContractName(type.Name))
-            {
-                yield return type;
-            }
-
-            foreach (var nested in ContractTypes(type))
-            {
-                yield return nested;
-            }
-        }
-    }
 }

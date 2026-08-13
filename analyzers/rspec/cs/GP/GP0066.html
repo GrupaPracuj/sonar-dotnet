@@ -15,8 +15,10 @@ public class ShopDbContext : DbContext
     public DbSet&lt;OrderAcceptedContract&gt; AcceptedOrders { get; set; }  // now also a table
 }
 </pre>
-<p>The rule reports a contract-named type appearing as the element of a <code>DbSet&lt;T&gt;</code>, configured through
-<code>modelBuilder.Entity&lt;T&gt;()</code>, or carrying EF mapping attributes.</p>
+<p>The rule reports a source contract appearing as the element of a <code>DbSet&lt;T&gt;</code>, configured through
+<code>modelBuilder.Entity&lt;T&gt;()</code>, or carrying EF mapping attributes. A type is a contract when it is declared in a
+<code>Contracts</code> or <code>*.Contracts</code> namespace, is an actual ASP.NET controller or Minimal API response payload, or is published, sent,
+responded with or registered through GP.Juno or MassTransit. Type names and suffixes are not evidence.</p>
 <h3>Exceptions</h3>
 <p>An outbox or inbox table that stores messages is a legitimate case of persisting a contract - but it stores the serialized payload alongside its own
 columns rather than mapping the contract type itself, so it does not match this shape.</p>

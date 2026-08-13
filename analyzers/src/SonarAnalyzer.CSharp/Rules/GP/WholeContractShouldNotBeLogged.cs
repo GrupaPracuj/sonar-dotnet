@@ -12,9 +12,13 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
     protected override void Initialize(SonarAnalysisContext context) =>
-        context.RegisterNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeInvocation(c, contracts), SyntaxKind.InvocationExpression);
+        });
 
-    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (invocation.ArgumentList is not { } argumentList || !GpLoggingHelper.IsLoggingCall(context.Model, invocation))
@@ -24,7 +28,7 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
 
         foreach (var argument in argumentList.Arguments)
         {
-            if (ContractTypeInLogArgument(context.Model, argument.Expression) is { } contractType)
+            if (ContractTypeInLogArgument(context.Model, argument.Expression, contracts) is { } contractType)
             {
                 context.ReportIssue(Rule, argument, contractType.Name);
                 return; // one finding per logging call is enough
@@ -34,9 +38,12 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
 
     // The whole object, not one of its fields: "message" matches, "message.OrderId" does not, because the type of a
     // member access is the member's type rather than the contract's.
-    private static INamedTypeSymbol ContractTypeInLogArgument(SemanticModel model, ExpressionSyntax expression)
+    private static INamedTypeSymbol ContractTypeInLogArgument(
+        SemanticModel model,
+        ExpressionSyntax expression,
+        GpSemanticContractDetector contracts)
     {
-        if (ContractArgumentType(model, expression) is { } direct)
+        if (ContractArgumentType(model, expression, contracts) is { } direct)
         {
             return direct;
         }
@@ -45,18 +52,21 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
         {
             InterpolatedStringExpressionSyntax interpolated => interpolated.Contents
                 .OfType<InterpolationSyntax>()
-                .Select(x => ContractArgumentType(model, x.Expression))
+                .Select(x => ContractArgumentType(model, x.Expression, contracts))
                 .FirstOrDefault(x => x is not null),
             BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.AddExpression)
                 && model.GetTypeInfo(binary).ConvertedType?.SpecialType == SpecialType.System_String =>
-                ContractTypeInLogArgument(model, binary.Left) ?? ContractTypeInLogArgument(model, binary.Right),
+                ContractTypeInLogArgument(model, binary.Left, contracts) ?? ContractTypeInLogArgument(model, binary.Right, contracts),
             _ => null,
         };
     }
 
-    private static INamedTypeSymbol ContractArgumentType(SemanticModel model, ExpressionSyntax expression) =>
+    private static INamedTypeSymbol ContractArgumentType(
+        SemanticModel model,
+        ExpressionSyntax expression,
+        GpSemanticContractDetector contracts) =>
         model.GetTypeInfo(expression).Type is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } named
-        && GpMessageContracts.HasContractName(named.Name)
+        && contracts.IsContract(named)
             ? named
             : null;
 }

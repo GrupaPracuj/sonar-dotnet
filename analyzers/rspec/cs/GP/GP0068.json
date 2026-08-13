@@ -1,5 +1,5 @@
 {
-  "title": "Enums used in contracts should have a zero value for unknown",
+  "title": "Contracts should not expose enums",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
@@ -10,7 +10,7 @@
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "10min"
+    "constantCost": "30min"
   },
   "tags": [
     "gp",

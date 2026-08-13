@@ -26,7 +26,10 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         if (catchClause.Declaration?.Type is not { } typeSyntax
             || context.Model.GetTypeInfo(typeSyntax).Type is not { } caught
             || !CancellationExceptions.Contains(caught.ToDisplayString())
+            || IsTaskCanceledWithoutCallerToken(context.Model, catchClause, caught)
             || DistinguishesTimeoutFromCancellation(context.Model, catchClause.Filter)
+            || HandlesRequestedCancellation(context.Model, catchClause.Filter)
+            || IsGracefulCancellationBoundary(context.Model, catchClause)
             || !IsKnownToSuppressCancellation(context.Model, catchClause.Block))
         {
             return;
@@ -41,6 +44,34 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
     private static bool DistinguishesTimeoutFromCancellation(SemanticModel model, CatchFilterClauseSyntax filter) =>
         filter?.FilterExpression is { } condition
         && GuaranteesCancellationWasNotRequested(model, condition);
+
+    private static bool HandlesRequestedCancellation(SemanticModel model, CatchFilterClauseSyntax filter) =>
+        filter?.FilterExpression is { } condition
+        && GuaranteesCancellationWasRequested(model, condition);
+
+    private static bool IsTaskCanceledWithoutCallerToken(SemanticModel model, CatchClauseSyntax catchClause, ITypeSymbol caught) =>
+        caught.ToDisplayString() == "System.Threading.Tasks.TaskCanceledException"
+        && model.GetEnclosingSymbol(catchClause.SpanStart) is IMethodSymbol method
+        && !method.Parameters.Any(IsCancellationToken);
+
+    private static bool IsGracefulCancellationBoundary(SemanticModel model, CatchClauseSyntax catchClause)
+    {
+        if (model.GetEnclosingSymbol(catchClause.SpanStart) is not IMethodSymbol method)
+        {
+            return false;
+        }
+
+        if (method is { Name: "ExecuteAsync", IsOverride: true }
+            && GpJunoTypes.DerivesFrom(method.ContainingType, "Microsoft.Extensions.Hosting.BackgroundService"))
+        {
+            return true;
+        }
+
+        return catchClause.Ancestors()
+            .TakeWhile(x => x.Kind() is not (SyntaxKind.MethodDeclaration or SyntaxKindEx.LocalFunctionStatement))
+            .OfType<WhileStatementSyntax>()
+            .Any(x => GuaranteesCancellationWasNotRequested(model, x.Condition));
+    }
 
     private static bool GuaranteesCancellationWasNotRequested(SemanticModel model, ExpressionSyntax condition)
     {
@@ -63,9 +94,32 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         };
     }
 
+    private static bool GuaranteesCancellationWasRequested(SemanticModel model, ExpressionSyntax condition)
+    {
+        while (condition is ParenthesizedExpressionSyntax parenthesized)
+        {
+            condition = parenthesized.Expression;
+        }
+
+        return condition switch
+        {
+            _ when IsCancellationRequested(model, condition) => true,
+            BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.LogicalAndExpression) =>
+                GuaranteesCancellationWasRequested(model, binary.Left)
+                || GuaranteesCancellationWasRequested(model, binary.Right),
+            BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.LogicalOrExpression) =>
+                GuaranteesCancellationWasRequested(model, binary.Left)
+                && GuaranteesCancellationWasRequested(model, binary.Right),
+            _ => false,
+        };
+    }
+
     private static bool IsCancellationRequested(SemanticModel model, ExpressionSyntax expression) =>
         model.GetSymbolInfo(expression.RemoveParentheses()).Symbol is IPropertySymbol { Name: "IsCancellationRequested" } property
         && property.ContainingType.Is(KnownType.System_Threading_CancellationToken);
+
+    private static bool IsCancellationToken(IParameterSymbol parameter) =>
+        parameter.Type.Is(KnownType.System_Threading_CancellationToken);
 
     private static bool IsKnownToSuppressCancellation(SemanticModel model, BlockSyntax block)
     {

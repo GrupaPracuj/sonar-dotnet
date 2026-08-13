@@ -14,11 +14,11 @@ public class CancellationShouldNotBeSuppressedTest
             """
             public class OrderService
             {
-                public void Process()
+                public void Process(System.Threading.CancellationToken cancellationToken)
                 {
                     try
                     {
-                        Work();
+                        Work(cancellationToken);
                     }
                     catch (System.OperationCanceledException) // Noncompliant {{Do not turn cancellation into success - let 'OperationCanceledException' propagate or rethrow it.}}
                     {
@@ -26,13 +26,13 @@ public class CancellationShouldNotBeSuppressedTest
                     }
                 }
 
-                private void Work() { }
+                private void Work(System.Threading.CancellationToken cancellationToken) { }
             }
             """)
             .Verify();
 
     [TestMethod]
-    public void CancellationShouldNotBeSuppressed_NoncompliantForSwallowedTaskCanceled() =>
+    public void CancellationShouldNotBeSuppressed_CompliantForTaskCanceledWithoutCallerToken() =>
         builder.AddSnippet(
             """
             public class OrderService
@@ -43,12 +43,35 @@ public class CancellationShouldNotBeSuppressedTest
                     {
                         Work();
                     }
+                    catch (System.Threading.Tasks.TaskCanceledException)
+                    {
+                        System.Console.WriteLine("HTTP timeout");
+                    }
+                }
+
+                private void Work() { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantForSwallowedTaskCanceled() =>
+        builder.AddSnippet(
+            """
+            public class OrderService
+            {
+                public void Process(System.Threading.CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        Work(cancellationToken);
+                    }
                     catch (System.Threading.Tasks.TaskCanceledException) // Noncompliant {{Do not turn cancellation into success - let 'TaskCanceledException' propagate or rethrow it.}}
                     {
                     }
                 }
 
-                private void Work() { }
+                private void Work(System.Threading.CancellationToken cancellationToken) { }
             }
             """)
             .Verify();
@@ -302,6 +325,84 @@ public class CancellationShouldNotBeSuppressedTest
                 }
 
                 private void Work(CancellationToken cancellationToken) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantForExplicitRequestedCancellationFilter() =>
+        builder.AddSnippet(
+            """
+            public class Worker
+            {
+                public void Run(System.Threading.CancellationToken stoppingToken)
+                {
+                    try
+                    {
+                        Work(stoppingToken);
+                    }
+                    catch (System.OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        System.Console.WriteLine("Stopped");
+                    }
+                }
+
+                private void Work(System.Threading.CancellationToken cancellationToken) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantAtBackgroundServiceBoundary() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.Extensions.Hosting
+            {
+                public abstract class BackgroundService
+                {
+                    protected abstract System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken stoppingToken);
+                }
+            }
+
+            public class Worker : Microsoft.Extensions.Hosting.BackgroundService
+            {
+                protected override async System.Threading.Tasks.Task ExecuteAsync(System.Threading.CancellationToken stoppingToken)
+                {
+                    try
+                    {
+                        await System.Threading.Tasks.Task.Delay(1000, stoppingToken);
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Stopped");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantInsideCancellationControlledLoop() =>
+        builder.AddSnippet(
+            """
+            public class Worker
+            {
+                public void Run(System.Threading.CancellationToken stoppingToken)
+                {
+                    while (!stoppingToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            Work(stoppingToken);
+                        }
+                        catch (System.OperationCanceledException)
+                        {
+                            System.Console.WriteLine("Stopped");
+                        }
+                    }
+                }
+
+                private void Work(System.Threading.CancellationToken cancellationToken) { }
             }
             """)
             .VerifyNoIssues();

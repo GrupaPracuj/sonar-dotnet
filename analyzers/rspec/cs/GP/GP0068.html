@@ -1,38 +1,25 @@
-<p>Under the GP compatibility convention, an enum a contract puts on the wire should have a zero value meaning "not recognised".</p>
+<p>Contracts should not expose enums.</p>
 <h2>Why is this an issue?</h2>
-<p>Enums on a contract are the part most likely to grow. A new status, a new reason, a new category - the producer adds a member and deploys, and every
-consumer that was built before that moment may receive a value it has no name for. What happens next depends on the wire representation, serializer
-configuration, and consumer logic.</p>
-<p>Microsoft's enum guidance names the risk directly:</p>
-<blockquote>
-  There is a potential application compatibility problem when the newly added value is returned from an existing API, because poorly written applications
-  might not handle the new value correctly.
-</blockquote>
-<p>Zero is the CLR default for an enum. It is therefore the natural fallback when a field is absent or otherwise left at its default value. Giving zero
-an explicit name such as <code>Unknown</code> lets consumers recognize that default instead of silently interpreting it as a real business state.</p>
-<p>An unknown wire value does not automatically become zero. A numeric value may deserialize as an unnamed enum value, while an unknown string may be
-rejected or handled differently depending on the serializer, converter, and options. The zero member is a compatibility convention for missing/defaulted
-data; consumers still need an explicit strategy for values their serializer does not recognize.</p>
-<pre>
-public enum OrderStatus
-{
-    Pending,     // = 0, so a missing/defaulted status becomes "Pending"
-    Accepted,
-    Shipped,
-}
-</pre>
-<p>The rule only looks at enums a contract actually exposes, so an internal enum is not reported. The accepted names come from
-<code>unknownValueNames</code>, which defaults to <code>Unknown,Unspecified,None</code> - Microsoft's guidance suggests
-<code>None</code> for the zero value generally, while an integration contract is usually clearer with <code>Unknown</code>, since the point is that the
-field has no recognized business value rather than a valid state.</p>
+<p>Producers and consumers of a contract are deployed independently. Adding an enum member is source-compatible for the producer, but an older consumer
+does not know its meaning. Depending on the serializer and representation, the consumer may receive an unnamed numeric value, reject an unknown string,
+or silently take a fallback path that was never intended for the new state.</p>
+<p>A zero member named <code>Unknown</code> or <code>None</code>, explicit numeric assignments, and string serialization each address only part of this
+problem. None gives an older consumer the semantics of a value introduced after it was built. The GP convention therefore avoids enums at service
+boundaries altogether.</p>
+<p>Only enums actually exposed by a contract are reported. Internal domain enums remain valid.</p>
+<h3>What is considered a contract?</h3>
+<p>The rule does not infer contracts from type names. It follows enums exposed by source types declared in a <code>Contracts</code> or
+<code>*.Contracts</code> namespace, actual ASP.NET controller or Minimal API response payloads, and types published, sent, responded with or registered
+through GP.Juno or MassTransit. Declarations from referenced projects are not reported.</p>
 <h2>How to fix it</h2>
-<p>Add a zero member named for the unknown case and shift the real values up. On an enum that is already published, keep the existing numbers and give
-zero its name only if zero was never a valid value - otherwise renumbering is itself a breaking change.</p>
+<p>Expose a stable primitive representation, typically a documented string, and translate it to the domain enum inside each service. Consumers can then
+handle unknown values explicitly without depending on the producer's enum definition.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract but has no zero value named Unknown - a consumer cannot represent a value it does not recognise.}}
+public enum OrderStatus // Noncompliant {{'OrderStatus' is exposed by a contract. Do not use enums in contracts because producers and consumers evolve independently.}}
 {
+    Unknown = 0,
     Pending = 1,
     Accepted = 2,
 }
@@ -41,14 +28,7 @@ public sealed record OrderAcceptedContract(Guid OrderId, OrderStatus Status);
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public enum OrderStatus
-{
-    Unknown = 0,
-    Pending = 1,
-    Accepted = 2,
-}
-
-public sealed record OrderAcceptedContract(Guid OrderId, OrderStatus Status);
+public sealed record OrderAcceptedContract(Guid OrderId, string Status);
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

@@ -152,6 +152,56 @@ public class CollectionInitializerShouldNotHaveDuplicateKeysTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_CompliantForCustomAddOnDictionarySubtype() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using System.Collections.Generic;
+
+            public class StatusMap : Dictionary<(Type, string), int>
+            {
+                public void Add(int value, params (Type, string)[] keys)
+                {
+                    foreach (var key in keys)
+                    {
+                        Add(key, value);
+                    }
+                }
+            }
+
+            public class C
+            {
+                private readonly StatusMap map = new()
+                {
+                    { 5, (typeof(string), "WaitingForAuthorization") },
+                    { 5, (typeof(int), "WaitingForVerification") },
+                };
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForInheritedDictionaryAdd() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+
+            public class StatusMap : Dictionary<string, int>
+            {
+            }
+
+            public class C
+            {
+                private readonly StatusMap map = new()
+                {
+                    { "a", 1 },
+                    { "a", 2 }, // Noncompliant
+                };
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void CollectionInitializerShouldNotHaveDuplicateKeys_NoncompliantForThreeDuplicates() =>
         builder.AddSnippet(
             """

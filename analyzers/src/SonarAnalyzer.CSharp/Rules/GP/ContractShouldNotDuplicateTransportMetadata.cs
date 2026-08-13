@@ -28,27 +28,35 @@ public sealed class ContractShouldNotDuplicateTransportMetadata : SonarDiagnosti
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
-    protected override void Initialize(SonarAnalysisContext context)
-    {
-        context.RegisterNodeAction(AnalyzeProperty, SyntaxKind.PropertyDeclaration);
-        context.RegisterNodeAction(AnalyzeRecordParameters, SyntaxKindEx.RecordDeclaration);
-    }
+    protected override void Initialize(SonarAnalysisContext context) =>
+        context.RegisterCompilationStartAction(start =>
+        {
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
+            start.RegisterNodeAction(c => AnalyzeProperty(c, contracts), SyntaxKind.PropertyDeclaration);
+            start.RegisterNodeAction(c => AnalyzeRecordParameters(c, contracts), SyntaxKindEx.RecordDeclaration);
+        });
 
-    private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (GpMessageContracts.IsContractMember(declaration) && TransportMetadataNames.Contains(declaration.Identifier.ValueText))
+        if (TransportMetadataNames.Contains(declaration.Identifier.ValueText)
+            && context.Model.GetDeclaredSymbol(declaration) is { ContainingType: { } containingType }
+            && contracts.IsContract(containingType))
         {
             context.ReportIssue(Rule, declaration.Identifier, declaration.Identifier.ValueText);
         }
     }
 
-    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context)
+    private static void AnalyzeRecordParameters(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts)
     {
-        if (context.Node is not TypeDeclarationSyntax { Identifier.ValueText: var typeName } declaration
-            || !GpMessageContracts.HasContractName(typeName)
+        if (context.Node is not TypeDeclarationSyntax declaration
             || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
             || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+        {
+            return;
+        }
+
+        if (context.Model.GetDeclaredSymbol(declaration) is not { } type || !contracts.IsContract(type))
         {
             return;
         }

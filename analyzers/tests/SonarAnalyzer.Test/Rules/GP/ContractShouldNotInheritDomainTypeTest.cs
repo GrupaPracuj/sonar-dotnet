@@ -31,9 +31,12 @@ public class ContractShouldNotInheritDomainTypeTest
         builder.AddSnippet(
             Stubs + """
 
-            public class OrderAcceptedContract : Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+            namespace Contracts
             {
-                public System.DateTimeOffset OccurredAt { get; init; }
+                public class OrderAccepted : global::Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+                {
+                    public System.DateTimeOffset OccurredAt { get; init; }
+                }
             }
             """)
             .Verify();
@@ -44,9 +47,12 @@ public class ContractShouldNotInheritDomainTypeTest
         builder.AddSnippet(
             Stubs + """
 
-            public class OrderAcceptedContract : BaseContract, IIntegrationEvent
+            namespace Contracts
             {
-                public System.Guid OrderId { get; init; }
+                public class OrderAccepted : global::BaseContract, global::IIntegrationEvent
+                {
+                    public System.Guid OrderId { get; init; }
+                }
             }
             """)
             .VerifyNoIssues();
@@ -56,9 +62,49 @@ public class ContractShouldNotInheritDomainTypeTest
         builder.AddSnippet(
             Stubs + """
 
-            public sealed record OrderAcceptedContract(System.Guid OrderId, System.DateTimeOffset OccurredAt);
+            namespace Contracts
+            {
+                public sealed record OrderAccepted(System.Guid OrderId, System.DateTimeOffset OccurredAt);
+            }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_CompliantForResponseSuffixAlone() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ViewResponse : Order
+            {
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotInheritDomainType_NoncompliantForPublishedTypeOutsideContractsNamespace() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace MassTransit
+            {
+                public interface IPublishEndpoint
+                {
+                    System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+                }
+            }
+
+            public class OrderAccepted : Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+            {
+            }
+
+            public class OrderService
+            {
+                private readonly MassTransit.IPublishEndpoint publisher;
+
+                public System.Threading.Tasks.Task Publish(OrderAccepted message) => publisher.Publish(message);
+            }
+            """)
+            .Verify();
 
     // A non-contract type inheriting an entity is ordinary domain modelling.
     [TestMethod]
@@ -121,8 +167,11 @@ public class ContractShouldNotInheritDomainTypeTest
             .AddReferences([persistenceAssembly])
             .AddSnippet(
             """
-            public class OrderAcceptedContract : Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+            namespace Contracts
             {
+                public class OrderAccepted : global::Order // Noncompliant {{'Order' is a domain type - a contract that inherits it publishes the whole entity.}}
+                {
+                }
             }
             """)
             .Verify();

@@ -24,6 +24,11 @@ only ever fires on one of these specific, well-known terms, and false positives 
   <code>NameSpace</code> to <code>Namespace</code>, and <code>PlaceHolder</code> to <code>Placeholder</code>.</li>
 </ul>
 <h3>Exceptions</h3>
+<p>A leading underscore used by the naming convention for private fields is preserved. For example,
+<code>_externalSystemId</code> is compliant, while <code>_externalSystemID</code> is reported with
+<code>_externalSystemId</code> as the suggested spelling.</p>
+<p>Identifiers with internal underscores are not checked. Such separators often carry an external or generated structure, for example the timestamp in
+<code>M20260729_1400_AddIndex</code>; a compound-word correction must not rewrite unrelated parts of that identifier.</p>
 <p>A method or property is not flagged when its name is not the author's free choice to make: an <code>override</code> of a base member, or a member
 that implements an interface member (explicitly, or implicitly by matching name and signature) by name, must keep the name it was given. Renaming it
 would either fail to override the base member, or - for an implicit interface implementation - silently stop implementing the interface. Fields,

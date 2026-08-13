@@ -31,6 +31,9 @@ enough that one side guarantees it; in <code>A || B</code> both sides must, beca
 <code>when (!token.IsCancellationRequested &amp;&amp; isTimeout)</code> is not reported, while
 <code>when (!token.IsCancellationRequested || retryTimeouts)</code> is - that filter also accepts a real cancellation. Any filter whose structure the
 rule cannot read this way leaves the signal suppressed and is still reported.</p>
+<p>A <code>TaskCanceledException</code> caught in a method with no <code>CancellationToken</code> parameter is treated as a timeout rather than a
+suppressed caller signal. Graceful shutdown at a <code>BackgroundService.ExecuteAsync</code> boundary, a catch inside a loop controlled by
+<code>!token.IsCancellationRequested</code>, and an explicit <code>when (token.IsCancellationRequested)</code> handler are also not reported.</p>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>

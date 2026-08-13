@@ -9,7 +9,7 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
         .WithOptions(LanguageOptions.CSharpLatest);
 
     [TestMethod]
-    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForTwoForEachLoops() =>
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForUnknownIEnumerableParameter() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -19,29 +19,33 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
                 public void M1(IEnumerable<int> source)
                 {
                     foreach (var x in source) { }
-                    foreach (var y in source) { } // Noncompliant {{'source' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+                    foreach (var y in source) { }
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
-    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForForEachThenLinqTerminal() =>
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForUnknownMethodResult() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
+            using System.Threading.Tasks;
             using System.Linq;
 
             public class C
             {
-                public void M2(IEnumerable<int> source)
+                private Task<IEnumerable<int>> Load() => null;
+
+                public async Task M2()
                 {
+                    var source = await Load();
                     var count = source.Count();
-                    var list = source.ToList(); // Noncompliant {{'source' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+                    var list = source.ToList();
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantWhenEnumeratedOnce() =>
@@ -98,6 +102,51 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             .Verify();
 
     [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForIteratorMethod() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                private IEnumerable<int> Values()
+                {
+                    yield return 1;
+                    yield return 2;
+                }
+
+                public void M()
+                {
+                    var source = Values();
+                    var count = source.Count();
+                    var total = source.Sum(); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForAliasOfKnownLazySequence() =>
+        builder.AddSnippet(
+            """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                public void M(IEnumerable<int> input)
+                {
+                    var source = input.Where(x => x > 0);
+                    IEnumerable<int> alias = source;
+                    var count = alias.Count();
+                    var total = alias.Sum(); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void LazySequenceShouldNotBeEnumeratedMultipleTimes_NoncompliantForIQueryable() =>
         builder.AddSnippet(
             """
@@ -115,7 +164,7 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             .Verify();
 
     [TestMethod]
-    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForConstructorAndLocalFunction() =>
+    public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantForUnknownParametersInConstructorAndLocalFunction() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -126,7 +175,7 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
                 public C(IEnumerable<int> source)
                 {
                     foreach (var x in source) { }
-                    var total = source.Sum(); // Noncompliant {{'source' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+                    var total = source.Sum();
                 }
 
                 public void M(IEnumerable<int> source)
@@ -134,14 +183,14 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
                     void Local(IEnumerable<int> innerSource)
                     {
                         foreach (var x in innerSource) { }
-                        var total = innerSource.Sum(); // Noncompliant {{'innerSource' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+                        var total = innerSource.Sum();
                     }
 
                     foreach (var x in source) { }
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void LazySequenceShouldNotBeEnumeratedMultipleTimes_CompliantWhenChainedCallsAreNotRootedAtTheVariable() =>
@@ -214,16 +263,17 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             {
                 public void M(IEnumerable<int> source, bool useFirst)
                 {
+                    var lazy = source.Where(x => x > 0);
                     if (useFirst)
                     {
-                        foreach (var x in source) { }
+                        foreach (var x in lazy) { }
                     }
                     else
                     {
-                        foreach (var x in source) { }
+                        foreach (var x in lazy) { }
                     }
 
-                    var count = source.Count(); // Noncompliant
+                    var count = lazy.Count(); // Noncompliant
                 }
             }
             """)
@@ -288,12 +338,13 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             {
                 public int M(IEnumerable<int> source)
                 {
-                    switch (source.Count())
+                    var lazy = source.Where(x => x > 0);
+                    switch (lazy.Count())
                     {
                         case 0:
                             return 0;
                         default:
-                            return source.Sum(); // Noncompliant
+                            return lazy.Sum(); // Noncompliant
                     }
                 }
             }
@@ -312,11 +363,12 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             {
                 public int M(IEnumerable<int> source, int mode)
                 {
+                    var lazy = source.Where(x => x > 0);
                     switch (mode)
                     {
                         case 1:
-                            var count = source.Count();
-                            return count + source.Sum(); // Noncompliant
+                            var count = lazy.Count();
+                            return count + lazy.Sum(); // Noncompliant
                         default:
                             return 0;
                     }
@@ -336,13 +388,14 @@ public class LazySequenceShouldNotBeEnumeratedMultipleTimesTest
             {
                 public int M(IEnumerable<int> source, int mode)
                 {
+                    var lazy = source.Where(x => x > 0);
                     switch (mode)
                     {
                         case 0:
-                            source.Any();
+                            lazy.Any();
                             goto case 1;
                         case 1:
-                            return source.Count(); // Noncompliant
+                            return lazy.Count(); // Noncompliant
                         default:
                             return 0;
                     }

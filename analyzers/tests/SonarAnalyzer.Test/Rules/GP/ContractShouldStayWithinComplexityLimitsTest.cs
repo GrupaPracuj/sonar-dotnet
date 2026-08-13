@@ -8,11 +8,23 @@ public class ContractShouldStayWithinComplexityLimitsTest
     private readonly VerifierBuilder builder = new VerifierBuilder<CS.ContractShouldStayWithinComplexityLimits>()
         .WithOptions(LanguageOptions.CSharpLatest);
 
+    private const string MvcStub =
+        """
+        namespace Microsoft.AspNetCore.Mvc
+        {
+            public class HttpGetAttribute : System.Attribute { }
+            public abstract class ControllerBase { }
+            public class ActionResult<T> { }
+        }
+        """;
+
     [TestMethod]
     public void ContractShouldStayWithinComplexityLimits_NoncompliantForTooManyProperties() =>
         CreateBuilder(maxProperties: 3)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class OrderAcceptedContract // Noncompliant {{'OrderAcceptedContract' exceeds a message contract limit: 4 properties, above the limit of 3.}}
             {
                 public string A { get; init; }
@@ -28,6 +40,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 2)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class LevelThreeContract
             {
                 public string Value { get; init; }
@@ -55,6 +69,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 1)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class Leaf
             {
                 public string Value { get; init; }
@@ -77,6 +93,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 5, maxComplexTypes: 1)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class Leaf
             {
                 public string Value { get; init; }
@@ -98,6 +116,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
     public void ContractShouldStayWithinComplexityLimits_CompliantWithinDefaultLimits() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public sealed record OrderLineContract(string Sku, int Quantity);
 
             public sealed record OrderAcceptedContract(
@@ -116,6 +136,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 1)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed record OrderAcceptedContract(
                 System.Guid OrderId,
                 string CustomerReference,
@@ -133,6 +155,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 3)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class Deep
             {
                 public string Value { get; init; }
@@ -171,6 +195,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 5)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class Leaf
             {
                 public string Value { get; init; }
@@ -201,6 +227,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
         CreateBuilder(maxDepth: 3)
             .AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class Extra
             {
                 public string Value { get; init; }
@@ -235,6 +263,8 @@ public class ContractShouldStayWithinComplexityLimitsTest
     public void ContractShouldStayWithinComplexityLimits_CompliantForSelfReferencingContract() =>
         builder.AddSnippet(
             """
+            namespace Contracts;
+
             public sealed class CategoryContract
             {
                 public string Name { get; init; }
@@ -255,6 +285,51 @@ public class ContractShouldStayWithinComplexityLimitsTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_CompliantForDatabaseDtoAndOutboundHttpRequestNames() =>
+        CreateBuilder(maxProperties: 1)
+            .AddSnippet(
+            """
+            namespace Database
+            {
+                internal sealed class CustomerDto
+                {
+                    public string FirstName { get; init; }
+                    public string LastName { get; init; }
+                }
+            }
+
+            namespace HttpClients.Surveys
+            {
+                internal sealed class CompositeRequest
+                {
+                    public string SurveyId { get; init; }
+                    public string CustomerId { get; init; }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldStayWithinComplexityLimits_NoncompliantForControllerResponseOutsideContractsNamespace() =>
+        CreateBuilder(maxProperties: 1)
+            .AddSnippet(
+            MvcStub + """
+
+            public sealed class CustomerPayload // Noncompliant {{'CustomerPayload' exceeds a message contract limit: 2 properties, above the limit of 1.}}
+            {
+                public string FirstName { get; init; }
+                public string LastName { get; init; }
+            }
+
+            public sealed class CustomersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.ActionResult<CustomerPayload> Get() => null;
+            }
+            """)
+            .Verify();
 
     private static VerifierBuilder CreateBuilder(int maxProperties = 30, int maxDepth = 4, int maxComplexTypes = 10) =>
         new VerifierBuilder()

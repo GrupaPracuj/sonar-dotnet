@@ -53,6 +53,11 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
 
             public class AgentServiceRegistration { }
         }
+
+        namespace Akka.Cluster.Discovery
+        {
+            public abstract class DiscoveryService { }
+        }
         """;
 
     [TestMethod]
@@ -153,6 +158,27 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
                     public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
                         _consul.Catalog.Service("orders");
                 }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantInsideAkkaDiscoveryProviderAssembly() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class ConsulDiscoveryService : Akka.Cluster.Discovery.DiscoveryService
+            {
+                private readonly Consul.ICatalogEndpoint catalog;
+
+                public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
+                    catalog.Service("orders");
+            }
+
+            public static class RegistrationExtensions
+            {
+                public static Consul.AgentServiceRegistration CreateRegistration() =>
+                    new Consul.AgentServiceRegistration();
             }
             """)
             .VerifyNoIssues();

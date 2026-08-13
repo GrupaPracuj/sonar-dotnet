@@ -77,6 +77,21 @@ public class MessageContractMustBePublicTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void MessageContractMustBePublic_CompliantForGenericBusWrapper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Bus
+            {
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher publisher;
+
+                public System.Threading.Tasks.Task Publish<T>(T value) where T : class =>
+                    publisher.Publish(value);
+            }
+            """)
+            .VerifyNoIssues();
+
     // A same-named IConsumer<T> outside MassTransit is not messaging, so an internal contract consumed through it
     // is not this rule's business.
     [TestMethod]

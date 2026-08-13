@@ -15,6 +15,10 @@ public sealed record OrderAccepted(
 <p>All three limits are rule parameters: <code>maxProperties</code> (default 30), <code>maxDepth</code> (default 4) and
 <code>maxComplexTypes</code> (default 10). The count is of the contract's own public data members; depth follows contract-like types only and stops at
 BCL types, so a <code>string</code> or a <code>DateTimeOffset</code> is never a level.</p>
+<h3>What is considered a contract?</h3>
+<p>The rule does not infer contracts from type names. It checks source types declared in a <code>Contracts</code> or <code>*.Contracts</code> namespace,
+actual ASP.NET controller or Minimal API response payloads, and types published, sent, responded with or registered through GP.Juno or MassTransit.
+Declarations from referenced projects are not reported.</p>
 <h2>How to fix it</h2>
 <p>Split the contract along the events that actually happened, or send identifiers and let the consumer fetch what it needs.</p>
 <h3>Code examples</h3>

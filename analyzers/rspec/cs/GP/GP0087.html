@@ -1,4 +1,4 @@
-<p>A value typed as <code>IEnumerable&lt;T&gt;</code> or <code>IQueryable&lt;T&gt;</code> should not be enumerated more than once.</p>
+<p>A sequence known to use deferred execution should not be enumerated more than once.</p>
 <h2>Why is this an issue?</h2>
 <p>A local variable or parameter declared as the interface <code>IEnumerable&lt;T&gt;</code> or <code>IQueryable&lt;T&gt;</code> - as opposed to an
 already-materialized collection such as <code>List&lt;T&gt;</code> or an array - may represent a lazy, re-executable pipeline: a LINQ query, a
@@ -24,10 +24,14 @@ void Process(DbContext db)
     var total = orders.Sum(o =&gt; o.Amount); // runs the query against the database again
 }
 </pre>
-<p>The rule only tracks local variables and parameters whose declared type is exactly the <code>IEnumerable&lt;T&gt;</code> or
-<code>IQueryable&lt;T&gt;</code> interface. A variable declared as <code>List&lt;T&gt;</code>, an array, or any other concrete collection type is not
-flagged, even though it also implements <code>IEnumerable&lt;T&gt;</code>: once materialized, repeated enumeration is safe and cheap, so the declared
-type is what actually tells you whether re-enumerating is a concern.</p>
+<p>The rule always tracks values declared as <code>IQueryable&lt;T&gt;</code>, because that interface represents a re-executable query. It tracks an
+<code>IEnumerable&lt;T&gt;</code> local only when its initializer proves deferred execution: a known deferred LINQ operator such as
+<code>Where</code> or <code>Select</code>, <code>Enumerable.Range</code>/<code>Repeat</code>, a source method containing <code>yield</code>, or an
+alias of another sequence already proven lazy.</p>
+<p>An <code>IEnumerable&lt;T&gt;</code> parameter or an unknown method result is not reported. The interface alone does not establish lazy execution:
+repositories and libraries such as Dapper commonly return a fully buffered <code>List&lt;T&gt;</code> behind that interface. This conservative rule
+therefore favors precision over guessing. A variable declared as <code>List&lt;T&gt;</code>, an array, or another concrete collection type is also
+not reported.</p>
 <p>Enumerations in opposite branches of the same <code>if</code>/<code>else</code>, in different sections of the same <code>switch</code> statement, or
 in different arms of the same <code>switch</code> expression are treated as mutually exclusive and do not by themselves produce a finding. A
 <code>switch</code>'s governing expression always runs, so an enumeration there is not exclusive with anything, and a <code>switch</code> statement
@@ -43,19 +47,20 @@ offer an automatic fix.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 void Process(IEnumerable&lt;int&gt; source)
 {
-    foreach (var x in source)
+    var positives = source.Where(x =&gt; x &gt; 0);
+    foreach (var x in positives)
     {
         Console.WriteLine(x);
     }
 
-    var total = source.Sum(); // Noncompliant {{'source' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
+    var total = positives.Sum(); // Noncompliant {{'positives' is an unmaterialized sequence and is enumerated more than once here - each enumeration re-runs the underlying query/iterator. Materialize it once with '.ToList()' if you need to use it multiple times.}}
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 void Process(IEnumerable&lt;int&gt; source)
 {
-    var materialized = source.ToList();
+    var materialized = source.Where(x =&gt; x &gt; 0).ToList();
     foreach (var x in materialized)
     {
         Console.WriteLine(x);

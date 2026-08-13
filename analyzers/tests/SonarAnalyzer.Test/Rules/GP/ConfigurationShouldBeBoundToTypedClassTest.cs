@@ -27,6 +27,11 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             }
         }
 
+        namespace Microsoft.Extensions.DependencyInjection
+        {
+            public interface IServiceCollection { }
+        }
+
         public class OrdersConfig
         {
             public string BaseUrl { get; set; }
@@ -89,6 +94,44 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ConfigurationShouldBeBoundToTypedClass_CompliantInServiceRegistrationMethod() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class EfCoreModule
+            {
+                public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddEfCore(
+                    this Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+                    Microsoft.Extensions.Configuration.IConfiguration configuration)
+                {
+                    var connectionString = configuration["adoConnections:defaultConnection:connectionString"]
+                        ?? throw new System.InvalidOperationException("Missing connection string.");
+                    return services;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ConfigurationShouldBeBoundToTypedClass_NoncompliantInRuntimeServiceDespiteFailFast() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class Repository
+            {
+                private readonly Microsoft.Extensions.Configuration.IConfiguration configuration;
+
+                public Repository(Microsoft.Extensions.Configuration.IConfiguration configuration) =>
+                    this.configuration = configuration;
+
+                public string ConnectionString =>
+                    configuration["adoConnections:defaultConnection:connectionString"] // Noncompliant
+                    ?? throw new System.InvalidOperationException("Missing connection string.");
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void ConfigurationShouldBeBoundToTypedClass_CompliantForUnrelatedIndexer() =>

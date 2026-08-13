@@ -22,6 +22,9 @@ method call, or any other non-constant expression is never flagged, even if it h
 know that without executing the program, so the rule stays silent rather than guessing.</p>
 <p>For string-keyed dictionaries, the rule also honors the directly supplied <code>StringComparer.OrdinalIgnoreCase</code> comparer. Other custom or
 culture-sensitive comparer semantics are not inferred.</p>
+<p>A dictionary subtype may define another collection-initializer <code>Add</code> overload whose first argument is not a dictionary key. Such
+initializers are not reported; the rule checks the overload selected by the compiler and compares first arguments only for the standard
+<code>Add(TKey, TValue)</code> shape.</p>
 <h2>How to fix it</h2>
 <p>Remove the duplicate, or fix the copy-paste mistake that produced two entries with the same key when two different keys were intended.</p>
 <h3>Code examples</h3>

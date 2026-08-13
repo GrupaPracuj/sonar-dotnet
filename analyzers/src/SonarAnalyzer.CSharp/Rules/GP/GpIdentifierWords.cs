@@ -192,13 +192,16 @@ internal static class GpIdentifierWords
     // an issue whose suggested fix is identical to the original name.
     private static bool TryBuildIdentifier(List<string> words, string originalIdentifier, out string result)
     {
+        var leadingUnderscoreCount = originalIdentifier.TakeWhile(x => x == '_').Count();
         var candidate = string.Concat(words.Select(Capitalize));
-        if (originalIdentifier.Length > 0 && char.IsLower(originalIdentifier[0]) && candidate.Length > 0)
+        if (originalIdentifier.Length > leadingUnderscoreCount
+            && char.IsLower(originalIdentifier[leadingUnderscoreCount])
+            && candidate.Length > 0)
         {
             candidate = char.ToLowerInvariant(candidate[0]) + candidate.Substring(1);
         }
 
-        result = candidate;
-        return !string.Equals(candidate, originalIdentifier, StringComparison.Ordinal);
+        result = originalIdentifier.Substring(0, leadingUnderscoreCount) + candidate;
+        return !string.Equals(result, originalIdentifier, StringComparison.Ordinal);
     }
 }
