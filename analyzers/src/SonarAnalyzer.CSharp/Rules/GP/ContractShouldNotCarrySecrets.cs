@@ -80,7 +80,7 @@ public sealed class ContractShouldNotCarrySecrets : SonarDiagnosticAnalyzer
         }
 
         messageUses
-            .GetOrAdd(TypeKey(messageType), _ => new MessageUse(messageType))
+            .GetOrAdd(GpMessageContracts.TypeKey(messageType), _ => new MessageUse(messageType))
             .Locations
             .Add(invocation.GetLocation());
     }
@@ -97,7 +97,7 @@ public sealed class ContractShouldNotCarrySecrets : SonarDiagnosticAnalyzer
     {
         if (containingType is not null)
         {
-            var candidate = new SecretCandidate(TypeKey(containingType), identifier.GetLocation(), identifier.ValueText);
+            var candidate = new SecretCandidate(GpMessageContracts.TypeKey(containingType), identifier.GetLocation(), identifier.ValueText);
             candidates.TryAdd($"{candidate.TypeKey}|{identifier.SyntaxTree.GetHashCode()}|{candidate.Location.SourceSpan.Start}", candidate);
         }
     }
@@ -134,9 +134,6 @@ public sealed class ContractShouldNotCarrySecrets : SonarDiagnosticAnalyzer
             .OrderBy(x => x.SourceTree?.FilePath, StringComparer.Ordinal)
             .ThenBy(x => x.SourceSpan.Start)
             .First();
-
-    private static string TypeKey(INamedTypeSymbol type) =>
-        $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
 
     private readonly record struct SecretCandidate(string TypeKey, Location Location, string MemberName);
 

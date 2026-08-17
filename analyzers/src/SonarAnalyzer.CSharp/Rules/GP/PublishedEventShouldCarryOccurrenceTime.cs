@@ -37,7 +37,7 @@ public sealed class PublishedEventShouldCarryOccurrenceTime : SonarDiagnosticAna
         }
 
         publishedEvents
-            .GetOrAdd(TypeKey(eventType), _ => new PublishedEventUse(eventType))
+            .GetOrAdd(GpMessageContracts.TypeKey(eventType), _ => new PublishedEventUse(eventType))
             .PublishLocations
             .Add(invocation.GetLocation());
     }
@@ -77,9 +77,6 @@ public sealed class PublishedEventShouldCarryOccurrenceTime : SonarDiagnosticAna
         GpMessageContracts.DataMembers(eventType)
             .Any(x => OccurrenceTimeNames.Contains(x.Name)
                       && x.Type.Is(KnownType.System_DateTimeOffset));
-
-    private static string TypeKey(INamedTypeSymbol type) =>
-        $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
 
     private sealed class PublishedEventUse(INamedTypeSymbol type)
     {

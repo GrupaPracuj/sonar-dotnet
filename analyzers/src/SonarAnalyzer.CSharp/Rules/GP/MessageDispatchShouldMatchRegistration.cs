@@ -10,6 +10,16 @@ public sealed class MessageDispatchShouldMatchRegistration : SonarDiagnosticAnal
     private const string MessageFormat = "'{0}' is registered with '{1}' but dispatched with '{2}'.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly IReadOnlyDictionary<string, UseKind> InvocationKinds =
+        new Dictionary<string, UseKind>(StringComparer.Ordinal)
+        {
+            ["Sends"] = UseKind.Sends,
+            ["Publishes"] = UseKind.Publishes,
+            ["Send"] = UseKind.Send,
+            ["Publish"] = UseKind.Publish,
+            ["PublishBatch"] = UseKind.Publish,
+        };
+    private static readonly HashSet<string> SupportedMethods = new(InvocationKinds.Keys, StringComparer.Ordinal);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -25,14 +35,13 @@ public sealed class MessageDispatchShouldMatchRegistration : SonarDiagnosticAnal
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
-            || !GpMessageContracts.IsMessagingMethod(method)
             || InvocationKind(method.Name) is not { } kind
             || GpMessageContracts.MessagingPayloadType(context.Model, invocation, SupportedMethods) is not { } messageType)
         {
             return;
         }
 
-        uses.GetOrAdd(TypeKey(messageType), _ => new MessageUse(messageType))
+        uses.GetOrAdd(GpMessageContracts.TypeKey(messageType), _ => new MessageUse(messageType))
             .Locations[kind]
             .Add(invocation.GetLocation());
     }
@@ -71,26 +80,7 @@ public sealed class MessageDispatchShouldMatchRegistration : SonarDiagnosticAnal
     }
 
     private static UseKind? InvocationKind(string methodName) =>
-        methodName switch
-        {
-            "Sends" => UseKind.Sends,
-            "Publishes" => UseKind.Publishes,
-            "Send" => UseKind.Send,
-            "Publish" or "PublishBatch" => UseKind.Publish,
-            _ => null,
-        };
-
-    private static string TypeKey(INamedTypeSymbol type) =>
-        $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
-
-    private static readonly HashSet<string> SupportedMethods = new(StringComparer.Ordinal)
-    {
-        "Sends",
-        "Publishes",
-        "Send",
-        "Publish",
-        "PublishBatch",
-    };
+        InvocationKinds.TryGetValue(methodName, out var kind) ? kind : null;
 
     private sealed class MessageUse(INamedTypeSymbol type)
     {

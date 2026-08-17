@@ -124,6 +124,9 @@ internal static class GpMessageContracts
             : null;
     }
 
+    internal static string TypeKey(INamedTypeSymbol type) =>
+        $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
+
     // The public properties of the type and of everything it inherits - which covers a positional record too, since
     // the compiler turns each of its parameters into exactly such a property.
     //
