@@ -160,6 +160,7 @@ public class SwaggerActionReturnTypeTest
                 public class Bar {}
                 """)
             .VerifyNoIssues();
+
 }
 
 #endif

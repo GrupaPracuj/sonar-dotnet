@@ -80,6 +80,30 @@ public class GetCollectionEndpointsShouldNotReturnNoContentTest
             .Verify();
 
     [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNoContent_CompliantForScalarString() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute { }
+                public class ActionResult<T> { }
+                public abstract class ControllerBase
+                {
+                    protected ActionResult<T> NoContent<T>() => null;
+                    protected ActionResult<T> Ok<T>(T value) => null;
+                }
+            }
+
+            public class SettingsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.ActionResult<string> GetSetting(bool exists) =>
+                    exists ? Ok("value") : NoContent<string>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNoContent_NoncompliantForStatusCode204() =>
         builder.AddSnippet(
             """

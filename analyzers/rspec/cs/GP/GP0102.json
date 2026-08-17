@@ -1,0 +1,25 @@
+{
+  "title": "HTTP actions should declare their successful response type",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "openapi",
+    "asp.net"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0102",
+  "sqKey": "GP0102",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

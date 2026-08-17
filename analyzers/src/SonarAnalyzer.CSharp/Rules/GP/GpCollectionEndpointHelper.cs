@@ -86,5 +86,6 @@ internal static class GpCollectionEndpointHelper
     }
 
     internal static bool IsCollectionLike(ITypeSymbol type) =>
-        type is IArrayTypeSymbol || type.IsAny(CollectionTypes) || type.ImplementsAny(CollectionTypes);
+        type.SpecialType != SpecialType.System_String
+        && (type is IArrayTypeSymbol || type.IsAny(CollectionTypes) || type.ImplementsAny(CollectionTypes));
 }

@@ -1,0 +1,30 @@
+<p>Every HTTP action should explain what it does to OpenAPI consumers.</p>
+<h2>Why is this an issue?</h2>
+<p>A route and method name rarely communicate the action's behavior, authorization assumptions and important side effects well enough for a generated
+API reference. Without operation documentation, consumers have to read the implementation or reverse-engineer the endpoint.</p>
+<p>The rule accepts a non-empty Swashbuckle <code>SwaggerOperation</code> summary or description, native
+<code>EndpointSummary</code>/<code>EndpointDescription</code> metadata, or an XML <code>summary</code> or <code>remarks</code>. It therefore enforces documentation without
+forcing one OpenAPI library.</p>
+<h3>Exceptions</h3>
+<p>Actions excluded from API Explorer and classic MVC controllers serving views are not part of the generated API and are not reported. Minimal APIs are
+outside this rule because their metadata is attached to route builders rather than action methods.</p>
+<h2>How to fix it</h2>
+<p>Add a concise operation summary or description that states the action's observable purpose.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+[HttpPost]
+public IActionResult Create(CreateOrder request) // Noncompliant {{Describe this HTTP action for OpenAPI consumers.}}
+{
+    // ...
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+/// &lt;summary&gt;Creates an order and returns its public identifier.&lt;/summary&gt;
+[HttpPost]
+public IActionResult Create(CreateOrder request)
+{
+    // ...
+}
+</pre>

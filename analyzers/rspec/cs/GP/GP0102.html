@@ -1,0 +1,31 @@
+<p>HTTP actions with an abstract result type should declare the concrete payload returned on success.</p>
+<h2>Why is this an issue?</h2>
+<p><code>IActionResult</code>, <code>ActionResult</code> and <code>IResult</code> describe how ASP.NET writes a response, but not the schema of its body.
+When an action returns <code>Ok(value)</code>, <code>Created(..., value)</code> or <code>Accepted(..., value)</code>, OpenAPI needs explicit metadata to
+generate the correct response schema and strongly typed clients.</p>
+<p>The rule also unwraps <code>Task</code> and <code>ValueTask</code>, works without <code>ApiController</code> or Swashbuckle, and examines only response
+factories actually returned from the action. A concrete declared result such as <code>ActionResult&lt;OrderResponse&gt;</code> already carries the
+schema and is not reported.</p>
+<h3>Exceptions</h3>
+<p>Actions excluded from API Explorer, actions covered by ASP.NET API conventions, and classic MVC controllers serving views are not reported. Successful
+responses without a body do not need a payload schema.</p>
+<h2>How to fix it</h2>
+<p>Add <code>ProducesResponseType</code> (or equivalent concrete response metadata) for the successful response.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+[HttpGet("{id}")]
+public async Task&lt;IActionResult&gt; Get(string id) // Noncompliant {{Declare the concrete successful response type with ProducesResponseType.}}
+{
+    return Ok(await Load(id));
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+[HttpGet("{id}")]
+[ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+public async Task&lt;IActionResult&gt; Get(string id)
+{
+    return Ok(await Load(id));
+}
+</pre>

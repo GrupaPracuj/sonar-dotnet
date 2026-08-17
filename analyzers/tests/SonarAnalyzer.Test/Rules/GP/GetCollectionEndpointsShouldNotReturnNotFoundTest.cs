@@ -83,6 +83,30 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             .Verify();
 
     [TestMethod]
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForScalarString() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class HttpGetAttribute : System.Attribute { }
+                public class ActionResult<T> { }
+                public abstract class ControllerBase
+                {
+                    protected ActionResult<T> NotFound<T>() => null;
+                    protected ActionResult<T> Ok<T>(T value) => null;
+                }
+            }
+
+            public class SettingsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.ActionResult<string> GetSetting(bool exists) =>
+                    exists ? Ok("value") : NotFound<string>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForStatusCode404() =>
         builder.AddSnippet(
             """

@@ -1,0 +1,25 @@
+{
+  "title": "Bodyless HTTP responses should not declare a response type",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "openapi",
+    "asp.net"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0104",
+  "sqKey": "GP0104",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

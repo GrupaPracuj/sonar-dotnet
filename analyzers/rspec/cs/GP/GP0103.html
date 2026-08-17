@@ -1,0 +1,31 @@
+<p>HTTP actions should declare the concrete schema of error response bodies.</p>
+<h2>Why is this an issue?</h2>
+<p>Declaring only an error status such as <code>400</code> tells OpenAPI clients that the response exists, but not how to deserialize its body. When an
+action explicitly returns <code>BadRequest(error)</code>, <code>NotFound(error)</code> or another error factory with a value, its matching response
+metadata should include that value's concrete type.</p>
+<p>The rule examines only response factories returned directly by controller actions. It reports a status only when that status is already documented
+without a concrete type, leaving missing statuses to GP0100 and avoiding duplicate findings.</p>
+<h3>Exceptions</h3>
+<p>Bodyless errors, actions excluded from API Explorer, actions covered by ASP.NET API conventions, and classic MVC controllers serving views are not
+reported. Responses produced indirectly by middleware, filters or called services are not inferred.</p>
+<h2>How to fix it</h2>
+<p>Add the error model type to the matching <code>ProducesResponseType</code> or equivalent response attribute.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+[HttpPost]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+public IActionResult Create(Request request) // Noncompliant
+{
+    return BadRequest(new ErrorResponse("Invalid request"));
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+[HttpPost]
+[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+public IActionResult Create(Request request)
+{
+    return BadRequest(new ErrorResponse("Invalid request"));
+}
+</pre>

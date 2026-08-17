@@ -1,0 +1,32 @@
+<p>HTTP actions should declare every non-200 response they return with <code>ProducesResponseType</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>OpenAPI generators cannot reliably infer every branch in an action. If the implementation returns <code>404</code>, <code>409</code> or another
+status that its metadata does not declare, generated clients and API documentation describe an incomplete protocol. Consumers then discover valid
+responses only in production.</p>
+<p>The rule checks explicit MVC response factories returned directly by the action, including <code>BadRequest</code>, <code>NotFound</code>,
+<code>Conflict</code>, <code>Created</code>, <code>Accepted</code>, <code>NoContent</code> and constant <code>StatusCode</code> calls. It does not guess
+responses produced by middleware, model validation, filters or called services.</p>
+<h3>Exceptions</h3>
+<p>Actions excluded from API Explorer, actions covered by ASP.NET API conventions, and classic MVC controllers serving views are not reported. A response
+declaration inherited from the controller also counts. Minimal APIs are outside this rule because they use fluent <code>Produces</code> metadata rather
+than action attributes.</p>
+<h2>How to fix it</h2>
+<p>Add one <code>ProducesResponseType</code> attribute for every reported status.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+[HttpGet("{id}")]
+public IActionResult Get(string id) // Noncompliant {{Document the non-200 response 404 with ProducesResponseType.}}
+{
+    return Find(id) is { } value ? Ok(value) : NotFound();
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+[HttpGet("{id}")]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public IActionResult Get(string id)
+{
+    return Find(id) is { } value ? Ok(value) : NotFound();
+}
+</pre>

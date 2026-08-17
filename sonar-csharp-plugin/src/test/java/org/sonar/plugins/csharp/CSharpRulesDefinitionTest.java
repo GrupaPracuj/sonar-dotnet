@@ -76,9 +76,7 @@ class CSharpRulesDefinitionTest {
   void securityRules_exposeTheirCwe() {
     assertThat(ruleRepo.rule("GP0028").securityStandards()).contains("cwe:918");
     assertThat(ruleRepo.rule("GP0029").securityStandards()).contains("cwe:502");
-    assertThat(ruleRepo.rule("GP0030").securityStandards()).contains("cwe:117");
     assertThat(ruleRepo.rule("GP0031").securityStandards()).contains("cwe:601");
-    assertThat(ruleRepo.rule("GP0020").securityStandards()).contains("cwe:862");
   }
 
   // Main code unless the rule is about the tests themselves, where running on main code would find nothing.

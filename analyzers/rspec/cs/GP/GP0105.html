@@ -1,0 +1,31 @@
+<p>When a caught exception is used to construct a replacement exception, the original exception should be retained as the inner exception.</p>
+<h2>Why is this an issue?</h2>
+<p>Copying only the message, stack trace or another detail discards the original exception type, structured diagnostic data and stack trace. This
+makes production failures harder to investigate and can obscure their root cause.</p>
+<p>The rule reports newly thrown exceptions that use the caught exception's data without passing the caught exception itself to the constructor.</p>
+<h2>How to fix it</h2>
+<p>Use a constructor overload that accepts an inner exception and pass the caught exception to it. If no context needs to be added, use
+<code>throw;</code> to preserve the original exception and stack trace.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+try
+{
+    ProcessOrder();
+}
+catch (Exception ex)
+{
+    throw new OrderException(ex.Message); // Noncompliant
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+try
+{
+    ProcessOrder();
+}
+catch (Exception ex)
+{
+    throw new OrderException("Order processing failed.", ex);
+}
+</pre>

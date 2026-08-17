@@ -105,6 +105,23 @@ public class HttpCallShouldPropagateCancellationTokenTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_CompliantInsideStaticLambdaWithoutToken() =>
+        builder.WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+            HttpClientStubs + """
+
+            public class OrderClient
+            {
+                public void GetOrder(System.Threading.CancellationToken cancellationToken)
+                {
+                    System.Func<System.Net.Http.HttpClient, System.Threading.Tasks.Task<string>> request =
+                        static client => client.GetStringAsync("/orders");
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void HttpCallShouldPropagateCancellationToken_NoncompliantForSuppressedTokens() =>
         builder.WithOptions(LanguageOptions.CSharpLatest)
             .AddSnippet(

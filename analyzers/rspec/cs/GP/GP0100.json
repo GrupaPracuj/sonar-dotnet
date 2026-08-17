@@ -1,11 +1,11 @@
 {
-  "title": "A lazy sequence should not be enumerated more than once",
+  "title": "HTTP actions should document non-200 responses",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
       "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "EFFICIENT"
+    "attribute": "CONVENTIONAL"
   },
   "status": "ready",
   "remediation": {
@@ -14,12 +14,12 @@
   },
   "tags": [
     "gp",
-    "linq",
-    "performance"
+    "openapi",
+    "asp.net"
   ],
-  "defaultSeverity": "Minor",
-  "ruleSpecification": "GP-0087",
-  "sqKey": "GP0087",
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0100",
+  "sqKey": "GP0100",
   "scope": "Main",
-  "quickfix": "infeasible"
+  "quickfix": "unknown"
 }

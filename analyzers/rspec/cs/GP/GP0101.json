@@ -1,0 +1,25 @@
+{
+  "title": "HTTP actions should have an OpenAPI description",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "openapi",
+    "asp.net"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0101",
+  "sqKey": "GP0101",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

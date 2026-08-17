@@ -193,6 +193,21 @@ public class DefaultStructEqualityShouldNotBeUsedTest
             .Verify();
 
     [TestMethod]
+    public void DefaultStructEqualityShouldNotBeUsed_NoncompliantForBraceOnlyDictionaryCreation() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class C
+            {
+                public void M()
+                {
+                    var d = new System.Collections.Generic.Dictionary<PlainPoint, string> { }; // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DefaultStructEqualityShouldNotBeUsed_NoncompliantForHashSetElement() =>
         builder.AddSnippet(
             Stubs + """

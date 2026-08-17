@@ -155,4 +155,24 @@ public class ActionShouldDeclareAccessPolicyTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_ReportsOnceForSameFilePartialController() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public partial class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                [Microsoft.AspNetCore.Mvc.Authorize]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok();
+            }
+
+            public partial class UsersController
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetSettings() => Ok(); // Noncompliant
+            }
+            """)
+            .Verify();
 }

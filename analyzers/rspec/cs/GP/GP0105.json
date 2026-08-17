@@ -1,0 +1,24 @@
+{
+  "title": "Caught exceptions should be preserved when wrapping them",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "error-handling"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0105",
+  "sqKey": "GP0105",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

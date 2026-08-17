@@ -31,7 +31,7 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
 
         foreach (var method in actionMethods.Where(x => !HasAttribute("Authorize")(x) && !HasAttribute("AllowAnonymous")(x)))
         {
-            if (method.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<MethodDeclarationSyntax>().FirstOrDefault(x => x.SyntaxTree == classDeclaration.SyntaxTree) is { } methodDeclaration)
+            if (method.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<MethodDeclarationSyntax>().FirstOrDefault(x => x.Parent == classDeclaration) is { } methodDeclaration)
             {
                 context.ReportIssue(Rule, methodDeclaration.Identifier, method.Name, type.Name);
             }

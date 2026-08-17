@@ -66,7 +66,8 @@ public sealed class DefaultStructEqualityShouldNotBeUsed : SonarDiagnosticAnalyz
 
     private static bool HasExplicitComparer(SemanticModel model, ObjectCreationExpressionSyntax objectCreation, ITypeSymbol keyType)
     {
-        if (model.GetSymbolInfo(objectCreation).Symbol is not IMethodSymbol constructor)
+        if (objectCreation.ArgumentList is null
+            || model.GetSymbolInfo(objectCreation).Symbol is not IMethodSymbol constructor)
         {
             return false;
         }

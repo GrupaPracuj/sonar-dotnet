@@ -1,0 +1,25 @@
+{
+  "title": "HTTP error responses with bodies should declare their type",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "openapi",
+    "asp.net"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0103",
+  "sqKey": "GP0103",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

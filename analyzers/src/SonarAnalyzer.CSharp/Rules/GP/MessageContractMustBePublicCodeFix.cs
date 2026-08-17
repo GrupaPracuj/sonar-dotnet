@@ -43,9 +43,7 @@ public sealed class MessageContractMustBePublicCodeFix : SonarCodeFix
     private static ITypeSymbol ResolveContractType(SyntaxNode node, SemanticModel model) =>
         node switch
         {
-            InvocationExpressionSyntax invocation when model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method =>
-                method.TypeArguments.FirstOrDefault()
-                ?? (invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } argument ? model.GetTypeInfo(argument).Type : null),
+            InvocationExpressionSyntax invocation => GpMessageContracts.PublishedType(model, invocation),
             ClassDeclarationSyntax classDeclaration when model.GetDeclaredSymbol(classDeclaration) is { } type =>
                 type.AllInterfaces
                     .Where(GpMessageContracts.IsConsumerInterface)

@@ -132,6 +132,19 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
     {
         foreach (var ancestor in node.Ancestors())
         {
+            if (ancestor is AnonymousFunctionExpressionSyntax anonymousFunction)
+            {
+                if (AnonymousFunctionCancellationToken(model, anonymousFunction) is { } lambdaToken)
+                {
+                    return lambdaToken;
+                }
+
+                if (anonymousFunction.ChildTokens().Any(x => x.IsKind(SyntaxKind.StaticKeyword)))
+                {
+                    return null;
+                }
+            }
+
             IMethodSymbol method = ancestor switch
             {
                 MethodDeclarationSyntax methodDeclaration => model.GetDeclaredSymbol(methodDeclaration),
@@ -146,4 +159,19 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
 
         return null;
     }
+
+    private static IParameterSymbol AnonymousFunctionCancellationToken(SemanticModel model, AnonymousFunctionExpressionSyntax anonymousFunction) =>
+        anonymousFunction switch
+        {
+            SimpleLambdaExpressionSyntax simple => model.GetDeclaredSymbol(simple.Parameter) as IParameterSymbol,
+            ParenthesizedLambdaExpressionSyntax parenthesized => parenthesized.ParameterList.Parameters
+                .Select(x => model.GetDeclaredSymbol(x))
+                .OfType<IParameterSymbol>()
+                .FirstOrDefault(IsCancellationToken),
+            AnonymousMethodExpressionSyntax { ParameterList: { } parameterList } => parameterList.Parameters
+                .Select(x => model.GetDeclaredSymbol(x))
+                .OfType<IParameterSymbol>()
+                .FirstOrDefault(IsCancellationToken),
+            _ => null,
+        } is { } parameter && IsCancellationToken(parameter) ? parameter : null;
 }
