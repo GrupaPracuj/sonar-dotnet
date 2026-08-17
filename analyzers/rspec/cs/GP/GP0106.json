@@ -1,0 +1,24 @@
+{
+  "title": "Message dispatch should match its Juno registration",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "messaging"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0106",
+  "sqKey": "GP0106",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

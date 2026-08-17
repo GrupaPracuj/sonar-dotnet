@@ -32,6 +32,15 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             public interface IServiceCollection { }
         }
 
+        namespace Microsoft.AspNetCore.Builder
+        {
+            public class WebApplicationBuilder
+            {
+                public Microsoft.Extensions.Configuration.IConfiguration Configuration { get; }
+                public Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; }
+            }
+        }
+
         public class OrdersConfig
         {
             public string BaseUrl { get; set; }
@@ -113,6 +122,41 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ConfigurationShouldBeBoundToTypedClass_CompliantInWebApplicationBuilderRegistrationMethod() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class ApplicationSetup
+            {
+                public static Microsoft.AspNetCore.Builder.WebApplicationBuilder SetupApplication(
+                    this Microsoft.AspNetCore.Builder.WebApplicationBuilder builder)
+                {
+                    var keysDirectory = builder.Configuration["dataProtection:keysDirectory"];
+                    var expiration = Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<int>(
+                        builder.Configuration,
+                        "session:snapshotExpirationMinutes");
+                    _ = builder.Services;
+                    return builder;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ConfigurationShouldBeBoundToTypedClass_NoncompliantInWebApplicationBuilderRuntimeHelper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class RuntimeSettings
+            {
+                public static string ReadSetting(
+                    this Microsoft.AspNetCore.Builder.WebApplicationBuilder builder) =>
+                    builder.Configuration["runtime:value"]; // Noncompliant
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void ConfigurationShouldBeBoundToTypedClass_NoncompliantInRuntimeServiceDespiteFailFast() =>

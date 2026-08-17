@@ -1,0 +1,22 @@
+<p>Dapper type handlers should be registered once during application startup, not whenever a service or repository instance is constructed.</p>
+<h2>Why is this an issue?</h2>
+<p><code>SqlMapper.AddTypeHandler</code> changes process-wide Dapper configuration. Calling it from an instance constructor repeats a global side
+effect according to the object's lifetime, hides application configuration inside a repository, and can make tests and concurrent startup
+order-dependent.</p>
+<h2>How to fix it</h2>
+<p>Move type-handler registration to the application's composition root or another one-time static bootstrap step.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+public OrderRepository()
+{
+    SqlMapper.AddTypeHandler(new MoneyTypeHandler()); // Noncompliant
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+public static void ConfigureDapper()
+{
+    SqlMapper.AddTypeHandler(new MoneyTypeHandler());
+}
+</pre>

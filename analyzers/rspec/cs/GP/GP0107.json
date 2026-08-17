@@ -1,0 +1,25 @@
+{
+  "title": "Dapper type handlers should be registered once",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "dapper",
+    "configuration"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0107",
+  "sqKey": "GP0107",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

@@ -9,6 +9,7 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
 
     private const string ConfigurationInterface = "Microsoft.Extensions.Configuration.IConfiguration";
     private const string ServiceCollectionInterface = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
+    private const string WebApplicationBuilderType = "Microsoft.AspNetCore.Builder.WebApplicationBuilder";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -59,8 +60,31 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     private static bool IsServiceRegistrationMethod(SemanticModel model, SyntaxNode node) =>
         model.GetEnclosingSymbol(node.SpanStart) is IMethodSymbol method
         && (IsServiceCollection(method.ReturnType)
-            || method.Parameters.Any(x => IsServiceCollection(x.Type)));
+            || method.Parameters.Any(x => IsServiceCollection(x.Type))
+            || IsWebApplicationBuilderRegistrationMethod(model, method));
 
     private static bool IsServiceCollection(ITypeSymbol type) =>
         type?.ToDisplayString() == ServiceCollectionInterface;
+
+    // Modern ASP.NET composition roots commonly extend WebApplicationBuilder and configure framework services through
+    // builder.Services. Keep the exemption tied to that concrete setup shape rather than exempting every method that
+    // merely receives a builder and could still leak keyed configuration into runtime logic.
+    private static bool IsWebApplicationBuilderRegistrationMethod(SemanticModel model, IMethodSymbol method)
+    {
+        if (!method.IsExtensionMethod
+            || method.Parameters.FirstOrDefault() is not { Type: { } receiverType } receiver
+            || receiverType.ToDisplayString() != WebApplicationBuilderType)
+        {
+            return false;
+        }
+
+        return method.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<MethodDeclarationSyntax>()
+            .Where(x => x.SyntaxTree == model.SyntaxTree)
+            .SelectMany(x => x.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+            .Any(x => x.Name.Identifier.ValueText == "Services"
+                      && x.Expression is IdentifierNameSyntax identifier
+                      && receiver.Equals(model.GetSymbolInfo(identifier).Symbol));
+    }
 }
