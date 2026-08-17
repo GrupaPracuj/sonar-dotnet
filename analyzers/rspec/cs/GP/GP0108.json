@@ -1,0 +1,25 @@
+{
+  "title": "OpenAPI security scheme identifiers should match exactly",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "openapi",
+    "asp.net"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0108",
+  "sqKey": "GP0108",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

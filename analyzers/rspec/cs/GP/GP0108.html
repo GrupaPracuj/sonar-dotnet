@@ -1,0 +1,19 @@
+<p>An OpenAPI security scheme reference should use exactly the same identifier, including casing, as its definition.</p>
+<h2>Why is this an issue?</h2>
+<p>OpenAPI component identifiers are case-sensitive. Defining <code>Bearer</code> while referencing <code>bearer</code> leaves the security
+requirement pointing at a different, missing scheme. Swagger UI then cannot apply authentication as configured.</p>
+<p>The rule checks only constant identifiers within the same <code>AddSwaggerGen</code> configuration and reports case-only mismatches. Dynamic
+identifiers and separate configuration scopes are not inferred.</p>
+<h2>How to fix it</h2>
+<p>Use one exact identifier for both the security definition and every reference to it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+options.AddSecurityDefinition("Bearer", scheme);
+new OpenApiSecuritySchemeReference("bearer", document); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+options.AddSecurityDefinition("bearer", scheme);
+new OpenApiSecuritySchemeReference("bearer", document);
+</pre>
