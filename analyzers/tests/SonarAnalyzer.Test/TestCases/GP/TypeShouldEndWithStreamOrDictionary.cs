@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 public class MyCache : Stream // Noncompliant {{Type 'MyCache' implements System.IO.Stream and should have a name ending in 'Stream'.}}
 {

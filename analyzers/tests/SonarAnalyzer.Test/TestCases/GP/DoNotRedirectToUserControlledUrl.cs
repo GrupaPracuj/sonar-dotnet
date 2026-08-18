@@ -1,4 +1,4 @@
-using static Microsoft.AspNetCore.Http.Results;
+﻿using static Microsoft.AspNetCore.Http.Results;
 
 namespace Microsoft.AspNetCore.Mvc
 {

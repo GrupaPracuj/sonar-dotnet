@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 public class MyCacheStream : Stream // Fixed
 {

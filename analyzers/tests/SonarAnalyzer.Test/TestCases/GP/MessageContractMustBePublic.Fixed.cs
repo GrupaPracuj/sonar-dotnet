@@ -1,4 +1,4 @@
-namespace MassTransit
+﻿namespace MassTransit
 {
     public interface IConsumer<T> where T : class
     {

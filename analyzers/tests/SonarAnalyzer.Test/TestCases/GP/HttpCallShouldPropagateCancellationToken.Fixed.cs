@@ -1,4 +1,4 @@
-namespace System.Net.Http
+﻿namespace System.Net.Http
 {
     public class HttpClient
     {

@@ -1,4 +1,4 @@
-namespace Tests.Diagnostics
+﻿namespace Tests.Diagnostics
 {
     // Every member here comes from a referenced assembly, so there is no declaration syntax to read an accessor or a
     // modifier from - 'init' and 'required' have to be recognized through metadata, or the fix would move them out of

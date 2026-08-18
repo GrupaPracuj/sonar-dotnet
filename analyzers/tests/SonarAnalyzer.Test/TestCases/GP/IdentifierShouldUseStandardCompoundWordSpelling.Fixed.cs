@@ -1,4 +1,4 @@
-public class Contract
+﻿public class Contract
 {
     public string Endpoint { get; set; } // Fixed
 }

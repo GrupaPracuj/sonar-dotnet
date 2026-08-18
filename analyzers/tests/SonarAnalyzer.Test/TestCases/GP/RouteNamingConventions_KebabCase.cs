@@ -1,4 +1,4 @@
-namespace Microsoft.AspNetCore.Mvc.Routing
+﻿namespace Microsoft.AspNetCore.Mvc.Routing
 {
     public interface IRouteTemplateProvider
     {

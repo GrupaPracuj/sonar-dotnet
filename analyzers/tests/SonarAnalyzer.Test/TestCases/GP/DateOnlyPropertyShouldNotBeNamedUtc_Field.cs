@@ -1,4 +1,4 @@
-namespace GP.Juno.Dates
+﻿namespace GP.Juno.Dates
 {
     public struct LocalDate { }
 }
