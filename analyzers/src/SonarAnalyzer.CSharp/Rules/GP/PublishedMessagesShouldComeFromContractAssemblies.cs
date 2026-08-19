@@ -15,6 +15,9 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
 
     private const string MessageFormat = "Use '{0}' from a contract assembly for this {1}; it is declared in '{2}'.";
     private const string DefaultContractAssemblyNames = "Contracts";
+    private const string ApiControllerAttribute = "Microsoft.AspNetCore.Mvc.ApiControllerAttribute";
+    private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
+    private const string SwaggerIgnoreAttribute = "Swashbuckle.AspNetCore.Annotations.SwaggerIgnoreAttribute";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
     private static readonly HashSet<string> MessagingMethods = new(StringComparer.Ordinal)
@@ -112,7 +115,7 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
         {
             if (parameter.Type is not null
                 && context.Model.GetDeclaredSymbol(parameter) is { } symbol
-                && !IsServiceParameter(symbol))
+                && IsRestRequestParameter(symbol, method))
             {
                 ReportIfOutsideContracts(context, parameter.Type, symbol.Type, "REST request", contractAssemblyNames);
             }
@@ -215,6 +218,32 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
 
     private static bool IsServiceParameter(IParameterSymbol parameter) =>
         parameter.GetAttributes().Any(x => ServiceBindingAttributes.Contains(x.AttributeClass?.ToDisplayString() ?? string.Empty));
+
+    private static bool IsRestRequestParameter(IParameterSymbol parameter, IMethodSymbol action) =>
+        !IsServiceParameter(parameter)
+        && !HasAttribute(parameter, SwaggerIgnoreAttribute)
+        && (IsApiController(action) || HasAttribute(parameter, FromBodyAttribute));
+
+    private static bool IsApiController(IMethodSymbol action)
+    {
+        if (action.ContainingAssembly.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == ApiControllerAttribute))
+        {
+            return true;
+        }
+
+        for (var type = action.ContainingType; type is not null; type = type.BaseType)
+        {
+            if (HasAttribute(type, ApiControllerAttribute))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasAttribute(ISymbol symbol, string attributeType) =>
+        symbol.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == attributeType);
 
     // FN: Minimal API can resolve an unannotated interface or abstract parameter from DI at runtime. Without the
     // service registrations there is no semantic evidence that it is an HTTP payload, so reporting it would be noisy.

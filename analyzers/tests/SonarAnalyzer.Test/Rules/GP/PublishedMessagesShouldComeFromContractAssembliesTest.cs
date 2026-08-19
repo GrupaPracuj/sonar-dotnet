@@ -30,6 +30,9 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
         namespace Microsoft.AspNetCore.Mvc
         {
             public class HttpPostAttribute : System.Attribute { }
+            public class ApiControllerAttribute : System.Attribute { }
+            public class FromBodyAttribute : System.Attribute { }
+            public class FromQueryAttribute : System.Attribute { }
             public class FromServicesAttribute : System.Attribute { }
             public interface IActionResult { }
             public class ActionResult<T> { }
@@ -37,6 +40,15 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             {
                 protected IActionResult Ok(object value) => null;
             }
+            public abstract class Controller : ControllerBase
+            {
+                protected IActionResult View(object value) => null;
+            }
+        }
+
+        namespace Swashbuckle.AspNetCore.Annotations
+        {
+            public class SwaggerIgnoreAttribute : System.Attribute { }
         }
         """;
 
@@ -242,6 +254,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 public sealed record CreateOrder(string Name);
                 public sealed record OrderCreated(System.Guid Id);
 
+                [Microsoft.AspNetCore.Mvc.ApiController]
                 public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -251,6 +264,60 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 }
                 """)
             .Verify();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForMvcViewModel() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                public sealed class OrdersFilterViewModel { }
+
+                public class OrdersController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    public Microsoft.AspNetCore.Mvc.IActionResult Index(
+                        [Microsoft.AspNetCore.Mvc.FromQuery] OrdersFilterViewModel filter) =>
+                        View(filter);
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForExplicitBodyOutsideApiController() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                public sealed class ExecuteOrder { }
+
+                public class OrdersController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public Microsoft.AspNetCore.Mvc.IActionResult Execute(
+                        [Microsoft.AspNetCore.Mvc.FromBody] ExecuteOrder request) => // Noncompliant {{Use 'ExecuteOrder' from a contract assembly for this REST request; it is declared in 'project0'.}}
+                        Ok(null);
+                }
+                """)
+            .Verify();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForSwaggerIgnoredInfrastructureParameter() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                public readonly struct ETag { }
+
+                [Microsoft.AspNetCore.Mvc.ApiController]
+                public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public Microsoft.AspNetCore.Mvc.IActionResult Update(
+                        [Swashbuckle.AspNetCore.Annotations.SwaggerIgnore] ETag ifMatch) =>
+                        Ok(null);
+                }
+                """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForMvcRuntimeResponse() =>
@@ -299,6 +366,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
 
                 public sealed class OrderService { }
 
+                [Microsoft.AspNetCore.Mvc.ApiController]
                 public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
@@ -329,6 +397,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .AddSnippet(
                 MvcStub + """
 
+                [Microsoft.AspNetCore.Mvc.ApiController]
                 public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
