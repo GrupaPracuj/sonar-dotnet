@@ -20,5 +20,5 @@
   "ruleSpecification": "GP-0055",
   "sqKey": "GP0055",
   "scope": "Main",
-  "quickfix": "unknown"
+  "quickfix": "infeasible"
 }

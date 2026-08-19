@@ -14,6 +14,7 @@ namespace SonarAnalyzer.CSharp.Rules;
 public sealed class OpenApiSecuritySchemeIdsShouldMatch : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0108";
+    internal const string CanonicalIdProperty = "CanonicalId";
 
     private const string MessageFormat = "Security scheme reference '{0}' differs in casing from definition '{1}'.";
     private const string SwaggerGenOptionsType = "Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenOptions";
@@ -132,11 +133,17 @@ public sealed class OpenApiSecuritySchemeIdsShouldMatch : SonarDiagnosticAnalyze
                     .FirstOrDefault();
                 if (mismatch is not null)
                 {
-                    context.ReportIssue(
-                        CSharpGeneratedCodeRecognizer.Instance,
+                    var properties = ImmutableDictionary<string, string>.Empty.Add(CanonicalIdProperty, mismatch.Id);
+                    var diagnostic = Diagnostic.Create(
                         Rule,
                         reference.Location,
-                        messageArgs: new[] { reference.Id, mismatch.Id });
+                        additionalLocations: null,
+                        properties,
+                        reference.Id,
+                        mismatch.Id);
+#pragma warning disable CS0618
+                    context.ReportIssue(CSharpGeneratedCodeRecognizer.Instance, diagnostic);
+#pragma warning restore CS0618
                 }
             }
         }

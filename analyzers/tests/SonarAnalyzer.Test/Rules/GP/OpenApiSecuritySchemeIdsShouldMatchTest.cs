@@ -326,4 +326,14 @@ public class OpenApiSecuritySchemeIdsShouldMatchTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void OpenApiSecuritySchemeIdsShouldMatch_CodeFix() =>
+        // The corpus declares API stubs in framework namespaces, which the concurrency wrapper would relocate.
+        builder.WithConcurrentAnalysis(false)
+            .WithBasePath("GP")
+            .AddPaths("OpenApiSecuritySchemeIdsShouldMatch.cs")
+            .WithCodeFix<CS.OpenApiSecuritySchemeIdsShouldMatchCodeFix>()
+            .WithCodeFixedPaths("OpenApiSecuritySchemeIdsShouldMatch.Fixed.cs")
+            .VerifyCodeFix();
 }
