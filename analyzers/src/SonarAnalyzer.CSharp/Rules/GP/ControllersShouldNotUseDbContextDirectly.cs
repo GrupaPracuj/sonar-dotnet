@@ -25,7 +25,7 @@ public sealed class ControllersShouldNotUseDbContextDirectly : SonarDiagnosticAn
     private static void AnalyzeClass(SonarSyntaxNodeReportingContext context)
     {
         var classDeclaration = (ClassDeclarationSyntax)context.Node;
-        if (context.Model.GetDeclaredSymbol(classDeclaration) is not { } type || !type.IsControllerType())
+        if (context.Model.GetDeclaredSymbol(classDeclaration) is not { } type || !type.IsControllerType)
         {
             return;
         }

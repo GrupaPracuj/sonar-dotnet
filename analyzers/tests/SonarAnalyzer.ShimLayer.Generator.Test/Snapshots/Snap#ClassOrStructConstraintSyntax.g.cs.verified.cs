@@ -29,10 +29,10 @@ public static partial class ClassOrStructConstraintSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ClassOrStructConstraintSyntax);
 
-    private static readonly Func<ClassOrStructConstraintSyntax, SyntaxToken> QuestionTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ClassOrStructConstraintSyntax, SyntaxToken>(WrappedType, "QuestionToken");
+    private static readonly Func<ClassOrStructConstraintSyntax, SyntaxToken> QuestionTokenAccessor = AccessorFactory.CreateProperty<Func<ClassOrStructConstraintSyntax, SyntaxToken>>(WrappedType, "QuestionToken");
 
-    extension(ClassOrStructConstraintSyntax @this)
+    extension(ClassOrStructConstraintSyntax wrappedInstance)
     {
-        public SyntaxToken QuestionToken => (SyntaxToken)QuestionTokenAccessor(@this);
+        public SyntaxToken QuestionToken => (SyntaxToken)QuestionTokenAccessor(wrappedInstance);
     }
 }

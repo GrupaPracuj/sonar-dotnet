@@ -134,10 +134,9 @@ public class TelemetryJsonProjectSensorTest {
       mocked.when(() -> Files.move(eq(telemetryJson), eq(renamedTelemetryJson))).thenReturn(nonexistingTelemetryJson);
       sensor.execute();
       assertThat(collector.getTelemetry()).isEmpty();
-      assertThat(logTester.logs()).hasSize(2);
-      assertThat(logTester.logs().get(0)).isEqualTo("Searching for telemetry json in " + temp.getRoot());
-      assertThat(logTester.logs().get(1)).startsWith(
-        "Cannot open telemetry file " + telemetryJson + ", java.io.FileNotFoundException: " + nonexistingTelemetryJson);
+      assertThat(logTester.logs()).containsExactly(
+        "Searching for telemetry json in " + temp.getRoot(),
+        "Cannot open telemetry file " + telemetryJson + ", java.io.FileNotFoundException: " + nonexistingTelemetryJson + " (The system cannot find the file specified)");
     }
   }
 

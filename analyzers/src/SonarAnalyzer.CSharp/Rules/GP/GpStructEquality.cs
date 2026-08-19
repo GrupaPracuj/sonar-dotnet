@@ -17,7 +17,7 @@ internal static class GpStructEquality
     // Enums are a different TypeKind entirely and are not a concern here.
     internal static bool UsesDefaultEquality(ITypeSymbol type) =>
         type is { TypeKind: TypeKind.Struct }
-        && !type.IsRecord()
+        && !type.IsRecord
         && (UsesDefaultEquals(type) || UsesDefaultGetHashCode(type));
 
     internal static bool UsesDefaultEquals(ITypeSymbol type) =>

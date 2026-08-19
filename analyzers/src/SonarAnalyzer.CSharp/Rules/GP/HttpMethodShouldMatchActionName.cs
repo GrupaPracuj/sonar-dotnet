@@ -38,7 +38,7 @@ public sealed class HttpMethodShouldMatchActionName : SonarDiagnosticAnalyzer
     {
         if (context.Node is not MethodDeclarationSyntax methodDeclaration
             || context.Model.GetDeclaredSymbol(methodDeclaration) is not { } method
-            || !method.IsControllerActionMethod())
+            || !method.IsControllerActionMethod)
         {
             return;
         }

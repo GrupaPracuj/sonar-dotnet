@@ -29,16 +29,14 @@ public static partial class AnonymousFunctionExpressionSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnonymousFunctionExpressionSyntax);
 
-    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList> ModifiersAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<AnonymousFunctionExpressionSyntax, SyntaxTokenList>(WrappedType, "Modifiers");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, BlockSyntax> BlockAccessor = AccessorFactory.CreateProperty<Func<AnonymousFunctionExpressionSyntax, BlockSyntax>>(WrappedType, "Block");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax>>(WrappedType, "ExpressionBody");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
-    private static readonly Func<AnonymousFunctionExpressionSyntax, BlockSyntax> BlockAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<AnonymousFunctionExpressionSyntax, BlockSyntax>(WrappedType, "Block");
-
-    private static readonly Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax> ExpressionBodyAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<AnonymousFunctionExpressionSyntax, ExpressionSyntax>(WrappedType, "ExpressionBody");
-
-    extension(AnonymousFunctionExpressionSyntax @this)
+    extension(AnonymousFunctionExpressionSyntax wrappedInstance)
     {
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(@this);
-        public BlockSyntax Block => BlockAccessor(@this);
-        public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(@this);
+        public BlockSyntax Block => BlockAccessor(wrappedInstance);
+        public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
     }
 }

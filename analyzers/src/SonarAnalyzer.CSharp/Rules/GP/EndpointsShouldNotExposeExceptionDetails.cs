@@ -85,7 +85,7 @@ public sealed class EndpointsShouldNotExposeExceptionDetails : SonarDiagnosticAn
 
     private static bool FlowsIntoControllerResponse(MemberAccessExpressionSyntax memberAccess, SemanticModel model) =>
         model.GetEnclosingSymbol(memberAccess.SpanStart) is IMethodSymbol enclosing
-        && enclosing.IsControllerActionMethod()
+        && enclosing.IsControllerActionMethod
         && FlowsIntoTheResponse(memberAccess, model, x => IsMvcResponseFactory(x, model), null);
 
     private static bool FlowsDirectlyIntoMinimalApiResponse(MemberAccessExpressionSyntax memberAccess, SemanticModel model)

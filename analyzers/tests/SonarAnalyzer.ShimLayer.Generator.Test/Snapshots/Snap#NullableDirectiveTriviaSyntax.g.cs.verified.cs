@@ -25,74 +25,76 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct NullableDirectiveTriviaSyntaxWrapper: ISyntaxWrapper<DirectiveTriviaSyntax>
+public readonly partial struct NullableDirectiveTriviaSyntaxWrapper : ISyntaxWrapper<DirectiveTriviaSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.NullableDirectiveTriviaSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly DirectiveTriviaSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(NullableDirectiveTriviaSyntaxWrapper));
+    private readonly DirectiveTriviaSyntax wrappedInstance;
 
-    static NullableDirectiveTriviaSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(NullableDirectiveTriviaSyntaxWrapper));
-        NullableKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<DirectiveTriviaSyntax, SyntaxToken>(WrappedType, "NullableKeyword");
-        SettingTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<DirectiveTriviaSyntax, SyntaxToken>(WrappedType, "SettingToken");
-        TargetTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<DirectiveTriviaSyntax, SyntaxToken>(WrappedType, "TargetToken");
-    }
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> NullableKeywordAccessor = AccessorFactory.CreateProperty<Func<DirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "NullableKeyword");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> SettingTokenAccessor = AccessorFactory.CreateProperty<Func<DirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "SettingToken");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> TargetTokenAccessor = AccessorFactory.CreateProperty<Func<DirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "TargetToken");
 
-    private NullableDirectiveTriviaSyntaxWrapper(DirectiveTriviaSyntax node) =>
-        this.node = node;
+    private NullableDirectiveTriviaSyntaxWrapper(DirectiveTriviaSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public DirectiveTriviaSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public DirectiveTriviaSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public DirectiveTriviaSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public DirectiveTriviaSyntax SyntaxNode => wrappedInstance;
 
-    public SyntaxToken HashToken => this.node.HashToken;
-    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> NullableKeywordAccessor;
-    public SyntaxToken NullableKeyword => (SyntaxToken)NullableKeywordAccessor(this.node);
-    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> SettingTokenAccessor;
-    public SyntaxToken SettingToken => (SyntaxToken)SettingTokenAccessor(this.node);
-    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> TargetTokenAccessor;
-    public SyntaxToken TargetToken => (SyntaxToken)TargetTokenAccessor(this.node);
-    public SyntaxToken EndOfDirectiveToken => this.node.EndOfDirectiveToken;
-    public Boolean IsActive => this.node.IsActive;
-    public SyntaxToken DirectiveNameToken => this.node.DirectiveNameToken;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public DirectiveTriviaSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator NullableDirectiveTriviaSyntaxWrapper(SyntaxNode node)
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public SyntaxToken DirectiveNameToken => wrappedInstance.DirectiveNameToken;
+    public SyntaxToken EndOfDirectiveToken => wrappedInstance.EndOfDirectiveToken;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public SyntaxToken HashToken => wrappedInstance.HashToken;
+    public Boolean IsActive => wrappedInstance.IsActive;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public String Language => wrappedInstance.Language;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+
+    public SyntaxToken NullableKeyword => (SyntaxToken)NullableKeywordAccessor(wrappedInstance);
+    public SyntaxToken SettingToken => (SyntaxToken)SettingTokenAccessor(wrappedInstance);
+    public SyntaxToken TargetToken => (SyntaxToken)TargetTokenAccessor(wrappedInstance);
+
+    public static explicit operator NullableDirectiveTriviaSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator DirectiveTriviaSyntax(NullableDirectiveTriviaSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static NullableDirectiveTriviaSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new NullableDirectiveTriviaSyntaxWrapper((DirectiveTriviaSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new NullableDirectiveTriviaSyntaxWrapper((DirectiveTriviaSyntax)node);
     }
-
-    public static implicit operator DirectiveTriviaSyntax(NullableDirectiveTriviaSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }

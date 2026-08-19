@@ -29,10 +29,10 @@ public static partial class NameColonSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(NameColonSyntax);
 
-    private static readonly Func<NameColonSyntax, ExpressionSyntax> ExpressionAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<NameColonSyntax, ExpressionSyntax>(WrappedType, "Expression");
+    private static readonly Func<NameColonSyntax, ExpressionSyntax> ExpressionAccessor = AccessorFactory.CreateProperty<Func<NameColonSyntax, ExpressionSyntax>>(WrappedType, "Expression");
 
-    extension(NameColonSyntax @this)
+    extension(NameColonSyntax wrappedInstance)
     {
-        public ExpressionSyntax Expression => ExpressionAccessor(@this);
+        public ExpressionSyntax Expression => ExpressionAccessor(wrappedInstance);
     }
 }

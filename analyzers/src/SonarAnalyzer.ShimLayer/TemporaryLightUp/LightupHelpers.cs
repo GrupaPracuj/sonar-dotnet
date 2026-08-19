@@ -128,9 +128,7 @@ namespace SonarAnalyzer.ShimLayer
 
             // Avoid creating a delegate and capture class
             // Sonar: https://learn.microsoft.com/en-us/dotnet/api/microsoft.codeanalysis.operationkind Loop && CaseClause are further differentiated by LoopKind & CaseKind, but are not castable between different Kinds which can result in InvalidCast Exceptions
-            // ToDo: Commented out for now, needs OperationKindEx to be generated
-            if (!wrappedSyntax.TryGetValue(operation.Kind, out var canCast))
-            //if (!wrappedSyntax.TryGetValue(operation.Kind, out var canCast) || operation.Kind is OperationKindEx.Loop or OperationKindEx.CaseClause) // Sonar
+            if (!wrappedSyntax.TryGetValue(operation.Kind, out var canCast) || operation.Kind is OperationKindEx.Loop or OperationKindEx.CaseClause) // Sonar
             {
                 canCast = underlyingType.GetTypeInfo().IsAssignableFrom(operation.GetType().GetTypeInfo());
                 wrappedSyntax.TryAdd(operation.Kind, canCast);
@@ -297,9 +295,9 @@ namespace SonarAnalyzer.ShimLayer
             return expression.Compile();
         }
 
-        public static Func<TSyntax, TProperty> CreateSyntaxPropertyAccessor<TSyntax, TProperty>(Type type, string propertyName)
+        public static Func<T, TProperty> CreatePropertyAccessor<T, TProperty>(Type type, string propertyName)
         {
-            TProperty FallbackAccessor(TSyntax syntax)
+            TProperty FallbackAccessor(T syntax)
             {
                 if (syntax == null)
                 {
@@ -316,30 +314,55 @@ namespace SonarAnalyzer.ShimLayer
                 return FallbackAccessor;
             }
 
-            if (!typeof(TSyntax).GetTypeInfo().IsAssignableFrom(type.GetTypeInfo()))
+            if (!typeof(T).GetTypeInfo().IsAssignableFrom(type.GetTypeInfo()))
             {
                 throw new InvalidOperationException();
             }
 
-            var property = type.GetTypeInfo().GetDeclaredProperty(propertyName);
+            var property = FindProperty();
             if (property == null)
             {
                 return FallbackAccessor;
             }
-            var syntaxParameter = Expression.Parameter(typeof(TSyntax), "syntax"); // Sonar - begin
-            Expression instance =
-                type.GetTypeInfo().IsAssignableFrom(typeof(TSyntax).GetTypeInfo())
-                ? (Expression)syntaxParameter
-                : Expression.Convert(syntaxParameter, type);
+            var instanceParameter = Expression.Parameter(typeof(T), "instance");
+            Expression instance = type.GetTypeInfo().IsAssignableFrom(typeof(T).GetTypeInfo())
+                ? (Expression)instanceParameter
+                : Expression.Convert(instanceParameter, type);
 
-            Expression body = Expression.Call(instance, property.GetMethod);
 
-            if (!typeof(TProperty).GetTypeInfo().IsAssignableFrom(property.PropertyType.GetTypeInfo()))
+            if (property.PropertyType.FullName == "Microsoft.CodeAnalysis.FlowAnalysis.CaptureId") // Sonar - begin
             {
-                body = Expression.Convert(body, typeof(TProperty));
+                var constructor = typeof(CaptureId).GetConstructors().Single();
+                var expression = Expression.Lambda<Func<T, TProperty>>(
+                    Expression.New(constructor, Expression.Convert(Expression.Call(instance, property.GetMethod), typeof(object))),
+                    instanceParameter);
+                return expression.Compile();
+            } // Sonar - end
+            else
+            {
+                Expression body = Expression.Call(instance, property.GetMethod);
+                if (!typeof(TProperty).GetTypeInfo().IsAssignableFrom(property.PropertyType.GetTypeInfo()))
+                {
+                    body = Expression.Convert(body, typeof(TProperty));
+                }
+                return Expression.Lambda<Func<T, TProperty>>(body, instanceParameter).Compile();
             }
 
-            return Expression.Lambda<Func<TSyntax, TProperty>>(body, syntaxParameter).Compile(); // Sonar - end
+            PropertyInfo FindProperty()
+            {
+                if (type.GetTypeInfo().GetDeclaredProperty(propertyName) is { } declaredProperty)
+                {
+                    return declaredProperty;
+                }
+                else if (type.IsInterface)
+                {
+                    return type.GetInterfaces().Select(x => x.GetTypeInfo().GetDeclaredProperty(propertyName)).FirstOrDefault(x => x is not null);
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
 
         internal static Func<TSyntax, TArg, TProperty> CreateSyntaxPropertyAccessor<TSyntax, TArg, TProperty>(Type type, Type argumentType, string accessorMethodName)
@@ -888,7 +911,7 @@ namespace SonarAnalyzer.ShimLayer
 
         private static bool ValidatePropertyType(Type returnType, Type actualType)
         {
-            var requiredType = SyntaxNodeTypes.LatestType(returnType) ?? returnType;
+            var requiredType = TypeRegister.LatestType(returnType) ?? returnType;
             return requiredType == actualType;
         }
     }

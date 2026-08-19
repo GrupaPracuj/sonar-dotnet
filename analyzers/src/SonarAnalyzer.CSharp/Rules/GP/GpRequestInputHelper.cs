@@ -18,7 +18,7 @@ internal static class GpRequestInputHelper
     internal static string ActionParameterName(SemanticModel model, SyntaxNode expression)
     {
         if (model.GetEnclosingSymbol(expression.SpanStart) is not IMethodSymbol enclosing
-            || !enclosing.IsControllerActionMethod())
+            || !enclosing.IsControllerActionMethod)
         {
             return null;
         }

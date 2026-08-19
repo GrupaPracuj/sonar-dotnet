@@ -29,10 +29,10 @@ public static partial class BlockSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(BlockSyntax);
 
-    private static readonly Func<BlockSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<BlockSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<BlockSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<BlockSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
-    extension(BlockSyntax @this)
+    extension(BlockSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
     }
 }

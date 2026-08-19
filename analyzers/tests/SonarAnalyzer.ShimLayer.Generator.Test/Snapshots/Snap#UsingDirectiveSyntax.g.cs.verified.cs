@@ -29,16 +29,14 @@ public static partial class UsingDirectiveSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(UsingDirectiveSyntax);
 
-    private static readonly Func<UsingDirectiveSyntax, SyntaxToken> GlobalKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<UsingDirectiveSyntax, SyntaxToken>(WrappedType, "GlobalKeyword");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken> GlobalKeywordAccessor = AccessorFactory.CreateProperty<Func<UsingDirectiveSyntax, SyntaxToken>>(WrappedType, "GlobalKeyword");
+    private static readonly Func<UsingDirectiveSyntax, TypeSyntax> NamespaceOrTypeAccessor = AccessorFactory.CreateProperty<Func<UsingDirectiveSyntax, TypeSyntax>>(WrappedType, "NamespaceOrType");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken> UnsafeKeywordAccessor = AccessorFactory.CreateProperty<Func<UsingDirectiveSyntax, SyntaxToken>>(WrappedType, "UnsafeKeyword");
 
-    private static readonly Func<UsingDirectiveSyntax, SyntaxToken> UnsafeKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<UsingDirectiveSyntax, SyntaxToken>(WrappedType, "UnsafeKeyword");
-
-    private static readonly Func<UsingDirectiveSyntax, TypeSyntax> NamespaceOrTypeAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<UsingDirectiveSyntax, TypeSyntax>(WrappedType, "NamespaceOrType");
-
-    extension(UsingDirectiveSyntax @this)
+    extension(UsingDirectiveSyntax wrappedInstance)
     {
-        public SyntaxToken GlobalKeyword => (SyntaxToken)GlobalKeywordAccessor(@this);
-        public SyntaxToken UnsafeKeyword => (SyntaxToken)UnsafeKeywordAccessor(@this);
-        public TypeSyntax NamespaceOrType => NamespaceOrTypeAccessor(@this);
+        public SyntaxToken GlobalKeyword => (SyntaxToken)GlobalKeywordAccessor(wrappedInstance);
+        public TypeSyntax NamespaceOrType => NamespaceOrTypeAccessor(wrappedInstance);
+        public SyntaxToken UnsafeKeyword => (SyntaxToken)UnsafeKeywordAccessor(wrappedInstance);
     }
 }

@@ -15,21 +15,24 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
+namespace SonarAnalyzer.ShimLayer;
 
-public class IOperationStrategy : Strategy
+public readonly struct CaptureId : IEquatable<CaptureId>
 {
-    public IReadOnlyList<MemberDescriptor> Members { get; }
+    private readonly object instance;   // Underlying struct holds only internal int Value as the identification.
 
-    public IOperationStrategy(Type latest, IReadOnlyList<MemberDescriptor> members) : base(latest) =>
-        Members = members;
+    public CaptureId(object instance) =>
+        this.instance = instance ?? throw new ArgumentNullException(nameof(instance));
 
-    public override string Generate(StrategyModel model) =>
-        $"namespace SonarAnalyzer.ShimLayer; // {Latest.Name}";   // NET-2729
+    public override bool Equals(object obj) =>
+        obj is CaptureId capture && Equals(capture);
 
-    public override string ReturnTypeSnippet() =>
-        throw new NotImplementedException();
+    public bool Equals(CaptureId other) =>
+        instance.Equals(other.instance);
 
-    public override string ToConversionSnippet(string from) =>
-        throw new NotImplementedException();
+    public override int GetHashCode() =>
+        instance.GetHashCode();
+
+    public string Serialize() =>
+        "#Capture-" + GetHashCode();
 }

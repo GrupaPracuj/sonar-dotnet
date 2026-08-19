@@ -42,6 +42,19 @@ public static class ExpressionSyntaxExtensions
         public ExpressionSyntax WithoutEnclosingParentheses =>
             (ExpressionSyntax)expression.RemoveParentheses();
 
+        public ExpressionSyntax WithoutNullForgiving
+        {
+            get
+            {
+                var current = expression;
+                while (current is PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKindEx.SuppressNullableWarningExpression, Operand: { } operand })
+                {
+                    current = operand;
+                }
+                return current;
+            }
+        }
+
         public bool CanBeNull(SemanticModel semanticModel) =>
             semanticModel.GetTypeInfo(expression).Type is { } expressionType
             && (expressionType.IsReferenceType || expressionType.Is(KnownType.System_Nullable_T));
@@ -91,13 +104,13 @@ public static class ExpressionSyntaxExtensions
             if (IsPatternExpressionSyntaxWrapper.IsInstance(expression.WithoutEnclosingParentheses))
             {
                 var isPatternWrapper = (IsPatternExpressionSyntaxWrapper)expression.WithoutEnclosingParentheses;
-                if (isPatternWrapper.IsNotNull())
+                if (isPatternWrapper.IsNotNull)
                 {
                     isAffirmative = false;
                     compared = isPatternWrapper.Expression;
                     return true;
                 }
-                else if (isPatternWrapper.IsNull())
+                else if (isPatternWrapper.IsNull)
                 {
                     isAffirmative = true;
                     compared = isPatternWrapper.Expression;
@@ -111,13 +124,14 @@ public static class ExpressionSyntaxExtensions
         /// <summary>
         /// Returns the expression, representing the left side of the dot. This is useful for finding the expression of an invoked expression. <br/>
         /// For the expression of the invocation <c>M()</c> in the expression <c>this.A.B.M()</c> the member access <c>this.A.B</c> is returned and <br/>
-        /// for <c>this.A?.B?.M()</c> the member binding <c>.B</c> is returned.
+        /// for <c>this.A?.B?.M()</c> the member binding <c>.B</c> is returned. <br/>
+        /// A null-forgiving operator is stripped, both from the input and from the result.
         /// </summary>
         public ExpressionSyntax LeftOfDot =>
-            expression switch
+            expression.WithoutNullForgiving switch
             {
-                MemberAccessExpressionSyntax memberAccessExpression => memberAccessExpression.Expression,
-                MemberBindingExpressionSyntax memberBindingExpression => memberBindingExpression.GetParentConditionalAccessExpression()?.Expression,
+                MemberAccessExpressionSyntax memberAccessExpression => memberAccessExpression.Expression.WithoutNullForgiving,
+                MemberBindingExpressionSyntax memberBindingExpression => memberBindingExpression.GetParentConditionalAccessExpression()?.Expression.WithoutNullForgiving,
                 _ => null,
             };
 

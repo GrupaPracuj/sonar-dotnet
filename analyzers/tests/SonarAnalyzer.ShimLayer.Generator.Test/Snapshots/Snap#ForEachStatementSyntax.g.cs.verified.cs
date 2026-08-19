@@ -29,13 +29,12 @@ public static partial class ForEachStatementSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ForEachStatementSyntax);
 
-    private static readonly Func<ForEachStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ForEachStatementSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<ForEachStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<ForEachStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<ForEachStatementSyntax, SyntaxToken> AwaitKeywordAccessor = AccessorFactory.CreateProperty<Func<ForEachStatementSyntax, SyntaxToken>>(WrappedType, "AwaitKeyword");
 
-    private static readonly Func<ForEachStatementSyntax, SyntaxToken> AwaitKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ForEachStatementSyntax, SyntaxToken>(WrappedType, "AwaitKeyword");
-
-    extension(ForEachStatementSyntax @this)
+    extension(ForEachStatementSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
-        public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
     }
 }

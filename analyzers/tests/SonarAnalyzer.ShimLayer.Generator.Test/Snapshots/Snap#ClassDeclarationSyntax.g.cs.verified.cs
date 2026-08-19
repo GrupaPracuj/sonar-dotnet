@@ -29,10 +29,10 @@ public static partial class ClassDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ClassDeclarationSyntax);
 
-    private static readonly Func<ClassDeclarationSyntax, ParameterListSyntax> ParameterListAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ClassDeclarationSyntax, ParameterListSyntax>(WrappedType, "ParameterList");
+    private static readonly Func<ClassDeclarationSyntax, ParameterListSyntax> ParameterListAccessor = AccessorFactory.CreateProperty<Func<ClassDeclarationSyntax, ParameterListSyntax>>(WrappedType, "ParameterList");
 
-    extension(ClassDeclarationSyntax @this)
+    extension(ClassDeclarationSyntax wrappedInstance)
     {
-        public ParameterListSyntax ParameterList => ParameterListAccessor(@this);
+        public ParameterListSyntax ParameterList => ParameterListAccessor(wrappedInstance);
     }
 }

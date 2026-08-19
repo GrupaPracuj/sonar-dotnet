@@ -24,11 +24,17 @@ public class NewEnumStrategy : Strategy
     public NewEnumStrategy(Type latest, FieldInfo[] fields) : base(latest) =>
         Fields = fields;
 
-    public override string Generate(StrategyModel model)
+    public override string ReturnTypeSnippet() =>
+        Latest.Name;
+
+    public override string ToConversionSnippet(string from) =>
+        $"({Latest.Name}){from}";
+
+    protected override string GenerateCore(StrategyModel model)
     {
         var sb = new StringBuilder();
         sb.AppendLine(Preamble());
-        sb.AppendLine($"{SerializeAttributes(Latest.GetCustomAttributesData(), 0)}public enum {Latest.Name} : {Enum.GetUnderlyingType(Latest)}");
+        sb.AppendLine($"{Snippet.SerializeAttributes(Latest.GetCustomAttributesData(), 0)}public enum {Latest.Name} : {Enum.GetUnderlyingType(Latest)}");
         sb.AppendLine("{");
         foreach (var field in Fields)
         {
@@ -38,9 +44,4 @@ public class NewEnumStrategy : Strategy
         return sb.ToString();
     }
 
-    public override string ReturnTypeSnippet() =>
-        Latest.Name;
-
-    public override string ToConversionSnippet(string from) =>
-        $"({Latest.Name}){from}";
 }

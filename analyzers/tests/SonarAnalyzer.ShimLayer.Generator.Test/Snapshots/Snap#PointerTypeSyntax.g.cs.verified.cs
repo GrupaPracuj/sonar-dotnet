@@ -29,19 +29,16 @@ public static partial class PointerTypeSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(PointerTypeSyntax);
 
-    private static readonly Func<PointerTypeSyntax, Boolean> IsUnmanagedAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<PointerTypeSyntax, Boolean>(WrappedType, "IsUnmanaged");
+    private static readonly Func<PointerTypeSyntax, Boolean> IsNintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNint");
+    private static readonly Func<PointerTypeSyntax, Boolean> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNotNull");
+    private static readonly Func<PointerTypeSyntax, Boolean> IsNuintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNuint");
+    private static readonly Func<PointerTypeSyntax, Boolean> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsUnmanaged");
 
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNotNullAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<PointerTypeSyntax, Boolean>(WrappedType, "IsNotNull");
-
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNintAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<PointerTypeSyntax, Boolean>(WrappedType, "IsNint");
-
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNuintAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<PointerTypeSyntax, Boolean>(WrappedType, "IsNuint");
-
-    extension(PointerTypeSyntax @this)
+    extension(PointerTypeSyntax wrappedInstance)
     {
-        public Boolean IsUnmanaged => (Boolean)IsUnmanagedAccessor(@this);
-        public Boolean IsNotNull => (Boolean)IsNotNullAccessor(@this);
-        public Boolean IsNint => (Boolean)IsNintAccessor(@this);
-        public Boolean IsNuint => (Boolean)IsNuintAccessor(@this);
+        public Boolean IsNint => (Boolean)IsNintAccessor(wrappedInstance);
+        public Boolean IsNotNull => (Boolean)IsNotNullAccessor(wrappedInstance);
+        public Boolean IsNuint => (Boolean)IsNuintAccessor(wrappedInstance);
+        public Boolean IsUnmanaged => (Boolean)IsUnmanagedAccessor(wrappedInstance);
     }
 }

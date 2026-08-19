@@ -43,7 +43,7 @@ public sealed class AnnotateApiActionsWithHttpVerb : SonarDiagnosticAnalyzer
                 var controllerSymbol = (INamedTypeSymbol)symbolStartContext.Symbol;
                 var controllerAttributes = controllerSymbol.AttributesWithInherited;
 
-                if (controllerSymbol.IsControllerType()
+                if (controllerSymbol.IsControllerType
                     && controllerAttributes.Any(x => x.AttributeClass.DerivesFrom(KnownType.Microsoft_AspNetCore_Mvc_ApiControllerAttribute))
                     && !IgnoresApiExplorer(controllerAttributes))
                 {
@@ -53,8 +53,7 @@ public sealed class AnnotateApiActionsWithHttpVerb : SonarDiagnosticAnalyzer
                         var methodSymbol = c.Model.GetDeclaredSymbol(methodNode);
                         var methodAttributes = methodSymbol.AttributesWithInherited;
 
-                        if (methodSymbol.IsControllerActionMethod()
-                            && !methodSymbol.IsAbstract
+                        if (methodSymbol is { IsControllerActionMethod: true, IsAbstract: false }
                             && !methodAttributes.Any(x => x.AttributeClass.DerivesFromAny(HttpMethodAttributes))
                             && !IgnoresApiExplorer(methodAttributes))
                         {

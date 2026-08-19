@@ -31,7 +31,7 @@ public sealed class GetOrHeadActionShouldNotBindRequestBody : SonarDiagnosticAna
     {
         if (context.Node is not MethodDeclarationSyntax declaration
             || context.Model.GetDeclaredSymbol(declaration) is not { } method
-            || !method.IsControllerActionMethod()
+            || !method.IsControllerActionMethod
             || HttpMethod(method) is not { } httpMethod)
         {
             return;

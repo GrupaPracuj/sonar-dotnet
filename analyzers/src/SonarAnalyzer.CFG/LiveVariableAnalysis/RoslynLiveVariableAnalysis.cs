@@ -84,7 +84,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
 
     private void ResolveCaptures(ControlFlowGraph cfg, HashSet<ISymbol> processedLocalFunctions)
     {
-        foreach (var operation in cfg.Blocks.SelectMany(x => x.OperationsAndBranchValue).ToExecutionOrder().Select(x => x.Instance))
+        foreach (var operation in cfg.Blocks.SelectMany(x => x.OperationsAndBranchValue).ToExecutionOrder())
         {
             if (operation.AsFlowCapture() is { } flowCapture)
             {
@@ -161,7 +161,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
                 AddBranch(block, Cfg.Blocks[catchOrFilterRegion.FirstBlockOrdinal]);
             }
         }
-        if (block.EnclosingNonLocalLifetimeRegion() is { Kind: ControlFlowRegionKind.Try } tryRegion)
+        if (block.EnclosingNonLocalLifetimeRegion is { Kind: ControlFlowRegionKind.Try } tryRegion)
         {
             var catchesAll = false;
             if (tryRegion.EnclosingRegion(ControlFlowRegionKind.TryAndCatch) is { } tryAndCatchRegion)
@@ -183,9 +183,9 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
         {
             BuildBranchesCatch(block);
         }
-        if (block.EnclosingNonLocalLifetimeRegion() is { Kind: ControlFlowRegionKind.Finally })
+        if (block.EnclosingNonLocalLifetimeRegion is { Kind: ControlFlowRegionKind.Finally } nonLocalFinally)
         {
-            BuildBranchesToOuterCatch(block, block.EnclosingNonLocalLifetimeRegion().EnclosingRegion);
+            BuildBranchesToOuterCatch(block, nonLocalFinally.EnclosingRegion);
         }
 
         void AddPredecessorsOutsideRegion(BasicBlock destination)
@@ -213,7 +213,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
     private void BuildBranchesToOuterCatch(BasicBlock source, ControlFlowRegion region)
     {
         if (region.EnclosingRegion(ControlFlowRegionKind.Try) is { } outerTry
-           && outerTry.EnclosingRegion(ControlFlowRegionKind.TryAndCatch) is { } outerTryCatch)
+            && outerTry.EnclosingRegion(ControlFlowRegionKind.TryAndCatch) is { } outerTryCatch)
         {
             foreach (var outerCatch in CatchOrFilterRegions(outerTryCatch))
             {
@@ -237,7 +237,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
     private void BuildBranchesRethrow(BasicBlock block)
     {
         var currentTryCatchRegion = block.EnclosingRegion(ControlFlowRegionKind.TryAndCatch);
-        var reachableHandlerRegions = currentTryCatchRegion.NestedRegion(ControlFlowRegionKind.Try).ReachableHandlers();
+        var reachableHandlerRegions = currentTryCatchRegion.NestedRegion(ControlFlowRegionKind.Try).ReachableHandlers;
         var reachableCatchAndFinallyBlocks = reachableHandlerRegions.Where(x => x.FirstBlockOrdinal > currentTryCatchRegion.LastBlockOrdinal).SelectMany(x => x.Blocks(Cfg));
         // On the use of `EnclosingRegion` below: Other than a finally region, a `Catch` region also acts as a `LocalLifetime` region.
         // Therefore blocks in a `catch` always have the `Catch` region as their direct parent and thus checking `EnclosingRegion` instead of `IsEnclosedIn` is sufficient.
@@ -287,7 +287,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
         if (originalOperation.IsAnyKind(OperationKindEx.MethodBody, OperationKindEx.Block, OperationKindEx.ConstructorBody))
         {
             var syntax = originalOperation.Syntax.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.ArrowExpressionClause) ? originalOperation.Syntax.Parent : originalOperation.Syntax;
-            return originalOperation.ToSonar().SemanticModel.GetDeclaredSymbol(syntax);
+            return originalOperation.SemanticModel.GetDeclaredSymbol(syntax);
         }
         else
         {
@@ -310,7 +310,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
 
         public void ProcessBlock(ControlFlowGraph cfg, BasicBlock block)
         {
-            foreach (var operation in block.OperationsAndBranchValue.ToReversedExecutionOrder().Select(x => x.Instance))
+            foreach (var operation in block.OperationsAndBranchValue.ToReversedExecutionOrder())
             {
                 ProcessOperation(cfg, operation);
             }
@@ -349,7 +349,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
                 // For .Select(variable.MethodReference), there's no LocalReferenceOperation in the CFG for variable, so we handle it from the syntax
                 if (owner.syntaxClassifier.MemberAccessExpression(operation.Syntax) is { } expression)
                 {
-                    var symbol = owner.Cfg.OriginalOperation.ToSonar().SemanticModel.GetSymbolInfo(expression).Symbol;
+                    var symbol = owner.Cfg.OriginalOperation.SemanticModel.GetSymbolInfo(expression).Symbol;
                     if (symbol is ILocalSymbol or IParameterSymbol && owner.IsLocal(symbol))
                     {
                         ProcessParameterOrLocalSymbols([symbol], symbol is IParameterSymbol { RefKind: RefKind.Out }, false);
@@ -362,7 +362,7 @@ public sealed class RoslynLiveVariableAnalysis : LiveVariableAnalysisBase<Contro
             ProcessParameterOrLocalSymbols(
                 owner.ParameterOrLocalSymbols(reference.WrappedOperation),
                 reference.IsOutArgument(),
-                reference.IsAssignmentTarget() || reference.ToSonar().Parent?.Kind == OperationKindEx.FlowCapture);
+                reference.IsAssignmentTarget() || reference.Parent?.Kind == OperationKindEx.FlowCapture);
 
         private void ProcessParameterOrLocalSymbols(IEnumerable<ISymbol> symbols, bool isOutArgument, bool isAssignmentTarget)
         {

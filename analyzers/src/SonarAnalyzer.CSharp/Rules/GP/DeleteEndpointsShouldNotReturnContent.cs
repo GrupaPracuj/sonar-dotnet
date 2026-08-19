@@ -82,6 +82,6 @@ public sealed class DeleteEndpointsShouldNotReturnContent : SonarDiagnosticAnaly
     }
 
     private static bool IsHttpDeleteMethod(IMethodSymbol method) =>
-        method.IsControllerActionMethod()
+        method.IsControllerActionMethod
         && method.GetAttributes().Select(x => x.AttributeClass?.Name).Any(x => x is "HttpDelete" or "HttpDeleteAttribute");
 }

@@ -53,14 +53,20 @@ public static class ModelBuilder
             }
             else
             {
-                return new SyntaxNodeExtendStrategy(latest.Type, CreateMembers(latest, baseline));
+                return new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
             }
         }
         else if (IsAssignableTo(latest.Type, "Microsoft.CodeAnalysis.IOperation"))
         {
-            return new IOperationStrategy(latest.Type, CreateMembers(latest, baseline));
+            return baseline is null
+                ? new OperationWrapStrategy(latest.Type, CreateMembers(latest, baselineMap[typeof(IOperation).FullName]))
+                : new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
         }
         // ToDo: TypeStrategy, or ClassStrategy / StructStrategy / InterfaceStrategy?
+        else if (latest.Type.Name == nameof(Microsoft.CodeAnalysis.FlowAnalysis.CaptureId)) // ToDo: Remove once StructStrategy exists
+        {
+            return new NoChangeStrategy(latest.Type);
+        }
         else
         {
             // ToDo: Throw NotSupportedException instead of skip, there should be nothing left after explicitly handling all known cases
@@ -104,7 +110,25 @@ public static class ModelBuilder
     private static MemberDescriptor[] CreateMembers(TypeDescriptor latestType, TypeDescriptor baselineType)
     {
         var baseline = new HashSet<string>(baselineType?.Members.Select(x => x.ToString()) ?? []);
-        return latestType.Members.Where(IsValid).Select(x => new MemberDescriptor(x, baseline.Contains(x.ToString()))).ToArray();
+        var nonShadowedMembers = latestType.Members.GroupBy(MemberKey).Select(x => x.OrderByDescending(x => InheritanceDepth(x.DeclaringType)).First());
+        var names = new Dictionary<string, int>();
+        var result = new List<MemberDescriptor>();
+        foreach (var member in nonShadowedMembers.Where(IsValid).OrderBy(x => x.Name, StringComparer.Ordinal).ThenBy(x => x.ToString(), StringComparer.Ordinal))
+        {
+            var nameCount = names.TryGetValue(member.Name, out var oldCount) ? oldCount + 1 : 1;
+            names[member.Name] = nameCount;
+            var accessorSuffix = nameCount == 1 ? null : $"_Overload{nameCount}";
+            result.Add(new MemberDescriptor(member, baseline.Contains(member.ToString()), $"{member.Name}Accessor{accessorSuffix}"));
+        }
+        return result.ToArray();
+
+        static string MemberKey(MemberInfo member) =>
+            member is MethodInfo method
+                ? member.Name + ": " + method.GetParameters().JoinStr(", ", x => x.ParameterType.FullName)
+                : member.Name;
+
+        static int InheritanceDepth(Type type) =>
+            type is null ? 0 : 1 + InheritanceDepth(type.BaseType);
     }
 
     private static FieldInfo[] CreateEnumFields(TypeDescriptor latestType, TypeDescriptor baselineType)

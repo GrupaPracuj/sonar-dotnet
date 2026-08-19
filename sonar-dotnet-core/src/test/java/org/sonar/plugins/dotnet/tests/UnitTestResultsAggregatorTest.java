@@ -179,8 +179,7 @@ public class UnitTestResultsAggregatorTest {
     new UnitTestResultsAggregator(unitTestConf, settings.asConfig())
       .aggregate(wildcardPatternFileProvider, new ArrayList<>(Collections.emptyList()));
 
-    assertThat(logTester.logs(Level.WARN)).hasSize(1);
-    assertThat(logTester.logs(Level.WARN).get(0)).startsWith("Could not import unit test report 'foo.trx': java.io.FileNotFoundException: foo.trx");
+    assertThat(logTester.logs(Level.WARN)).containsOnly("Could not import unit test report 'foo.trx': java.io.FileNotFoundException: foo.trx (The system cannot find the file specified)");
   }
 
   @Test

@@ -54,9 +54,9 @@
       },
       "SonarAnalyzer.CSharp.Styling": {
         "type": "Direct",
-        "requested": "[10.29.0.143774, )",
-        "resolved": "10.29.0.143774",
-        "contentHash": "fQZkf8ItGMOntKma62Wya0GHFZzuMthqsOEFJfWw3uGORtbrHxF1qCH2tKmOPLeyHmTkrz1PrnUE936wY8BWJQ=="
+        "requested": "[10.32.0.713, )",
+        "resolved": "10.32.0.713",
+        "contentHash": "tFc9BfAQhBc3oG/PNLUOuQoh7+osRPH8iK8abDkXG9bHb/gC4XlLsY60bF6mm6PTLmYaILz9cJXahoOel+3UUw=="
       },
       "StyleCop.Analyzers": {
         "type": "Direct",
@@ -69,13 +69,13 @@
       },
       "System.Reflection.MetadataLoadContext": {
         "type": "Direct",
-        "requested": "[10.0.10, )",
-        "resolved": "10.0.10",
-        "contentHash": "7f8JfUA85nD2yOrTX9fhuHPp8P01qqnbGTtRiMK6rwNhS1jNLqoCJfdzLMOIZY8b9sBoAX3eOH04k1fWeCgOYQ==",
+        "requested": "[10.0.11, )",
+        "resolved": "10.0.11",
+        "contentHash": "NbsfNbQ7E6aRhBtogseM6dGWwUgrgyska+CXnlsIEgJNmgGh1s8ps8fKDMSgwE6hMIsU3TP8BKfRlvOOSpxV+g==",
         "dependencies": {
-          "System.Collections.Immutable": "10.0.10",
+          "System.Collections.Immutable": "10.0.11",
           "System.Memory": "4.6.3",
-          "System.Reflection.Metadata": "10.0.10"
+          "System.Reflection.Metadata": "10.0.11"
         }
       },
       "Microsoft.CodeAnalysis.Analyzers": {
@@ -100,8 +100,8 @@
       },
       "System.Collections.Immutable": {
         "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "Ih5zrydoDc1H5I0eNP6f4Lzw3cjsPMN4Nikd86kbyi66y0flkM9GfjVo62aUbcxeTbypzBCFAFQ+/6RF2jRORg==",
+        "resolved": "10.0.11",
+        "contentHash": "BQY956wwWSjRDoOspL6L1JscbFoSgJK606mO3PYalBHIZRV+Sc2xokvR/NHLlpUEfju6EbW5GbKbNpVYQ65cLw==",
         "dependencies": {
           "System.Memory": "4.6.3",
           "System.Runtime.CompilerServices.Unsafe": "6.1.2"
@@ -124,10 +124,10 @@
       },
       "System.Reflection.Metadata": {
         "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "NZIS6/IUBh70nJfVvE577oDc81y5GfYRgjWssC8AGpSlVzSu5YfbHXEtHXyLeEY7gqqbAaASwJEP0Oy3Q54Jfw==",
+        "resolved": "10.0.11",
+        "contentHash": "ayYHfHtraz6Z6kFQrlTVJ4lV8jG11noHfu6fWAdeP6I6coGCym14V06jZApgk/9c74HoP8Wmcpxd1NokbKFdbQ==",
         "dependencies": {
-          "System.Collections.Immutable": "10.0.10"
+          "System.Collections.Immutable": "10.0.11"
         }
       },
       "System.Runtime.CompilerServices.Unsafe": {

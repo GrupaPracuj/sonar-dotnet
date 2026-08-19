@@ -38,7 +38,7 @@ internal static class GpOpenApiMetadata
     };
 
     internal static bool IsOpenApiAction(IMethodSymbol method) =>
-        method.IsControllerActionMethod() && method.ContainingType.IsCoreApiController();
+        method.IsControllerActionMethod && method.ContainingType.IsCoreApiController;
 
     internal static bool IsIgnored(IMethodSymbol method) =>
         method.AttributesWithInherited.Concat(method.ContainingType.AttributesWithInherited)

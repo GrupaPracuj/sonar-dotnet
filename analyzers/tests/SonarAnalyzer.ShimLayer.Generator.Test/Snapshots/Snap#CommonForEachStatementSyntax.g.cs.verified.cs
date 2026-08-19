@@ -25,85 +25,82 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct CommonForEachStatementSyntaxWrapper: ISyntaxWrapper<StatementSyntax>
+public readonly partial struct CommonForEachStatementSyntaxWrapper : ISyntaxWrapper<StatementSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.CommonForEachStatementSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly StatementSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(CommonForEachStatementSyntaxWrapper));
+    private readonly StatementSyntax wrappedInstance;
 
-    static CommonForEachStatementSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(CommonForEachStatementSyntaxWrapper));
-        AwaitKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxToken>(WrappedType, "AwaitKeyword");
-        ForEachKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxToken>(WrappedType, "ForEachKeyword");
-        OpenParenTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxToken>(WrappedType, "OpenParenToken");
-        InKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxToken>(WrappedType, "InKeyword");
-        ExpressionAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, ExpressionSyntax>(WrappedType, "Expression");
-        CloseParenTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxToken>(WrappedType, "CloseParenToken");
-        StatementAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, StatementSyntax>(WrappedType, "Statement");
-        AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<StatementSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
-    }
+    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<StatementSyntax, SyntaxToken> AwaitKeywordAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxToken>>(WrappedType, "AwaitKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken> CloseParenTokenAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxToken>>(WrappedType, "CloseParenToken");
+    private static readonly Func<StatementSyntax, ExpressionSyntax> ExpressionAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, ExpressionSyntax>>(WrappedType, "Expression");
+    private static readonly Func<StatementSyntax, SyntaxToken> ForEachKeywordAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxToken>>(WrappedType, "ForEachKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken> InKeywordAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxToken>>(WrappedType, "InKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken> OpenParenTokenAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, SyntaxToken>>(WrappedType, "OpenParenToken");
+    private static readonly Func<StatementSyntax, StatementSyntax> StatementAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, StatementSyntax>>(WrappedType, "Statement");
 
-    private CommonForEachStatementSyntaxWrapper(StatementSyntax node) =>
-        this.node = node;
+    private CommonForEachStatementSyntaxWrapper(StatementSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public StatementSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public StatementSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public StatementSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public StatementSyntax SyntaxNode => wrappedInstance;
 
-    private static readonly Func<StatementSyntax, SyntaxToken> AwaitKeywordAccessor;
-    public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(this.node);
-    private static readonly Func<StatementSyntax, SyntaxToken> ForEachKeywordAccessor;
-    public SyntaxToken ForEachKeyword => (SyntaxToken)ForEachKeywordAccessor(this.node);
-    private static readonly Func<StatementSyntax, SyntaxToken> OpenParenTokenAccessor;
-    public SyntaxToken OpenParenToken => (SyntaxToken)OpenParenTokenAccessor(this.node);
-    private static readonly Func<StatementSyntax, SyntaxToken> InKeywordAccessor;
-    public SyntaxToken InKeyword => (SyntaxToken)InKeywordAccessor(this.node);
-    private static readonly Func<StatementSyntax, ExpressionSyntax> ExpressionAccessor;
-    public ExpressionSyntax Expression => ExpressionAccessor(this.node);
-    private static readonly Func<StatementSyntax, SyntaxToken> CloseParenTokenAccessor;
-    public SyntaxToken CloseParenToken => (SyntaxToken)CloseParenTokenAccessor(this.node);
-    private static readonly Func<StatementSyntax, StatementSyntax> StatementAccessor;
-    public StatementSyntax Statement => StatementAccessor(this.node);
-    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor;
-    public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(this.node);
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public StatementSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator CommonForEachStatementSyntaxWrapper(SyntaxNode node)
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public String Language => wrappedInstance.Language;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+
+    public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+    public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
+    public SyntaxToken CloseParenToken => (SyntaxToken)CloseParenTokenAccessor(wrappedInstance);
+    public ExpressionSyntax Expression => ExpressionAccessor(wrappedInstance);
+    public SyntaxToken ForEachKeyword => (SyntaxToken)ForEachKeywordAccessor(wrappedInstance);
+    public SyntaxToken InKeyword => (SyntaxToken)InKeywordAccessor(wrappedInstance);
+    public SyntaxToken OpenParenToken => (SyntaxToken)OpenParenTokenAccessor(wrappedInstance);
+    public StatementSyntax Statement => StatementAccessor(wrappedInstance);
+
+    public static explicit operator CommonForEachStatementSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator StatementSyntax(CommonForEachStatementSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static CommonForEachStatementSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new CommonForEachStatementSyntaxWrapper((StatementSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new CommonForEachStatementSyntaxWrapper((StatementSyntax)node);
     }
-
-    public static implicit operator StatementSyntax(CommonForEachStatementSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }

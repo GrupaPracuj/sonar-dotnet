@@ -45,20 +45,10 @@ public class CognitiveComplexityTest
     public void CognitiveComplexity_VB() => builderVB.AddPaths("CognitiveComplexity.vb").Verify();
 
     [TestMethod]
-    public void CognitiveComplexity_StackOverflow_CS()
-    {
-        if (!TestEnvironment.IsAzureDevOpsContext) // ToDo: Test throws OOM on Azure DevOps
-        {
-            builderCS.AddPaths("SyntaxWalker_InsufficientExecutionStackException.cs").VerifyNoIssues();
-        }
-    }
+    public void CognitiveComplexity_StackOverflow_CS() =>
+        builderCS.AddPaths("SyntaxWalker_InsufficientExecutionStackException.cs").VerifyNoIssues();
 
     [TestMethod]
-    public void CognitiveComplexity_StackOverflow_VB()
-    {
-        if (!TestEnvironment.IsAzureDevOpsContext) // ToDO: Test throws OOM on Azure DevOps
-        {
-            builderVB.AddPaths("SyntaxWalker_InsufficientExecutionStackException.vb").VerifyNoIssues();
-        }
-    }
+    public void CognitiveComplexity_StackOverflow_VB() =>
+        builderVB.AddPaths("SyntaxWalker_InsufficientExecutionStackException.vb").VerifyNoIssues();
 }

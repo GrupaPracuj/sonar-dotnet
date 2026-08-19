@@ -30,7 +30,7 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
             return;
         }
 
-        var actionMethods = type.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod()).ToList();
+        var actionMethods = type.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod).ToList();
         if (!actionMethods.Any(HasAttribute("Authorize")) || DeclaresAccessPolicyForWholeType(type))
         {
             // No per-action [Authorize] convention to compare against, or access control is already declared at class level.

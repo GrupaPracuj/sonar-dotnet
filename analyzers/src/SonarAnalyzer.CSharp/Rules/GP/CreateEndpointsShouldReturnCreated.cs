@@ -38,7 +38,7 @@ public sealed class CreateEndpointsShouldReturnCreated : SonarDiagnosticAnalyzer
     }
 
     private static bool IsHttpPostCreateMethod(IMethodSymbol method) =>
-        method.IsControllerActionMethod()
+        method.IsControllerActionMethod
         && method.GetAttributes().Select(x => x.AttributeClass?.Name).Any(x => x is "HttpPost" or "HttpPostAttribute")
         && CreationVerbs.Contains(GpIdentifierWords.LeadingWord(method.Name));
 }

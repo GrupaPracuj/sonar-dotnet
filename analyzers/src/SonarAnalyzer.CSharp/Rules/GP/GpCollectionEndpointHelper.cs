@@ -18,7 +18,7 @@ internal static class GpCollectionEndpointHelper
         KnownType.System_Collections_Generic_IList_T);
 
     internal static bool IsHttpGetMethod(IMethodSymbol method) =>
-        method.IsControllerActionMethod()
+        method.IsControllerActionMethod
         && method.GetAttributes().Select(x => x.AttributeClass?.Name).Any(x => x is "HttpGet" or "HttpGetAttribute");
 
     /// <summary>

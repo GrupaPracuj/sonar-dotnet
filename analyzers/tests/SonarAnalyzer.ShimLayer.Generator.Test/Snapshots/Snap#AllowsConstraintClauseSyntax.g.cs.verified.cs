@@ -25,67 +25,70 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct AllowsConstraintClauseSyntaxWrapper: ISyntaxWrapper<TypeParameterConstraintSyntax>
+public readonly partial struct AllowsConstraintClauseSyntaxWrapper : ISyntaxWrapper<TypeParameterConstraintSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.AllowsConstraintClauseSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly TypeParameterConstraintSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(AllowsConstraintClauseSyntaxWrapper));
+    private readonly TypeParameterConstraintSyntax wrappedInstance;
 
-    static AllowsConstraintClauseSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(AllowsConstraintClauseSyntaxWrapper));
-        AllowsKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<TypeParameterConstraintSyntax, SyntaxToken>(WrappedType, "AllowsKeyword");
-        ConstraintsAccessor = LightupHelpers.CreateSeparatedSyntaxListPropertyAccessor<TypeParameterConstraintSyntax, AllowsConstraintSyntaxWrapper>(WrappedType, nameof(Constraints));
-    }
+    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken> AllowsKeywordAccessor = AccessorFactory.CreateProperty<Func<TypeParameterConstraintSyntax, SyntaxToken>>(WrappedType, "AllowsKeyword");
+    private static readonly Func<TypeParameterConstraintSyntax, SeparatedSyntaxListWrapper<AllowsConstraintSyntaxWrapper>> ConstraintsAccessor = LightupHelpers.CreateSeparatedSyntaxListPropertyAccessor<TypeParameterConstraintSyntax, AllowsConstraintSyntaxWrapper>(WrappedType, nameof(Constraints));
 
-    private AllowsConstraintClauseSyntaxWrapper(TypeParameterConstraintSyntax node) =>
-        this.node = node;
+    private AllowsConstraintClauseSyntaxWrapper(TypeParameterConstraintSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public TypeParameterConstraintSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public TypeParameterConstraintSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public TypeParameterConstraintSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public TypeParameterConstraintSyntax SyntaxNode => wrappedInstance;
 
-    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken> AllowsKeywordAccessor;
-    public SyntaxToken AllowsKeyword => (SyntaxToken)AllowsKeywordAccessor(this.node);
-    private static readonly Func<TypeParameterConstraintSyntax, SeparatedSyntaxListWrapper<AllowsConstraintSyntaxWrapper>> ConstraintsAccessor;
-    public SeparatedSyntaxListWrapper<AllowsConstraintSyntaxWrapper> Constraints => ConstraintsAccessor(this.node);
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public TypeParameterConstraintSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator AllowsConstraintClauseSyntaxWrapper(SyntaxNode node)
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public String Language => wrappedInstance.Language;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+
+    public SyntaxToken AllowsKeyword => (SyntaxToken)AllowsKeywordAccessor(wrappedInstance);
+    public SeparatedSyntaxListWrapper<AllowsConstraintSyntaxWrapper> Constraints => ConstraintsAccessor(wrappedInstance);
+
+    public static explicit operator AllowsConstraintClauseSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator TypeParameterConstraintSyntax(AllowsConstraintClauseSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static AllowsConstraintClauseSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new AllowsConstraintClauseSyntaxWrapper((TypeParameterConstraintSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new AllowsConstraintClauseSyntaxWrapper((TypeParameterConstraintSyntax)node);
     }
-
-    public static implicit operator TypeParameterConstraintSyntax(AllowsConstraintClauseSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }

@@ -47,7 +47,7 @@ public sealed class TypeShouldNotBeBothHttpAndMessageContract : SonarDiagnosticA
         var result = new HashSet<string>(StringComparer.Ordinal);
         foreach (var controller in ControllerTypes(compilation.Assembly.GlobalNamespace))
         {
-            foreach (var action in controller.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod()))
+            foreach (var action in controller.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod))
             {
                 foreach (var exchanged in action.Parameters.Select(x => x.Type).Concat([action.ReturnType]))
                 {
@@ -64,7 +64,7 @@ public sealed class TypeShouldNotBeBothHttpAndMessageContract : SonarDiagnosticA
 
     private static IEnumerable<INamedTypeSymbol> ControllerTypes(INamespaceSymbol root)
     {
-        foreach (var type in root.GetTypeMembers().Where(x => x.IsControllerType()))
+        foreach (var type in root.GetTypeMembers().Where(x => x.IsControllerType))
         {
             yield return type;
         }

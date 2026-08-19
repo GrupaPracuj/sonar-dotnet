@@ -29,13 +29,12 @@ public static partial class GlobalStatementSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(GlobalStatementSyntax);
 
-    private static readonly Func<GlobalStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<GlobalStatementSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<GlobalStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<GlobalStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<GlobalStatementSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<GlobalStatementSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
-    private static readonly Func<GlobalStatementSyntax, SyntaxTokenList> ModifiersAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<GlobalStatementSyntax, SyntaxTokenList>(WrappedType, "Modifiers");
-
-    extension(GlobalStatementSyntax @this)
+    extension(GlobalStatementSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
     }
 }

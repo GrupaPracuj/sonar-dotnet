@@ -90,6 +90,6 @@ public sealed class GetEndpointsShouldNotHaveSideEffects : SonarDiagnosticAnalyz
     }
 
     private static bool IsHttpGetAction(IMethodSymbol method) =>
-        method.IsControllerActionMethod()
+        method.IsControllerActionMethod
         && method.GetAttributes().Select(x => x.AttributeClass?.Name).Any(x => x is "HttpGet" or "HttpGetAttribute");
 }

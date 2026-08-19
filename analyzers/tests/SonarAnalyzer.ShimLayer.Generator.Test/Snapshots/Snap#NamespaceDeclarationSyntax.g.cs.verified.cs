@@ -29,13 +29,12 @@ public static partial class NamespaceDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(NamespaceDeclarationSyntax);
 
-    private static readonly Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<NamespaceDeclarationSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
-    private static readonly Func<NamespaceDeclarationSyntax, SyntaxTokenList> ModifiersAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<NamespaceDeclarationSyntax, SyntaxTokenList>(WrappedType, "Modifiers");
-
-    extension(NamespaceDeclarationSyntax @this)
+    extension(NamespaceDeclarationSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
     }
 }

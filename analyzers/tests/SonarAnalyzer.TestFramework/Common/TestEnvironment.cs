@@ -19,12 +19,10 @@ namespace SonarAnalyzer.TestFramework.Common;
 
 public static class TestEnvironment
 {
-    public static bool IsAzureDevOpsContext =>
-        BuildReason() is not null;
+    public static bool IsCiContext => BuildEventName() is not null;
 
-    public static bool IsPullRequestBuild =>
-         BuildReason() == "PullRequest";
+    public static bool IsPullRequestBuild => BuildEventName() == "pull_request";
 
-    public static string BuildReason() =>
-        Environment.GetEnvironmentVariable("BUILD_REASON");
+    public static string BuildEventName() =>
+        Environment.GetEnvironmentVariable("GITHUB_EVENT_NAME");
 }

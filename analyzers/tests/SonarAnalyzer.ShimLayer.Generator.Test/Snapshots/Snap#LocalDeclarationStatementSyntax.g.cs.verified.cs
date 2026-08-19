@@ -29,16 +29,14 @@ public static partial class LocalDeclarationStatementSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(LocalDeclarationStatementSyntax);
 
-    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> AwaitKeywordAccessor = AccessorFactory.CreateProperty<Func<LocalDeclarationStatementSyntax, SyntaxToken>>(WrappedType, "AwaitKeyword");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> UsingKeywordAccessor = AccessorFactory.CreateProperty<Func<LocalDeclarationStatementSyntax, SyntaxToken>>(WrappedType, "UsingKeyword");
 
-    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> AwaitKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<LocalDeclarationStatementSyntax, SyntaxToken>(WrappedType, "AwaitKeyword");
-
-    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> UsingKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<LocalDeclarationStatementSyntax, SyntaxToken>(WrappedType, "UsingKeyword");
-
-    extension(LocalDeclarationStatementSyntax @this)
+    extension(LocalDeclarationStatementSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
-        public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(@this);
-        public SyntaxToken UsingKeyword => (SyntaxToken)UsingKeywordAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
+        public SyntaxToken UsingKeyword => (SyntaxToken)UsingKeywordAccessor(wrappedInstance);
     }
 }

@@ -25,79 +25,82 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct RecordDeclarationSyntaxWrapper: ISyntaxWrapper<TypeDeclarationSyntax>
+public readonly partial struct RecordDeclarationSyntaxWrapper : ISyntaxWrapper<TypeDeclarationSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.RecordDeclarationSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly TypeDeclarationSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(RecordDeclarationSyntaxWrapper));
+    private readonly TypeDeclarationSyntax wrappedInstance;
 
-    static RecordDeclarationSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(RecordDeclarationSyntaxWrapper));
-        ClassOrStructKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<TypeDeclarationSyntax, SyntaxToken>(WrappedType, "ClassOrStructKeyword");
-        ParameterListAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<TypeDeclarationSyntax, ParameterListSyntax>(WrappedType, "ParameterList");
-    }
+    private static readonly Func<TypeDeclarationSyntax, SyntaxToken> ClassOrStructKeywordAccessor = AccessorFactory.CreateProperty<Func<TypeDeclarationSyntax, SyntaxToken>>(WrappedType, "ClassOrStructKeyword");
+    private static readonly Func<TypeDeclarationSyntax, ParameterListSyntax> ParameterListAccessor = AccessorFactory.CreateProperty<Func<TypeDeclarationSyntax, ParameterListSyntax>>(WrappedType, "ParameterList");
 
-    private RecordDeclarationSyntaxWrapper(TypeDeclarationSyntax node) =>
-        this.node = node;
+    private RecordDeclarationSyntaxWrapper(TypeDeclarationSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public TypeDeclarationSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public TypeDeclarationSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public TypeDeclarationSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public TypeDeclarationSyntax SyntaxNode => wrappedInstance;
 
-    public SyntaxList<AttributeListSyntax> AttributeLists => this.node.AttributeLists;
-    public SyntaxTokenList Modifiers => this.node.Modifiers;
-    public SyntaxToken Keyword => this.node.Keyword;
-    private static readonly Func<TypeDeclarationSyntax, SyntaxToken> ClassOrStructKeywordAccessor;
-    public SyntaxToken ClassOrStructKeyword => (SyntaxToken)ClassOrStructKeywordAccessor(this.node);
-    public SyntaxToken Identifier => this.node.Identifier;
-    public TypeParameterListSyntax TypeParameterList => this.node.TypeParameterList;
-    private static readonly Func<TypeDeclarationSyntax, ParameterListSyntax> ParameterListAccessor;
-    public ParameterListSyntax ParameterList => ParameterListAccessor(this.node);
-    public BaseListSyntax BaseList => this.node.BaseList;
-    public SyntaxList<TypeParameterConstraintClauseSyntax> ConstraintClauses => this.node.ConstraintClauses;
-    public SyntaxToken OpenBraceToken => this.node.OpenBraceToken;
-    public SyntaxList<MemberDeclarationSyntax> Members => this.node.Members;
-    public SyntaxToken CloseBraceToken => this.node.CloseBraceToken;
-    public SyntaxToken SemicolonToken => this.node.SemicolonToken;
-    public Int32 Arity => this.node.Arity;
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public TypeDeclarationSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator RecordDeclarationSyntaxWrapper(SyntaxNode node)
+    public Int32 Arity => wrappedInstance.Arity;
+    public SyntaxList<AttributeListSyntax> AttributeLists => wrappedInstance.AttributeLists;
+    public BaseListSyntax BaseList => wrappedInstance.BaseList;
+    public SyntaxToken CloseBraceToken => wrappedInstance.CloseBraceToken;
+    public SyntaxList<TypeParameterConstraintClauseSyntax> ConstraintClauses => wrappedInstance.ConstraintClauses;
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public SyntaxToken Identifier => wrappedInstance.Identifier;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public SyntaxToken Keyword => wrappedInstance.Keyword;
+    public String Language => wrappedInstance.Language;
+    public SyntaxList<MemberDeclarationSyntax> Members => wrappedInstance.Members;
+    public SyntaxTokenList Modifiers => wrappedInstance.Modifiers;
+    public SyntaxToken OpenBraceToken => wrappedInstance.OpenBraceToken;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public SyntaxToken SemicolonToken => wrappedInstance.SemicolonToken;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+    public TypeParameterListSyntax TypeParameterList => wrappedInstance.TypeParameterList;
+
+    public SyntaxToken ClassOrStructKeyword => (SyntaxToken)ClassOrStructKeywordAccessor(wrappedInstance);
+    public ParameterListSyntax ParameterList => ParameterListAccessor(wrappedInstance);
+
+    public static explicit operator RecordDeclarationSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator TypeDeclarationSyntax(RecordDeclarationSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static RecordDeclarationSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new RecordDeclarationSyntaxWrapper((TypeDeclarationSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new RecordDeclarationSyntaxWrapper((TypeDeclarationSyntax)node);
     }
-
-    public static implicit operator TypeDeclarationSyntax(RecordDeclarationSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }

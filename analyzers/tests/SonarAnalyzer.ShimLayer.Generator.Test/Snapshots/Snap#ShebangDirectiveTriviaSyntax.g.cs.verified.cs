@@ -29,10 +29,10 @@ public static partial class ShebangDirectiveTriviaSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ShebangDirectiveTriviaSyntax);
 
-    private static readonly Func<ShebangDirectiveTriviaSyntax, SyntaxToken> ContentAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ShebangDirectiveTriviaSyntax, SyntaxToken>(WrappedType, "Content");
+    private static readonly Func<ShebangDirectiveTriviaSyntax, SyntaxToken> ContentAccessor = AccessorFactory.CreateProperty<Func<ShebangDirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "Content");
 
-    extension(ShebangDirectiveTriviaSyntax @this)
+    extension(ShebangDirectiveTriviaSyntax wrappedInstance)
     {
-        public SyntaxToken Content => (SyntaxToken)ContentAccessor(@this);
+        public SyntaxToken Content => (SyntaxToken)ContentAccessor(wrappedInstance);
     }
 }

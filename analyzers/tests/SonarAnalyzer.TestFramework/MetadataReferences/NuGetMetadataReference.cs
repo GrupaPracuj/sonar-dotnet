@@ -33,6 +33,8 @@ public static class NuGetMetadataReference
     public static References MSTestTestFrameworkV3 => Create("MSTest.TestFramework", MsTest.Ver311);
     public static References XunitFrameworkV1 => Create("xunit", "1.9.1").Concat(Create("xunit.extensions", "1.9.1"));
 
+    public static References Package(string packageId, string packageVersion) => Create(packageId, packageVersion);
+
     // Passed version
     public static References AzureCore(string packageVersion = TestConstants.NuGetLatestVersion) => Create("Azure.Core", packageVersion);
     public static References AzureIdentity(string packageVersion = TestConstants.NuGetLatestVersion) => Create("Azure.Identity", packageVersion);
@@ -67,6 +69,7 @@ public static class NuGetMetadataReference
             .. Create("FsCheck.NUnit", packageVersion),
             .. NUnit(TestConstants.NuGetLatestVersion),
         ];
+    public static References HotChocolateAbstractions(string packageVersion = TestConstants.NuGetLatestVersion) => Create("HotChocolate.Abstractions", packageVersion);
     public static References JetBrainsDotMemoryUnit(string packageVersion) => Create("JetBrains.DotMemoryUnit", packageVersion);
     public static References JustMock(string packageVersion) => Create("JustMock", packageVersion);
     public static References JWT(string packageVersion) => Create("JWT", packageVersion);

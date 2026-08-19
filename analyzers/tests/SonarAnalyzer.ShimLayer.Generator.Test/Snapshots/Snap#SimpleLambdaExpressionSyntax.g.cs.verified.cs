@@ -29,19 +29,16 @@ public static partial class SimpleLambdaExpressionSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(SimpleLambdaExpressionSyntax);
 
-    private static readonly Func<SimpleLambdaExpressionSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<SimpleLambdaExpressionSyntax, SyntaxList<AttributeListSyntax>>(WrappedType, "AttributeLists");
+    private static readonly Func<SimpleLambdaExpressionSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<SimpleLambdaExpressionSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
+    private static readonly Func<SimpleLambdaExpressionSyntax, BlockSyntax> BlockAccessor = AccessorFactory.CreateProperty<Func<SimpleLambdaExpressionSyntax, BlockSyntax>>(WrappedType, "Block");
+    private static readonly Func<SimpleLambdaExpressionSyntax, ExpressionSyntax> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<SimpleLambdaExpressionSyntax, ExpressionSyntax>>(WrappedType, "ExpressionBody");
+    private static readonly Func<SimpleLambdaExpressionSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<SimpleLambdaExpressionSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
-    private static readonly Func<SimpleLambdaExpressionSyntax, SyntaxTokenList> ModifiersAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<SimpleLambdaExpressionSyntax, SyntaxTokenList>(WrappedType, "Modifiers");
-
-    private static readonly Func<SimpleLambdaExpressionSyntax, BlockSyntax> BlockAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<SimpleLambdaExpressionSyntax, BlockSyntax>(WrappedType, "Block");
-
-    private static readonly Func<SimpleLambdaExpressionSyntax, ExpressionSyntax> ExpressionBodyAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<SimpleLambdaExpressionSyntax, ExpressionSyntax>(WrappedType, "ExpressionBody");
-
-    extension(SimpleLambdaExpressionSyntax @this)
+    extension(SimpleLambdaExpressionSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(@this);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(@this);
-        public BlockSyntax Block => BlockAccessor(@this);
-        public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(@this);
+        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public BlockSyntax Block => BlockAccessor(wrappedInstance);
+        public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
     }
 }

@@ -29,13 +29,12 @@ public static partial class ConversionOperatorDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ConversionOperatorDeclarationSyntax);
 
-    private static readonly Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax> ExplicitInterfaceSpecifierAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax>(WrappedType, "ExplicitInterfaceSpecifier");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxToken> CheckedKeywordAccessor = AccessorFactory.CreateProperty<Func<ConversionOperatorDeclarationSyntax, SyntaxToken>>(WrappedType, "CheckedKeyword");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax> ExplicitInterfaceSpecifierAccessor = AccessorFactory.CreateProperty<Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax>>(WrappedType, "ExplicitInterfaceSpecifier");
 
-    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxToken> CheckedKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<ConversionOperatorDeclarationSyntax, SyntaxToken>(WrappedType, "CheckedKeyword");
-
-    extension(ConversionOperatorDeclarationSyntax @this)
+    extension(ConversionOperatorDeclarationSyntax wrappedInstance)
     {
-        public ExplicitInterfaceSpecifierSyntax ExplicitInterfaceSpecifier => ExplicitInterfaceSpecifierAccessor(@this);
-        public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(@this);
+        public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
+        public ExplicitInterfaceSpecifierSyntax ExplicitInterfaceSpecifier => ExplicitInterfaceSpecifierAccessor(wrappedInstance);
     }
 }

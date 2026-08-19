@@ -84,7 +84,7 @@ public sealed class CommitAndPublishShouldNotBeADualWrite : ParametrizedDiagnost
         foreach (var block in cfg.Blocks)
         {
             var index = 0;
-            foreach (var operation in block.OperationsAndBranchValue.ToExecutionOrder().Select(x => x.Instance))
+            foreach (var operation in block.OperationsAndBranchValue.ToExecutionOrder())
             {
                 if (operation.Kind == OperationKindEx.Invocation && operation.Syntax.Span == invocation.Span)
                 {

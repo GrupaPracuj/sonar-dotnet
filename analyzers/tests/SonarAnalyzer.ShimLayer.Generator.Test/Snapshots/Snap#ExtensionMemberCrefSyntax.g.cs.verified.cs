@@ -25,76 +25,76 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct ExtensionMemberCrefSyntaxWrapper: ISyntaxWrapper<MemberCrefSyntax>
+public readonly partial struct ExtensionMemberCrefSyntaxWrapper : ISyntaxWrapper<MemberCrefSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.ExtensionMemberCrefSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly MemberCrefSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(ExtensionMemberCrefSyntaxWrapper));
+    private readonly MemberCrefSyntax wrappedInstance;
 
-    static ExtensionMemberCrefSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(ExtensionMemberCrefSyntaxWrapper));
-        ExtensionKeywordAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<MemberCrefSyntax, SyntaxToken>(WrappedType, "ExtensionKeyword");
-        TypeArgumentListAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<MemberCrefSyntax, TypeArgumentListSyntax>(WrappedType, "TypeArgumentList");
-        ParametersAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<MemberCrefSyntax, CrefParameterListSyntax>(WrappedType, "Parameters");
-        DotTokenAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<MemberCrefSyntax, SyntaxToken>(WrappedType, "DotToken");
-        MemberAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<MemberCrefSyntax, MemberCrefSyntax>(WrappedType, "Member");
-    }
+    private static readonly Func<MemberCrefSyntax, SyntaxToken> DotTokenAccessor = AccessorFactory.CreateProperty<Func<MemberCrefSyntax, SyntaxToken>>(WrappedType, "DotToken");
+    private static readonly Func<MemberCrefSyntax, SyntaxToken> ExtensionKeywordAccessor = AccessorFactory.CreateProperty<Func<MemberCrefSyntax, SyntaxToken>>(WrappedType, "ExtensionKeyword");
+    private static readonly Func<MemberCrefSyntax, MemberCrefSyntax> MemberAccessor = AccessorFactory.CreateProperty<Func<MemberCrefSyntax, MemberCrefSyntax>>(WrappedType, "Member");
+    private static readonly Func<MemberCrefSyntax, CrefParameterListSyntax> ParametersAccessor = AccessorFactory.CreateProperty<Func<MemberCrefSyntax, CrefParameterListSyntax>>(WrappedType, "Parameters");
+    private static readonly Func<MemberCrefSyntax, TypeArgumentListSyntax> TypeArgumentListAccessor = AccessorFactory.CreateProperty<Func<MemberCrefSyntax, TypeArgumentListSyntax>>(WrappedType, "TypeArgumentList");
 
-    private ExtensionMemberCrefSyntaxWrapper(MemberCrefSyntax node) =>
-        this.node = node;
+    private ExtensionMemberCrefSyntaxWrapper(MemberCrefSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public MemberCrefSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public MemberCrefSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public MemberCrefSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public MemberCrefSyntax SyntaxNode => wrappedInstance;
 
-    private static readonly Func<MemberCrefSyntax, SyntaxToken> ExtensionKeywordAccessor;
-    public SyntaxToken ExtensionKeyword => (SyntaxToken)ExtensionKeywordAccessor(this.node);
-    private static readonly Func<MemberCrefSyntax, TypeArgumentListSyntax> TypeArgumentListAccessor;
-    public TypeArgumentListSyntax TypeArgumentList => TypeArgumentListAccessor(this.node);
-    private static readonly Func<MemberCrefSyntax, CrefParameterListSyntax> ParametersAccessor;
-    public CrefParameterListSyntax Parameters => ParametersAccessor(this.node);
-    private static readonly Func<MemberCrefSyntax, SyntaxToken> DotTokenAccessor;
-    public SyntaxToken DotToken => (SyntaxToken)DotTokenAccessor(this.node);
-    private static readonly Func<MemberCrefSyntax, MemberCrefSyntax> MemberAccessor;
-    public MemberCrefSyntax Member => MemberAccessor(this.node);
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public MemberCrefSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator ExtensionMemberCrefSyntaxWrapper(SyntaxNode node)
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public String Language => wrappedInstance.Language;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+
+    public SyntaxToken DotToken => (SyntaxToken)DotTokenAccessor(wrappedInstance);
+    public SyntaxToken ExtensionKeyword => (SyntaxToken)ExtensionKeywordAccessor(wrappedInstance);
+    public MemberCrefSyntax Member => MemberAccessor(wrappedInstance);
+    public CrefParameterListSyntax Parameters => ParametersAccessor(wrappedInstance);
+    public TypeArgumentListSyntax TypeArgumentList => TypeArgumentListAccessor(wrappedInstance);
+
+    public static explicit operator ExtensionMemberCrefSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator MemberCrefSyntax(ExtensionMemberCrefSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static ExtensionMemberCrefSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new ExtensionMemberCrefSyntaxWrapper((MemberCrefSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new ExtensionMemberCrefSyntaxWrapper((MemberCrefSyntax)node);
     }
-
-    public static implicit operator MemberCrefSyntax(ExtensionMemberCrefSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }

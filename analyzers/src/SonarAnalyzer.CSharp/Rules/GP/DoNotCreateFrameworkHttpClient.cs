@@ -67,7 +67,7 @@ public sealed class DoNotCreateFrameworkHttpClient : SonarDiagnosticAnalyzer
         if (createdType.ToDisplayString() != "System.Net.Http.HttpClient"
             || context.Node.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault() is not { } typeDeclaration
             || context.Model.GetDeclaredSymbol(typeDeclaration) is not { } enclosingType
-            || !enclosingType.IsControllerType())
+            || !enclosingType.IsControllerType)
         {
             return false;
         }

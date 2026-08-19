@@ -45,6 +45,14 @@ public sealed partial class KnownType
     public static readonly KnownType FluentValidation_IValidator_T = new("FluentValidation.IValidator", "T");
     public static readonly KnownType FsCheck_NUnit_PropertyAttribute = new("FsCheck.NUnit.PropertyAttribute");
     public static readonly KnownType FsCheck_Xunit_PropertyAttribute = new("FsCheck.Xunit.PropertyAttribute");
+    public static readonly KnownType HotChocolate_EventMessageAttribute = new("HotChocolate.EventMessageAttribute");
+    public static readonly KnownType HotChocolate_GlobalStateAttribute = new("HotChocolate.GlobalStateAttribute");
+    public static readonly KnownType HotChocolate_LocalStateAttribute = new("HotChocolate.LocalStateAttribute");
+    public static readonly KnownType HotChocolate_ParentAttribute = new("HotChocolate.ParentAttribute");
+    public static readonly KnownType HotChocolate_SchemaServiceAttribute = new("HotChocolate.SchemaServiceAttribute");
+    public static readonly KnownType HotChocolate_ScopedServiceAttribute = new("HotChocolate.ScopedServiceAttribute");
+    public static readonly KnownType HotChocolate_ScopedStateAttribute = new("HotChocolate.ScopedStateAttribute");
+    public static readonly KnownType HotChocolate_ServiceAttribute = new("HotChocolate.ServiceAttribute");
     public static readonly KnownType JWT_Builder_JwtBuilder = new("JWT.Builder.JwtBuilder");
     public static readonly KnownType JWT_IJwtDecoder = new("JWT.IJwtDecoder");
     public static readonly KnownType JWT_JwtDecoderExtensions = new("JWT.JwtDecoderExtensions");
@@ -95,6 +103,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_IActionFilter = new("Microsoft.AspNetCore.Mvc.Filters.IActionFilter");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_IAsyncActionFilter = new("Microsoft.AspNetCore.Mvc.Filters.IAsyncActionFilter");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_FromServicesAttribute = new("Microsoft.AspNetCore.Mvc.FromServicesAttribute");
+    public static readonly KnownType Microsoft_AspNetCore_Mvc_FromStateAttribute = new("Microsoft.AspNetCore.Mvc.FromStateAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_HttpDeleteAttribute = new("Microsoft.AspNetCore.Mvc.HttpDeleteAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_HttpGetAttribute = new("Microsoft.AspNetCore.Mvc.HttpGetAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_HttpHeadAttribute = new("Microsoft.AspNetCore.Mvc.HttpHeadAttribute");
@@ -133,6 +142,8 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_Azure_ServiceBus_SessionClient = new("Microsoft.Azure.ServiceBus.SessionClient");
     public static readonly KnownType Microsoft_Azure_ServiceBus_SubscriptionClient = new("Microsoft.Azure.ServiceBus.SubscriptionClient");
     public static readonly KnownType Microsoft_Azure_ServiceBus_TopicClient = new("Microsoft.Azure.ServiceBus.TopicClient");
+    public static readonly KnownType Microsoft_Azure_WebJobs_BlobAttribute = new("Microsoft.Azure.WebJobs.BlobAttribute");
+    public static readonly KnownType Microsoft_Azure_WebJobs_CosmosDBAttribute = new("Microsoft.Azure.WebJobs.CosmosDBAttribute");
     public static readonly KnownType Microsoft_Azure_WebJobs_Extensions_DurableTask_IDurableEntityClient = new("Microsoft.Azure.WebJobs.Extensions.DurableTask.IDurableEntityClient");
     public static readonly KnownType Microsoft_Azure_WebJobs_Extensions_DurableTask_IDurableEntityContext = new("Microsoft.Azure.WebJobs.Extensions.DurableTask.IDurableEntityContext");
     public static readonly KnownType Microsoft_Azure_WebJobs_Extensions_DurableTask_IDurableOrchestrationContext = new("Microsoft.Azure.WebJobs.Extensions.DurableTask.IDurableOrchestrationContext");
@@ -163,6 +174,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_LoggingServiceCollectionExtensions = new("Microsoft.Extensions.DependencyInjection.LoggingServiceCollectionExtensions");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_ServiceCollectionServiceExtensions = new("Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_Extensions_ServiceCollectionDescriptorExtensions = new("Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions");
+    public static readonly KnownType Microsoft_Extensions_DependencyInjection_FromKeyedServicesAttribute = new("Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_ServiceDescriptor = new("Microsoft.Extensions.DependencyInjection.ServiceDescriptor");
     public static readonly KnownType Microsoft_Extensions_Hosting_HostEnvironmentEnvExtensions = new("Microsoft.Extensions.Hosting.HostEnvironmentEnvExtensions");
     public static readonly KnownType Microsoft_Extensions_Hosting_IHostApplicationLifetime = new("Microsoft.Extensions.Hosting.IHostApplicationLifetime");
@@ -260,6 +272,7 @@ public sealed partial class KnownType
     public static readonly KnownType Org_BouncyCastle_Crypto_Prng_IRandomGenerator = new("Org.BouncyCastle.Crypto.Prng.IRandomGenerator");
     public static readonly KnownType Org_BouncyCastle_Crypto_Prng_VmpcRandomGenerator = new("Org.BouncyCastle.Crypto.Prng.VmpcRandomGenerator");
     public static readonly KnownType Org_BouncyCastle_Security_SecureRandom = new("Org.BouncyCastle.Security.SecureRandom");
+    public static readonly KnownType Orleans_Runtime_PersistentStateAttribute = new("Orleans.Runtime.PersistentStateAttribute");
     public static readonly KnownType Serilog_Events_LogEventLevel = new("Serilog.Events.LogEventLevel");
     public static readonly KnownType Serilog_ILogger = new("Serilog.ILogger");
     public static readonly KnownType Serilog_LoggerConfiguration = new("Serilog.LoggerConfiguration");
@@ -530,6 +543,7 @@ public sealed partial class KnownType
     public static readonly KnownType System_Runtime_CompilerServices_CallerMemberNameAttribute = new("System.Runtime.CompilerServices.CallerMemberNameAttribute");
     public static readonly KnownType System_Runtime_CompilerServices_InternalsVisibleToAttribute = new("System.Runtime.CompilerServices.InternalsVisibleToAttribute");
     public static readonly KnownType System_Runtime_CompilerServices_ModuleInitializerAttribute = new("System.Runtime.CompilerServices.ModuleInitializerAttribute");
+    public static readonly KnownType System_Runtime_CompilerServices_INotifyCompletion = new("System.Runtime.CompilerServices.INotifyCompletion");
     public static readonly KnownType System_Runtime_CompilerServices_ValueTaskAwaiter = new("System.Runtime.CompilerServices.ValueTaskAwaiter");
     public static readonly KnownType System_Runtime_CompilerServices_ValueTaskAwaiter_TResult = new("System.Runtime.CompilerServices.ValueTaskAwaiter", "TResult");
     public static readonly KnownType System_Runtime_CompilerServices_TaskAwaiter = new("System.Runtime.CompilerServices.TaskAwaiter");
@@ -832,4 +846,5 @@ public sealed partial class KnownType
             // Note: XUnit doesn't have a separate "Ignore" attribute. It has a "Skip" parameter on the test attribute
             Microsoft_VisualStudio_TestTools_UnitTesting_IgnoreAttribute,
             NUnit_Framework_IgnoreAttribute);
+
 }

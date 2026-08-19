@@ -132,7 +132,7 @@ internal sealed class GpSemanticContractDetector
     {
         foreach (var controller in ControllerTypes(compilation.Assembly.GlobalNamespace))
         {
-            foreach (var action in controller.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod()))
+            foreach (var action in controller.GetMembers().OfType<IMethodSymbol>().Where(x => x.IsControllerActionMethod))
             {
                 if (ContractPayloadType(action.ReturnType) is INamedTypeSymbol contract)
                 {
@@ -144,7 +144,7 @@ internal sealed class GpSemanticContractDetector
 
     private static IEnumerable<INamedTypeSymbol> ControllerTypes(INamespaceSymbol root)
     {
-        foreach (var type in root.GetTypeMembers().Where(x => x.IsControllerType()))
+        foreach (var type in root.GetTypeMembers().Where(x => x.IsControllerType))
         {
             yield return type;
         }
@@ -181,7 +181,7 @@ internal sealed class GpSemanticContractDetector
     {
         if (GpMvcResults.TryGetResultMethod(model, invocation, out _))
         {
-            return model.GetEnclosingSymbol(invocation.SpanStart) is IMethodSymbol enclosing && enclosing.IsControllerActionMethod();
+            return model.GetEnclosingSymbol(invocation.SpanStart) is IMethodSymbol enclosing && enclosing.IsControllerActionMethod;
         }
 
         return GpMinimalApi.TryGetResultMethod(model, invocation, out _)

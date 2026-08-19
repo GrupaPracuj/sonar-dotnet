@@ -15,24 +15,17 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-namespace StyleCop.Analyzers.Lightup;
+namespace SonarAnalyzer.ShimLayer.Generator.Snippets;
 
-public readonly struct CaptureId : IEquatable<CaptureId>
+public sealed class PropertyPassthroughSnippet : Snippet<PropertyInfo>
 {
-    private readonly object instance;   // Underlaying struct holds only internal int Value as the identificator.
+    public PropertyPassthroughSnippet(Strategy strategy, MemberDescriptor member, Strategy returnType) : base(strategy, member, returnType) { }
 
-    public CaptureId(object instance) =>
-        this.instance = instance ?? throw new ArgumentNullException(nameof(instance));
+    public override string AccessorDeclaration() =>
+        null;
 
-    public override bool Equals(object obj) =>
-        obj is CaptureId capture && Equals(capture);
-
-    public bool Equals(CaptureId other) =>
-        instance.Equals(other.instance);
-
-    public override int GetHashCode() =>
-        instance.GetHashCode();
-
-    public string Serialize() =>
-        "#Capture-" + GetHashCode();
+    public override string MemberDeclaration(int indentSize) =>
+        $"""
+        {Indent(indentSize)}{SerializeAttributes(member.GetCustomAttributesData(), indentSize)}public {returnType.CompiletimeTypeSnippet()} {member.Name} => wrappedInstance.{member.Name};
+        """;
 }

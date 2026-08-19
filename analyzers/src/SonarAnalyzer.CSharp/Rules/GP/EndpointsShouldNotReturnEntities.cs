@@ -51,7 +51,7 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
     {
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
         if (context.Model.GetDeclaredSymbol(methodDeclaration) is not { } method
-            || !method.IsControllerActionMethod()
+            || !method.IsControllerActionMethod
             || Unwrap(method.ReturnType) is not { } returned)
         {
             return;
@@ -97,7 +97,7 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
             || !MvcResultMethods.Contains(method.Name)
             || method.ContainingType?.ToDisplayString() is not ("Microsoft.AspNetCore.Mvc.ControllerBase" or "Microsoft.AspNetCore.Mvc.Controller")
             || context.Model.GetEnclosingSymbol(invocation.SpanStart) is not IMethodSymbol enclosing
-            || !enclosing.IsControllerActionMethod())
+            || !enclosing.IsControllerActionMethod)
         {
             return false;
         }

@@ -25,65 +25,69 @@ using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct PrimaryConstructorBaseTypeSyntaxWrapper: ISyntaxWrapper<BaseTypeSyntax>
+public readonly partial struct PrimaryConstructorBaseTypeSyntaxWrapper : ISyntaxWrapper<BaseTypeSyntax>
 {
     public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.PrimaryConstructorBaseTypeSyntax";
-    private static readonly Type WrappedType;
 
-    private readonly BaseTypeSyntax node;
+    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(PrimaryConstructorBaseTypeSyntaxWrapper));
+    private readonly BaseTypeSyntax wrappedInstance;
 
-    static PrimaryConstructorBaseTypeSyntaxWrapper()
-    {
-        WrappedType = SyntaxNodeTypes.LatestType(typeof(PrimaryConstructorBaseTypeSyntaxWrapper));
-        ArgumentListAccessor = LightupHelpers.CreateSyntaxPropertyAccessor<BaseTypeSyntax, ArgumentListSyntax>(WrappedType, "ArgumentList");
-    }
+    private static readonly Func<BaseTypeSyntax, ArgumentListSyntax> ArgumentListAccessor = AccessorFactory.CreateProperty<Func<BaseTypeSyntax, ArgumentListSyntax>>(WrappedType, "ArgumentList");
 
-    private PrimaryConstructorBaseTypeSyntaxWrapper(BaseTypeSyntax node) =>
-        this.node = node;
+    private PrimaryConstructorBaseTypeSyntaxWrapper(BaseTypeSyntax wrappedInstance) =>
+        this.wrappedInstance = wrappedInstance;
 
-    public BaseTypeSyntax Node => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public BaseTypeSyntax Node => wrappedInstance;
 
-    [Obsolete("Use Node instead")]
-    public BaseTypeSyntax SyntaxNode => this.node;
+    [Obsolete("Use WrappedInstance instead")]
+    public BaseTypeSyntax SyntaxNode => wrappedInstance;
 
-    public TypeSyntax Type => this.node.Type;
-    private static readonly Func<BaseTypeSyntax, ArgumentListSyntax> ArgumentListAccessor;
-    public ArgumentListSyntax ArgumentList => ArgumentListAccessor(this.node);
-    public String Language => this.node.Language;
-    public Int32 RawKind => this.node.RawKind;
-    public TextSpan FullSpan => this.node.FullSpan;
-    public TextSpan Span => this.node.Span;
-    public Int32 SpanStart => this.node.SpanStart;
-    public Boolean IsMissing => this.node.IsMissing;
-    public Boolean IsStructuredTrivia => this.node.IsStructuredTrivia;
-    public Boolean HasStructuredTrivia => this.node.HasStructuredTrivia;
-    public Boolean ContainsSkippedText => this.node.ContainsSkippedText;
-    public Boolean ContainsDiagnostics => this.node.ContainsDiagnostics;
-    public Boolean ContainsDirectives => this.node.ContainsDirectives;
-    public Boolean HasLeadingTrivia => this.node.HasLeadingTrivia;
-    public Boolean HasTrailingTrivia => this.node.HasTrailingTrivia;
-    public SyntaxNode Parent => this.node.Parent;
-    public SyntaxTrivia ParentTrivia => this.node.ParentTrivia;
-    public Boolean ContainsAnnotations => this.node.ContainsAnnotations;
+    public BaseTypeSyntax WrappedInstance => wrappedInstance;
 
-    public static explicit operator PrimaryConstructorBaseTypeSyntaxWrapper(SyntaxNode node)
+    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public TextSpan FullSpan => wrappedInstance.FullSpan;
+    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public Boolean IsMissing => wrappedInstance.IsMissing;
+    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public String Language => wrappedInstance.Language;
+    public SyntaxNode Parent => wrappedInstance.Parent;
+    public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
+    public Int32 RawKind => wrappedInstance.RawKind;
+    public TextSpan Span => wrappedInstance.Span;
+    public Int32 SpanStart => wrappedInstance.SpanStart;
+    public TypeSyntax Type => wrappedInstance.Type;
+
+    public ArgumentListSyntax ArgumentList => ArgumentListAccessor(wrappedInstance);
+
+    public static explicit operator PrimaryConstructorBaseTypeSyntaxWrapper(SyntaxNode node) =>
+        From(node);
+
+    public static implicit operator BaseTypeSyntax(PrimaryConstructorBaseTypeSyntaxWrapper wrapper) =>
+        wrapper.wrappedInstance;
+
+    public static PrimaryConstructorBaseTypeSyntaxWrapper From(SyntaxNode node)
     {
         if (node is null)
         {
             return default;
         }
-
-        if (!IsInstance(node))
+        else if (IsInstance(node))
+        {
+            return new PrimaryConstructorBaseTypeSyntaxWrapper((BaseTypeSyntax)node);
+        }
+        else
         {
             throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
         }
-
-        return new PrimaryConstructorBaseTypeSyntaxWrapper((BaseTypeSyntax)node);
     }
-
-    public static implicit operator BaseTypeSyntax(PrimaryConstructorBaseTypeSyntaxWrapper wrapper) =>
-        wrapper.node;
 
     public static bool IsInstance(SyntaxNode node) =>
         node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+
 }
