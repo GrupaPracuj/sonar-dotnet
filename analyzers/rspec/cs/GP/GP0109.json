@@ -1,0 +1,25 @@
+{
+  "title": "Audit columns in FluentMigrator should use DateTime2",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "database",
+    "fluentmigrator"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0109",
+  "sqKey": "GP0109",
+  "scope": "Main",
+  "quickfix": "covered"
+}
