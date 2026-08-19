@@ -86,10 +86,21 @@ internal static class GpOpenApiMetadata
         ResponseAttributes(method).Any(x => ResponseStatusCode(x) == statusCode && HasConcreteResponseType(x));
 
     internal static bool HasConcreteResponseType(AttributeData attribute) =>
-        attribute.AttributeClass is { } attributeType
-        && (attributeType.IsGenericType && attributeType.TypeArguments.Any(IsConcreteType)
-            || attribute.ConstructorArguments.Any(x => x.Type.Is(KnownType.System_Type) && x.Value is ITypeSymbol type && IsConcreteType(type))
-            || attribute.NamedArguments.Any(x => x.Key == "Type" && x.Value.Value is ITypeSymbol type && IsConcreteType(type)));
+        ResponseType(attribute) is { } type && IsConcreteType(type);
+
+    internal static ITypeSymbol ResponseType(AttributeData attribute) =>
+        attribute.AttributeClass is { IsGenericType: true, TypeArguments.Length: > 0 } attributeType
+            ? attributeType.TypeArguments.FirstOrDefault(IsConcreteType)
+            : attribute.ConstructorArguments
+                .Where(x => x.Type.Is(KnownType.System_Type))
+                .Select(x => x.Value)
+                .OfType<ITypeSymbol>()
+                .FirstOrDefault(IsConcreteType)
+              ?? attribute.NamedArguments
+                  .Where(x => x.Key == "Type")
+                  .Select(x => x.Value.Value)
+                  .OfType<ITypeSymbol>()
+                  .FirstOrDefault(IsConcreteType);
 
     internal static int? ResponseStatusCode(SemanticModel model, InvocationExpressionSyntax invocation)
     {
@@ -155,6 +166,24 @@ internal static class GpOpenApiMetadata
                 yield return invocation;
             }
         }
+    }
+
+    internal static IEnumerable<InvocationExpressionSyntax> ReturnedInvocations(AnonymousFunctionExpressionSyntax handler)
+    {
+        if (handler.Body is ExpressionSyntax expressionBody)
+        {
+            return ResponseInvocations(expressionBody);
+        }
+
+        return handler.Body.DescendantNodes(x =>
+                x.Kind() is not (SyntaxKindEx.LocalFunctionStatement
+                    or SyntaxKind.SimpleLambdaExpression
+                    or SyntaxKind.ParenthesizedLambdaExpression
+                    or SyntaxKind.AnonymousMethodExpression))
+            .OfType<ReturnStatementSyntax>()
+            .Select(x => x.Expression)
+            .WhereNotNull()
+            .SelectMany(ResponseInvocations);
     }
 
     private static IEnumerable<InvocationExpressionSyntax> ResponseInvocations(ExpressionSyntax expression)

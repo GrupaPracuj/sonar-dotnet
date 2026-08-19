@@ -1,0 +1,29 @@
+<p>Explicit HTTP error response bodies should use the standard <code>ProblemDetails</code> format defined by RFC 9457.</p>
+<h2>Why is this an issue?</h2>
+<p>Returning unrelated strings, anonymous objects and application-specific DTOs for different errors forces clients to implement a separate parser for
+each endpoint. <code>ProblemDetails</code> provides stable fields for machine-readable type, status, title and safe detail while still allowing
+application-specific extensions.</p>
+<p>The rule checks explicit response factories returned from API controllers and inline Minimal API handlers, as well as concrete error schemas declared
+with response metadata. When a returned body and method-level metadata violate the rule for the same status, only the returned body is reported.
+Controller-level metadata remains a separate shared contract and is reported independently. Bodyless errors, framework <code>Problem</code> and
+<code>ValidationProblem</code> factories, middleware-generated responses and types derived from <code>ProblemDetails</code> are accepted.</p>
+<h2>How to fix it</h2>
+<p>Return <code>Problem()</code>, <code>ValidationProblem()</code>, <code>Results.Problem()</code>, or pass a suitable
+<code>ProblemDetails</code> subtype as the error body. Keep internal exception details out of the public fields.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+return BadRequest(new { Code = "invalid-order" }); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+return Problem(
+    type: "https://errors.example.com/invalid-order",
+    title: "The order is invalid",
+    statusCode: StatusCodes.Status400BadRequest);
+</pre>
+<h2>Resources</h2>
+<ul>
+  <li><a href="https://www.rfc-editor.org/rfc/rfc9457">RFC 9457 - Problem Details for HTTP APIs</a></li>
+  <li><a href="https://learn.microsoft.com/aspnet/core/web-api/handle-errors">Microsoft Learn - Handle errors in ASP.NET Core APIs</a></li>
+</ul>
