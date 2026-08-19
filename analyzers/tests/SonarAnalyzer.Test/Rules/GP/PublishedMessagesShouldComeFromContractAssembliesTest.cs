@@ -246,6 +246,56 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForMassTransitPipelineSend() =>
+        CreateBuilder()
+            .AddSnippet(
+                """
+                namespace MassTransit
+                {
+                    public interface PublishContext<T> { }
+
+                    public interface IPipe<T>
+                    {
+                        System.Threading.Tasks.Task Send(T context);
+                    }
+                }
+
+                public sealed class HeaderFilter<TMessage>
+                {
+                    public System.Threading.Tasks.Task Send(
+                        MassTransit.PublishContext<TMessage> context,
+                        MassTransit.IPipe<MassTransit.PublishContext<TMessage>> next) =>
+                        next.Send(context);
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForMassTransitSendEndpoint() =>
+        CreateBuilder()
+            .AddSnippet(
+                """
+                namespace MassTransit
+                {
+                    public interface ISendEndpoint
+                    {
+                        System.Threading.Tasks.Task Send<T>(T command);
+                    }
+                }
+
+                public sealed record AcceptOrder(System.Guid OrderId);
+
+                public sealed class OrderService
+                {
+                    public System.Threading.Tasks.Task Accept(
+                        MassTransit.ISendEndpoint endpoint,
+                        System.Guid orderId) =>
+                        endpoint.Send(new AcceptOrder(orderId)); // Noncompliant {{Use 'AcceptOrder' from a contract assembly for this sent command; it is declared in 'project0'.}}
+                }
+                """)
+            .Verify();
+
+    [TestMethod]
     public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForMvcRequestAndTypedResponse() =>
         CreateBuilder()
             .AddSnippet(
@@ -314,6 +364,30 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public Microsoft.AspNetCore.Mvc.IActionResult Update(
                         [Swashbuckle.AspNetCore.Annotations.SwaggerIgnore] ETag ifMatch) =>
+                        Ok(null);
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForJunoTokenContext() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                namespace GP.Juno.Hosting.AspNetCore.Security.UserContexts
+                {
+                    public sealed class FromTokenAttribute : System.Attribute { }
+                }
+
+                public sealed class CompanyUserContext { }
+
+                [Microsoft.AspNetCore.Mvc.ApiController]
+                public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public Microsoft.AspNetCore.Mvc.IActionResult Create(
+                        [GP.Juno.Hosting.AspNetCore.Security.UserContexts.FromToken] CompanyUserContext userContext) =>
                         Ok(null);
                 }
                 """)

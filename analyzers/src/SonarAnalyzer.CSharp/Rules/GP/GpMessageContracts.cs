@@ -77,7 +77,8 @@ internal static class GpMessageContracts
     {
         if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method
             || !supportedMethods.Contains(method.Name)
-            || !IsMessagingMethod(method))
+            || !IsMessagingMethod(method)
+            || IsMassTransitPipelineSend(method))
         {
             return null;
         }
@@ -101,6 +102,11 @@ internal static class GpMessageContracts
             .OfType<INamedTypeSymbol>()
             .FirstOrDefault();
     }
+
+    private static bool IsMassTransitPipelineSend(IMethodSymbol method) =>
+        method.Name == "Send"
+        && method.ContainingType is { Name: "IPipe", IsGenericType: true } pipe
+        && IsWithinNamespace(pipe.ContainingNamespace.ToDisplayString(), "MassTransit");
 
     internal static string DescribeShapelessType(ITypeSymbol type)
     {

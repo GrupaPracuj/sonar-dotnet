@@ -17,6 +17,7 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
     private const string DefaultContractAssemblyNames = "Contracts";
     private const string ApiControllerAttribute = "Microsoft.AspNetCore.Mvc.ApiControllerAttribute";
     private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
+    private const string FromTokenAttribute = "GP.Juno.Hosting.AspNetCore.Security.UserContexts.FromTokenAttribute";
     private const string SwaggerIgnoreAttribute = "Swashbuckle.AspNetCore.Annotations.SwaggerIgnoreAttribute";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
@@ -221,6 +222,7 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
 
     private static bool IsRestRequestParameter(IParameterSymbol parameter, IMethodSymbol action) =>
         !IsServiceParameter(parameter)
+        && !HasAttribute(parameter, FromTokenAttribute)
         && !HasAttribute(parameter, SwaggerIgnoreAttribute)
         && (IsApiController(action) || HasAttribute(parameter, FromBodyAttribute));
 

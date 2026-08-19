@@ -33,6 +33,7 @@ public ActionResult&lt;Guid&gt; Create(CreateOrder request) => ...;
 <code>System</code> and <code>Microsoft</code>, including collections containing only such types, are accepted. Controller request parameters are
 checked when the controller uses <code>ApiControllerAttribute</code>; an explicit <code>FromBodyAttribute</code> is also checked outside API
 controllers, while MVC view and form models are ignored. Explicitly service-bound and <code>SwaggerIgnoreAttribute</code> parameters are not request
-contracts. Unannotated interface and abstract Minimal API parameters are also ignored because the runtime can resolve them from dependency injection
-and static analysis cannot distinguish them reliably from request payloads. Anonymous, dynamic and loose messaging payloads remain the responsibility
-of GP0055 and are not reported twice by this rule. Consumer declarations are outside this rule's scope.</p>
+contracts. Parameters bound by Juno's <code>FromTokenAttribute</code> are security context rather than request contracts. Unannotated interface and
+abstract Minimal API parameters are also ignored because the runtime can resolve them from dependency injection and static analysis cannot distinguish
+them reliably from request payloads. Anonymous, dynamic and loose messaging payloads remain the responsibility of GP0055 and are not reported twice
+by this rule. MassTransit pipeline forwarding through <code>IPipe&lt;T&gt;.Send</code> and consumer declarations are outside this rule's scope.</p>
