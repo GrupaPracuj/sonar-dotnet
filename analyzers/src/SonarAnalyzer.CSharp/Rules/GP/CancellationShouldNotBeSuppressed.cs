@@ -78,8 +78,31 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         return catchClause.Ancestors()
             .TakeWhile(x => x.Kind() is not (SyntaxKind.MethodDeclaration or SyntaxKindEx.LocalFunctionStatement))
             .OfType<WhileStatementSyntax>()
-            .Any(x => GuaranteesCancellationWasNotRequested(model, x.Condition));
+            .Any(x => GuaranteesCancellationWasNotRequested(model, x.Condition))
+            || TryContainsCancellationControlledLoop(model, catchClause)
+            || IsAsyncStreamConsumptionBoundary(model, catchClause, method);
     }
+
+    private static bool TryContainsCancellationControlledLoop(SemanticModel model, CatchClauseSyntax catchClause) =>
+        catchClause.Parent is TryStatementSyntax tryStatement
+        && tryStatement.Block.DescendantNodes(DoesNotEnterNestedFunction)
+            .OfType<WhileStatementSyntax>()
+            .Any(x => GuaranteesCancellationWasNotRequested(model, x.Condition));
+
+    private static bool IsAsyncStreamConsumptionBoundary(SemanticModel model, CatchClauseSyntax catchClause, IMethodSymbol method) =>
+        method.IsAsync
+        && !method.Parameters.Any(IsCancellationToken)
+        && (method.ReturnsVoid
+            || method.ReturnType.Is(KnownType.System_Threading_Tasks_Task)
+            || method.ReturnType.Is(KnownType.System_Threading_Tasks_ValueTask))
+        && catchClause.Parent is TryStatementSyntax tryStatement
+        && tryStatement.Block.DescendantNodes(DoesNotEnterNestedFunction)
+            .OfType<ForEachStatementSyntax>()
+            .Any(x => !x.AwaitKeyword.IsKind(SyntaxKind.None));
+
+    private static bool DoesNotEnterNestedFunction(SyntaxNode node) =>
+        node is not AnonymousFunctionExpressionSyntax
+        && node.Kind() != SyntaxKindEx.LocalFunctionStatement;
 
     private static bool GuaranteesCancellationWasNotRequested(SemanticModel model, ExpressionSyntax condition)
     {

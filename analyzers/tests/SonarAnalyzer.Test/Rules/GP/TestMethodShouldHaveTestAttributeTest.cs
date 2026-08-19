@@ -75,6 +75,33 @@ public class TestMethodShouldHaveTestAttributeTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void TestMethodShouldHaveTestAttribute_CompliantForInvokedPublicHelper() =>
+        msTest.AddSnippet(
+            """
+            using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+            [TestClass]
+            public class RecentlySearchedUsersTest
+            {
+                [TestMethod]
+                public void Adds_First_User() => AddRecentlySearchesUserData();
+
+                [TestMethod]
+                public void Adds_Another_User()
+                {
+                    this.AddRecentlySearchesUserData();
+                }
+
+                public void AddRecentlySearchesUserData() { }
+
+                public void Missing_Test_Attribute() { } // Noncompliant {{Add a test attribute to 'Missing_Test_Attribute' or make it private - as it stands it never runs.}}
+
+                public void Recursive_Method() => Recursive_Method(); // Noncompliant
+            }
+            """)
+            .Verify();
+
     // Any attribute at all means the author declared an intent, so lifecycle hooks are left alone. Dispose has no
     // attribute to look for - it is how xUnit expresses teardown - so it is excluded by name.
     [TestMethod]

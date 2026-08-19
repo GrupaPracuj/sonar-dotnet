@@ -33,7 +33,13 @@ enough that one side guarantees it; in <code>A || B</code> both sides must, beca
 rule cannot read this way leaves the signal suppressed and is still reported.</p>
 <p>A <code>TaskCanceledException</code> caught in a method with no <code>CancellationToken</code> parameter is treated as a timeout rather than a
 suppressed caller signal. Graceful shutdown at a <code>BackgroundService.ExecuteAsync</code> boundary, a catch inside a loop controlled by
-<code>!token.IsCancellationRequested</code>, and an explicit <code>when (token.IsCancellationRequested)</code> handler are also not reported.</p>
+<code>!token.IsCancellationRequested</code>, and an explicit <code>when (token.IsCancellationRequested)</code> handler are also not reported. The same
+applies when the catch belongs to a try that contains such a cancellation-controlled loop, as in a spinner that displays cancellation and cleans up
+after <code>Task.Delay(token)</code> ends the loop.</p>
+<p>Consuming an async stream is another graceful boundary when the method has no caller cancellation token: an
+<code>OperationCanceledException</code> catch around an <code>await foreach</code> is not reported when the containing async method returns no success
+data (<code>Task</code>, <code>ValueTask</code>, or <code>void</code>). Methods accepting a <code>CancellationToken</code> or returning a result remain
+reported, so caller cancellation cannot silently become successful completion or a normal result value.</p>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>

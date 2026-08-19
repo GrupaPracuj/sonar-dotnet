@@ -130,27 +130,32 @@ public sealed class MessageContractsShouldFollowConventions : SonarDiagnosticAna
 
     private static bool TryGetMessageType(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method, out INamedTypeSymbol messageType, out SyntaxNode reportNode)
     {
-        if (method.TypeArguments.FirstOrDefault() is INamedTypeSymbol typeArgument)
+        if (GpMessageContracts.MessagingPayloadType(model, invocation, FluentMessageMethods) is not { } payloadType)
         {
-            messageType = typeArgument;
+            messageType = null;
+            reportNode = invocation;
+            return false;
+        }
+
+        messageType = payloadType;
+        if (method.TypeArguments.Length > 0)
+        {
             reportNode = invocation.Expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName }
-                ? genericName.TypeArgumentList.Arguments[0]
+                ? genericName.TypeArgumentList.Arguments.Last()
                 : invocation;
             return true;
         }
 
         if (invocation.ArgumentList.Arguments.FirstOrDefault() is { Expression: var firstArgumentExpression }
             && model.GetTypeInfo(firstArgumentExpression).Type is INamedTypeSymbol argumentType
-            && argumentType.SpecialType != SpecialType.System_Object)
+            && argumentType.Equals(payloadType))
         {
-            messageType = argumentType;
             reportNode = firstArgumentExpression;
             return true;
         }
 
-        messageType = null;
         reportNode = invocation;
-        return false;
+        return true;
     }
 
     // Compiler-generated members (a record's Equals/ToString/Deconstruct), overrides, explicit interface

@@ -1,22 +1,28 @@
-<p>A GET endpoint that returns a collection should respond with <code>200 OK</code> and an empty collection instead of
-<code>404 Not Found</code> when there are no items to return.</p>
+<p>A GET endpoint should respond with <code>200 OK</code> and an empty collection instead of
+<code>404 Not Found</code> when the collection it returns has no items.</p>
 <h2>Why is this an issue?</h2>
 <p><code>404 Not Found</code> means the requested resource or route doesn't exist. A collection query that runs successfully but matches zero rows
 is a different situation: the route and the resource (the collection) both exist, there just happen to be no items in it right now. Returning
 <code>404</code> in that case conflates "this endpoint doesn't exist" with "this list is empty" and misleads clients into treating a normal, valid
 response as an error.</p>
-<p>The rule covers MVC controller actions and inline Minimal API <code>MapGet</code> handlers. For Minimal APIs, it reports
-<code>Results.NotFound()</code>, <code>TypedResults.NotFound()</code>, and <code>Results.StatusCode(404)</code> only when the same handler also
-returns a collection through <code>Results.Ok(...)</code> or <code>TypedResults.Ok(...)</code>.</p>
-<p>When the route visibly identifies a parent resource, for example <code>/customers/{customerId}/orders</code>, a 404 can legitimately mean that
-the parent customer does not exist. In that case the rule reports only when the 404 branch explicitly checks that the returned collection is empty,
-such as <code>orders.Count == 0</code>, <code>orders.Length == 0</code>, or <code>!orders.Any()</code>. The checked collection must be the same
-symbol that the endpoint returns through <code>Ok(...)</code>; an emptiness check on a cache or another unrelated collection does not establish
-that the response collection is empty.</p>
+<p>The rule covers MVC controller actions and inline Minimal API <code>MapGet</code> handlers. It reports only when the 404 branch is explicitly
+guarded by an emptiness check such as <code>orders.Count == 0</code>, <code>orders.Length == 0</code>, or <code>!orders.Any()</code>, or is the
+opposite branch of the corresponding non-empty check. The checked collection must be the same symbol that the endpoint returns through
+<code>Ok(...)</code>.</p>
+<p>This deliberately excludes unconditional 404 responses and conditions concerning identifiers, query failures, or missing logical parent
+resources. A collection-shaped return type alone does not prove that the 404 means an empty collection.</p>
 <pre>
 [HttpGet]
-public IActionResult GetUsers() =&gt;
-    NotFound();
+public IActionResult GetUsers(int customerId)
+{
+    var users = FindUsers(customerId);
+    if (!users.Any())
+    {
+        return NotFound();
+    }
+
+    return Ok(users);
+}
 </pre>
 <h3>Exceptions</h3>
 <p>The response factory is resolved semantically: <code>NotFound()</code>/<code>StatusCode(404)</code> must come from
@@ -28,27 +34,24 @@ public IActionResult GetUsers() =&gt;
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 [HttpGet]
-public IActionResult GetUsers(bool empty)
+public IActionResult GetUsers(int customerId)
 {
-    if (empty)
+    var users = FindUsers(customerId);
+    if (!users.Any())
     {
         return NotFound(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
     }
 
-    return Ok(new List&lt;string&gt;());
+    return Ok(users);
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 [HttpGet]
-public IActionResult GetUsers(bool empty)
+public IActionResult GetUsers(int customerId)
 {
-    if (empty)
-    {
-        return Ok(new List&lt;string&gt;());
-    }
-
-    return Ok(new List&lt;string&gt;());
+    var users = FindUsers(customerId);
+    return Ok(users);
 }
 </pre>
 <h2>Resources</h2>

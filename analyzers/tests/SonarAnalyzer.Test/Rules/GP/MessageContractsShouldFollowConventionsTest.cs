@@ -350,6 +350,46 @@ public class MessageContractsShouldFollowConventionsTest
             .Verify();
 
     [TestMethod]
+    public void MessageContractsShouldFollowConventions_MassTransitStateMachinePublishUsesFinalMessageType() =>
+        builder.AddSnippet(
+            """
+            namespace MassTransit
+            {
+                public interface SagaStateMachineInstance { }
+
+                public sealed class StateMachinePublisher
+                {
+                    public System.Threading.Tasks.Task Publish<TSaga, TData, TMessage>(TMessage message) where TMessage : class => null;
+                }
+            }
+
+            public sealed class RegistrationEntity : MassTransit.SagaStateMachineInstance
+            {
+                public void Start() { }
+                public void Confirm() { }
+                public void Reject() { }
+                public void Cancel() { }
+                public void Complete() { }
+            }
+
+            public sealed class RegistrationData { }
+
+            public sealed class RegistrationSubmittedEvent
+            {
+                public void Validate() { } // Noncompliant {{Message contract 'RegistrationSubmittedEvent' should not contain business behavior.}}
+            }
+
+            public sealed class RegistrationService
+            {
+                private readonly MassTransit.StateMachinePublisher publisher;
+
+                public System.Threading.Tasks.Task Publish(RegistrationSubmittedEvent message) =>
+                    publisher.Publish<RegistrationEntity, RegistrationData, RegistrationSubmittedEvent>(message); // Noncompliant {{Rename event 'RegistrationSubmittedEvent' to remove the 'Event' suffix.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void MessageContractsShouldFollowConventions_Compliant() =>
         builder.AddSnippet(
             """

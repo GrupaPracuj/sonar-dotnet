@@ -28,6 +28,61 @@ public class PropertyShouldNotReturnArrayTest
             .Verify();
 
     [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForFreshExpressionBodiedArrays() =>
+        builder.AddSnippet(
+            """
+            using System.Linq;
+
+            public class Survey
+            {
+                private readonly int[] stored = [1, 2, 3];
+
+                public int[] Questions => [.. stored];
+                public int[] Answers => new[] { 1, 2, 3 };
+                public int[] Scores => stored.ToArray();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantForStoredArrays() =>
+        builder.AddSnippet(
+            """
+            public class Survey
+            {
+                private readonly int[] questions = [1, 2, 3];
+
+                public int[] Questions => questions; // Noncompliant
+                public int[] Answers { get; } // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantWhenAnyGetterPathReturnsStoredArray() =>
+        builder.AddSnippet(
+            """
+            public class Survey
+            {
+                private readonly int[] questions = [1, 2, 3];
+
+                public int[] Questions // Noncompliant
+                {
+                    get
+                    {
+                        if (questions.Length == 0)
+                        {
+                            return new int[0];
+                        }
+
+                        return questions;
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void PropertyShouldNotReturnArray_CompliantForProtectedSetter() =>
         builder.AddSnippet(
             """

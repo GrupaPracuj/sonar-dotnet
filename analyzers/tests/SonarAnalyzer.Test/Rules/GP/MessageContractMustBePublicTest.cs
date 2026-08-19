@@ -100,6 +100,24 @@ public class MessageContractMustBePublicTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void MessageContractMustBePublic_CompliantForGenericConsumerBase() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public abstract class ConsumerBase<TIncomingMessage> : MassTransit.IConsumer<TIncomingMessage>
+                where TIncomingMessage : class
+            {
+                public abstract System.Threading.Tasks.Task Consume(TIncomingMessage message);
+            }
+
+            public abstract class SpecializedConsumer<TMessage> : ConsumerBase<TMessage>
+                where TMessage : class
+            {
+            }
+            """)
+            .VerifyNoIssues();
+
     // A same-named IConsumer<T> outside MassTransit is not messaging, so an internal contract consumed through it
     // is not this rule's business.
     [TestMethod]

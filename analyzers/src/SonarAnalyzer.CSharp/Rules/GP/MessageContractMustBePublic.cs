@@ -62,6 +62,7 @@ public sealed class MessageContractMustBePublic : SonarDiagnosticAnalyzer
         foreach (var consumed in type.AllInterfaces
             .Where(GpMessageContracts.IsConsumerInterface)
             .Select(x => x.TypeArguments[0])
+            .Where(x => x is not ITypeParameterSymbol)
             .Where(x => IsDeclaredInThisAssembly(x, context.Compilation) && x.EffectiveAccessibility != Accessibility.Public))
         {
             context.ReportIssue(Rule, classDeclaration.Identifier, consumed.Name);

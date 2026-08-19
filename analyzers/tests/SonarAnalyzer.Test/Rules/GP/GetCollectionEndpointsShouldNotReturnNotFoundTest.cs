@@ -61,7 +61,7 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
         """;
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForNotFound() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedNotFound() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -84,11 +84,11 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.ActionResult<System.Collections.Generic.IReadOnlyList<string>> GetUsers()
                 {
-                    return NotFound<System.Collections.Generic.IReadOnlyList<string>>(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
+                    return NotFound<System.Collections.Generic.IReadOnlyList<string>>();
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForScalarString() =>
@@ -115,7 +115,7 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForStatusCode404() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedStatusCode404() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -138,11 +138,11 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.ActionResult<System.Collections.Generic.IEnumerable<string>> GetUsers()
                 {
-                    return StatusCode<System.Collections.Generic.IEnumerable<string>>(404); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
+                    return StatusCode<System.Collections.Generic.IEnumerable<string>>(404);
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForOkEmptyCollection() =>
@@ -199,7 +199,7 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForArrayReturnType() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedArrayReturnType() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -218,14 +218,14 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.ActionResult<string[]> GetUsers()
                 {
-                    return NotFound<string[]>(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
+                    return NotFound<string[]>();
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForConcreteListReturnType() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedConcreteListReturnType() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -246,14 +246,14 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.ActionResult<List<string>> GetUsers()
                 {
-                    return NotFound<List<string>>(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
+                    return NotFound<List<string>>();
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForValueTaskWrappedActionResult() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedValueTaskWrappedActionResult() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -276,12 +276,12 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 public async ValueTask<Microsoft.AspNetCore.Mvc.ActionResult<IEnumerable<string>>> GetUsersAsync()
                 {
                     await Task.Yield();
-                    return NotFound<IEnumerable<string>>(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
+                    return NotFound<IEnumerable<string>>();
                 }
             }
             """)
             .WithOptions(LanguageOptions.FromCSharp8)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantForPlainIActionResult() =>
@@ -303,14 +303,15 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
                 [Microsoft.AspNetCore.Mvc.HttpGet]
-                public Microsoft.AspNetCore.Mvc.IActionResult GetUsers(bool empty)
+                public Microsoft.AspNetCore.Mvc.IActionResult GetUsers()
                 {
-                    if (empty)
+                    var users = new List<string>();
+                    if (users.Count == 0)
                     {
                         return NotFound(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
                     }
 
-                    return Ok(new List<string>());
+                    return Ok(users);
                 }
             }
             """)
@@ -336,14 +337,15 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
                 [Microsoft.AspNetCore.Mvc.HttpGet]
-                public Microsoft.AspNetCore.Mvc.IActionResult GetUsers(bool empty)
+                public Microsoft.AspNetCore.Mvc.IActionResult GetUsers()
                 {
-                    if (empty)
+                    var users = new List<string>();
+                    if (users.Count == 0)
                     {
                         return NotFound(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
                     }
 
-                    return Ok<List<string>>(new List<string>());
+                    return Ok<List<string>>(users);
                 }
             }
             """)
@@ -370,15 +372,16 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
                 [Microsoft.AspNetCore.Mvc.HttpGet]
-                public async Task<Microsoft.AspNetCore.Mvc.IActionResult> GetUsersAsync(bool empty)
+                public async Task<Microsoft.AspNetCore.Mvc.IActionResult> GetUsersAsync()
                 {
                     await Task.Yield();
-                    if (empty)
+                    var users = new List<string>();
+                    if (users.Count == 0)
                     {
                         return NotFound(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
                     }
 
-                    return Ok(new List<string>());
+                    return Ok(users);
                 }
             }
             """)
@@ -424,15 +427,16 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
 
             public static class Endpoints
             {
-                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
                     app.MapGet("/users", () =>
                     {
-                        if (empty)
+                        var users = new System.Collections.Generic.List<string>();
+                        if (!users.Any())
                         {
                             return Microsoft.AspNetCore.Http.Results.NotFound(); // Noncompliant
                         }
 
-                        return Microsoft.AspNetCore.Http.Results.Ok(new System.Collections.Generic.List<string>());
+                        return Microsoft.AspNetCore.Http.Results.Ok(users);
                     });
             }
             """)
@@ -446,10 +450,14 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
 
             public static class Endpoints
             {
-                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
-                    app.MapGet("/users", () => empty
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users", () =>
+                    {
+                        var users = new string[0];
+                        return users.Length == 0
                         ? Microsoft.AspNetCore.Http.TypedResults.NotFound() // Noncompliant
-                        : Microsoft.AspNetCore.Http.TypedResults.Ok(new string[0]));
+                        : Microsoft.AspNetCore.Http.TypedResults.Ok(users);
+                    });
             }
             """)
             .WithOptions(LanguageOptions.CSharpLatest)
@@ -462,10 +470,14 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
 
             public static class Endpoints
             {
-                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool empty) =>
-                    app.MapGet("/users", () => empty
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users", () =>
+                    {
+                        var users = new string[0];
+                        return users.Length == 0
                         ? Microsoft.AspNetCore.Http.Results.StatusCode(404) // Noncompliant
-                        : Microsoft.AspNetCore.Http.Results.Ok(new string[0]));
+                        : Microsoft.AspNetCore.Http.Results.Ok(users);
+                    });
             }
             """)
             .WithOptions(LanguageOptions.CSharpLatest)
@@ -624,7 +636,7 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_NoncompliantWhenAbsoluteActionRouteRemovesParent() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForUnguardedNotFoundOnAbsoluteRoute() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -653,29 +665,22 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                 [Microsoft.AspNetCore.Mvc.HttpGet("/orders")]
                 public Microsoft.AspNetCore.Mvc.IActionResult GetOrders()
                 {
-                    return NotFound(); // Noncompliant
+                    return NotFound();
                     return Ok(new List<string>());
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
-    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantWhenAnyActionRouteShowsParent() =>
+    public void GetCollectionEndpointsShouldNotReturnNotFound_CompliantForQueryParentFailure() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
 
             namespace Microsoft.AspNetCore.Mvc
             {
-                public class RouteAttribute : System.Attribute
-                {
-                    public RouteAttribute(string template) { }
-                }
-                public class HttpGetAttribute : System.Attribute
-                {
-                    public HttpGetAttribute(string template) { }
-                }
+                public class HttpGetAttribute : System.Attribute { }
                 public interface IActionResult { }
                 public abstract class ControllerBase
                 {
@@ -686,11 +691,11 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
 
             public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                [Microsoft.AspNetCore.Mvc.HttpGet("customers/{customerId}/orders")]
-                [Microsoft.AspNetCore.Mvc.Route("/legacy-orders")]
-                public Microsoft.AspNetCore.Mvc.IActionResult GetOrders(int customerId)
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult GetOrders(int orderId)
                 {
-                    if (!CustomerExists(customerId))
+                    var customer = FindCustomer(orderId);
+                    if (customer is null)
                     {
                         return NotFound();
                     }
@@ -698,7 +703,7 @@ public class GetCollectionEndpointsShouldNotReturnNotFoundTest
                     return Ok(new List<string>());
                 }
 
-                private static bool CustomerExists(int customerId) => false;
+                private static object FindCustomer(int orderId) => null;
             }
             """)
             .VerifyNoIssues();

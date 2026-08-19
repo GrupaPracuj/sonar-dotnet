@@ -1,7 +1,7 @@
 <p>A public or protected property without an equally accessible setter should not return an array.</p>
 <h2>Why is this an issue?</h2>
 <p>An array returned by a property is not write-protected, even when the property itself is read-only: the caller receives a reference to the same
-array instance and can mutate its elements directly, bypassing whatever invariants the owning type is meant to enforce. Callers also commonly
+stored array instance and can mutate its elements directly, bypassing whatever invariants the owning type is meant to enforce. Callers also commonly
 mistake the property for an indexed collection and re-read it inside a loop, re-evaluating the property (and, in some implementations, re-allocating
 a defensive copy) on every iteration.</p>
 <pre>
@@ -35,7 +35,8 @@ so there is no alternative shape to move to); one-dimensional <code>byte[]</code
 not compatible with common file and stream APIs and defensive copying can be prohibitively expensive; properties on a source type semantically recognized
 as a message or HTTP response contract - these legitimately expose arrays for wire serialization, with no in-process aliasing risk; and
 <code>override</code> properties, since the property's
-shape is dictated by the member it overrides.</p>
+shape is dictated by the member it overrides. Properties proven to create a fresh array on every getter path, for example with an expression-bodied
+collection expression, <code>new</code> array, or LINQ <code>ToArray()</code>, are also not reported because callers cannot mutate stored object state.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

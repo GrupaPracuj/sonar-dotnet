@@ -416,6 +416,117 @@ public class CancellationShouldNotBeSuppressedTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantAroundCancellationControlledLoop() =>
+        builder.AddSnippet(
+            """
+            public class WaitingSpinner
+            {
+                public async System.Threading.Tasks.Task ShowWaitingSpinnerAsync(System.Threading.CancellationToken ct)
+                {
+                    try
+                    {
+                        while (!ct.IsCancellationRequested)
+                        {
+                            await System.Threading.Tasks.Task.Delay(100, ct);
+                        }
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Cancelled");
+                    }
+                    finally
+                    {
+                        System.Console.WriteLine("Cleaned up");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantAtAsyncStreamConsumptionBoundary() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            public class StreamHandler
+            {
+                public async Task HandleAsync(System.Collections.Generic.IAsyncEnumerable<int> events)
+                {
+                    try
+                    {
+                        await foreach (var item in events)
+                        {
+                            System.Console.WriteLine(item);
+                        }
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Stream stopped");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantAtAsyncStreamWithCallerToken() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            public class StreamHandler
+            {
+                public async Task HandleAsync(
+                    System.Collections.Generic.IAsyncEnumerable<int> events,
+                    System.Threading.CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        await foreach (var item in events.WithCancellation(cancellationToken))
+                        {
+                            System.Console.WriteLine(item);
+                        }
+                    }
+                    catch (System.OperationCanceledException) // Noncompliant
+                    {
+                        System.Console.WriteLine("Stream stopped");
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_NoncompliantWhenAsyncStreamCatchReturnsSuccessData() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            public class StreamHandler
+            {
+                public async Task<bool> HandleAsync(
+                    System.Collections.Generic.IAsyncEnumerable<int> events,
+                    System.Threading.CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        await foreach (var item in events.WithCancellation(cancellationToken))
+                        {
+                            System.Console.WriteLine(item);
+                        }
+                        return true;
+                    }
+                    catch (System.OperationCanceledException) // Noncompliant
+                    {
+                        return false;
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void CancellationShouldNotBeSuppressed_NoncompliantWhenDisjunctionCanAcceptCancellation() =>
         builder.AddSnippet(
             """

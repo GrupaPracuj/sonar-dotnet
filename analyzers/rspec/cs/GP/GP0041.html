@@ -28,6 +28,8 @@ teardown.</p>
 <p>A method that implements an interface member is not reported either: the interface, not an attribute, is what makes the framework call it. That
 covers xUnit's <code>IAsyncLifetime.InitializeAsync</code>/<code>DisposeAsync</code> and <code>IDisposable.Dispose</code>, as well as a project's own
 fixture interfaces.</p>
+<p>A method invoked from a distinct call site in the same test class is treated as a helper and is not reported. A method that only invokes itself is
+still reported: recursion alone does not show that any test or fixture entry point calls it.</p>
 <h2>How to fix it</h2>
 <p>Add the test attribute the rest of the class uses, or - if the method really is a helper - make it private so its intent is unambiguous.</p>
 <h3>Code examples</h3>

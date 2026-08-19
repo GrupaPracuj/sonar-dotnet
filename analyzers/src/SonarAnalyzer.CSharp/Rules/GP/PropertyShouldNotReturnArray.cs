@@ -39,7 +39,8 @@ public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
             || property.SetMethod?.EffectiveAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal
             || property.Type is not IArrayTypeSymbol arrayType
             || arrayType is { Rank: 1, ElementType.SpecialType: SpecialType.System_Byte }
-            || IsExcludedContainingType(property.ContainingType, contracts))
+            || IsExcludedContainingType(property.ContainingType, contracts)
+            || ReturnsFreshArray(declaration, context.Model))
         {
             return;
         }
@@ -49,4 +50,47 @@ public sealed class PropertyShouldNotReturnArray : SonarDiagnosticAnalyzer
 
     private static bool IsExcludedContainingType(INamedTypeSymbol containingType, GpSemanticContractDetector contracts) =>
         containingType.DerivesFrom(KnownType.System_Attribute) || contracts.IsContract(containingType);
+
+    private static bool ReturnsFreshArray(PropertyDeclarationSyntax declaration, SemanticModel model)
+    {
+        if (declaration.ExpressionBody is { Expression: { } propertyExpression })
+        {
+            return IsFreshArray(propertyExpression, model);
+        }
+
+        var getter = declaration.AccessorList?.Accessors.FirstOrDefault(x => x.IsKind(SyntaxKind.GetAccessorDeclaration));
+        if (getter?.ExpressionBody is { Expression: { } getterExpression })
+        {
+            return IsFreshArray(getterExpression, model);
+        }
+
+        if (getter?.Body is not { } body)
+        {
+            return false;
+        }
+
+        var returns = body.DescendantNodes(x => x is not AnonymousFunctionExpressionSyntax && x.Kind() != SyntaxKindEx.LocalFunctionStatement)
+            .OfType<ReturnStatementSyntax>()
+            .ToArray();
+        return returns.Length > 0
+               && returns.All(x => x.Expression is { } expression && IsFreshArray(expression, model));
+    }
+
+    private static bool IsFreshArray(ExpressionSyntax expression, SemanticModel model)
+    {
+        while (expression is ParenthesizedExpressionSyntax parenthesized)
+        {
+            expression = parenthesized.Expression;
+        }
+
+        if (expression is ArrayCreationExpressionSyntax or ImplicitArrayCreationExpressionSyntax
+            || CollectionExpressionSyntaxWrapper.IsInstance(expression))
+        {
+            return true;
+        }
+
+        return expression is InvocationExpressionSyntax invocation
+               && model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { Name: "ToArray" } method
+               && (method.ReducedFrom ?? method).ContainingType.Is(KnownType.System_Linq_Enumerable);
+    }
 }

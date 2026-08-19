@@ -49,7 +49,11 @@ public sealed class TestMethodShouldHaveTestAttribute : SonarDiagnosticAnalyzer
 
         foreach (var method in methods.Where(x => LooksLikeAnUnannotatedTest(context.Model, x)))
         {
-            context.ReportIssue(Rule, method.Identifier, method.Identifier.ValueText);
+            if (context.Model.GetDeclaredSymbol(method) is { } symbol
+                && !IsInvokedInContainingClass(context.Model.Compilation, symbol))
+            {
+                context.ReportIssue(Rule, method.Identifier, method.Identifier.ValueText);
+            }
         }
     }
 
@@ -80,6 +84,20 @@ public sealed class TestMethodShouldHaveTestAttribute : SonarDiagnosticAnalyzer
         method.ReturnsVoid
         || method.ReturnType.Is(KnownType.System_Threading_Tasks_Task)
         || method.ReturnType.Is(KnownType.System_Threading_Tasks_ValueTask);
+
+    private static bool IsInvokedInContainingClass(Compilation compilation, IMethodSymbol method) =>
+        method.ContainingType.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<ClassDeclarationSyntax>()
+            .SelectMany(x => x.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            .Any(x =>
+            {
+                var model = compilation.GetSemanticModel(x.SyntaxTree);
+                return model.GetSymbolInfo(x).Symbol?.Equals(method) == true
+                    && model.GetEnclosingSymbol(x.SpanStart)?.ContainingType.Equals(method.ContainingType) == true
+                    && !x.Ancestors().OfType<MethodDeclarationSyntax>()
+                        .Any(y => model.GetDeclaredSymbol(y)?.Equals(method) == true);
+            });
 
     private static bool HasTestAttribute(SemanticModel model, MethodDeclarationSyntax method) =>
         model.GetDeclaredSymbol(method) is { } symbol

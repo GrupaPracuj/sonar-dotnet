@@ -16,14 +16,15 @@ namespace Tests.Diagnostics
     public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
     {
         [Microsoft.AspNetCore.Mvc.HttpGet]
-        public Microsoft.AspNetCore.Mvc.IActionResult GetUsers(bool empty)
+        public Microsoft.AspNetCore.Mvc.IActionResult GetUsers()
         {
-            if (empty)
+            var users = new List<string>();
+            if (users.Count == 0)
             {
                 return NotFound(); // Noncompliant {{GET endpoints returning collections should return 200 with an empty collection instead of 404.}}
             }
 
-            return Ok(new List<string>());
+            return Ok(users);
         }
     }
 }

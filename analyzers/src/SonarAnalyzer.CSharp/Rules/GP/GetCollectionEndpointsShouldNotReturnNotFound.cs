@@ -32,8 +32,7 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
             || !GpCollectionEndpointHelper.IsHttpGetMethod(method)
             || !GpCollectionEndpointHelper.ReturnsCollection(method, context.Model, context.Node)
             || !GpMvcResults.IsStatusResponse(context.Model, invocation, "NotFound", 404)
-            || HasVisibleParentRoute(method)
-               && !IsGuardedByReturnedCollectionEmptiness(invocation, context.Model, method.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<MethodDeclarationSyntax>().FirstOrDefault()))
+            || !IsGuardedByReturnedCollectionEmptiness(invocation, context.Model, method.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<MethodDeclarationSyntax>().FirstOrDefault()))
         {
             return;
         }
@@ -45,84 +44,14 @@ public sealed class GetCollectionEndpointsShouldNotReturnNotFound : SonarDiagnos
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (!GpMvcResults.IsStatusResponse(context.Model, invocation, "NotFound", 404)
-            || !GpMinimalApi.TryGetInlineHandler(invocation, context.Model, "MapGet", out var handler, out var mapInvocation, out _, out var routeTemplate)
+            || !GpMinimalApi.TryGetInlineHandler(invocation, context.Model, "MapGet", out var handler, out _, out _, out _)
             || !GpMinimalApi.HandlerReturnsCollection(handler, context.Model)
-            || EffectiveMinimalRoute(mapInvocation, routeTemplate, context.Model, out var routeIsUnknown) is { } effectiveRoute
-               && HasVisibleParentRoute(effectiveRoute)
-               && !IsGuardedByReturnedCollectionEmptiness(invocation, context.Model, handler)
-            || routeIsUnknown)
+            || !IsGuardedByReturnedCollectionEmptiness(invocation, context.Model, handler))
         {
             return;
         }
 
         context.ReportIssue(Rule, invocation);
-    }
-
-    private static string EffectiveMinimalRoute(InvocationExpressionSyntax mapInvocation,
-                                                string routeTemplate,
-                                                SemanticModel model,
-                                                out bool routeIsUnknown)
-    {
-        routeIsUnknown = false;
-        var route = routeTemplate;
-        var receiver = (mapInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
-        while (receiver is InvocationExpressionSyntax groupInvocation)
-        {
-            if (model.GetSymbolInfo(groupInvocation).Symbol is IMethodSymbol { Name: "MapGroup" })
-            {
-                if (groupInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is not { } pattern
-                    || model.GetConstantValue(pattern) is not { HasValue: true, Value: string prefix })
-                {
-                    routeIsUnknown = true;
-                    return null;
-                }
-
-                route = $"{prefix}/{route}";
-            }
-
-            receiver = (groupInvocation.Expression as MemberAccessExpressionSyntax)?.Expression;
-        }
-
-        return route;
-    }
-
-    private static bool HasVisibleParentRoute(IMethodSymbol method)
-    {
-        var controllerTemplates = RouteTemplates(method.ContainingType.GetAttributes(), "RouteAttribute").ToArray();
-        var actionTemplates = RouteTemplates(method.GetAttributes(), "RouteAttribute", "HttpGetAttribute", "HttpGet").ToArray();
-        if (actionTemplates.Any(x => x.Length > 0))
-        {
-            actionTemplates = actionTemplates.Where(x => x.Length > 0).ToArray();
-        }
-
-        var effectiveRoutes = actionTemplates.SelectMany(actionTemplate =>
-            IsAbsoluteRoute(actionTemplate)
-                ? new[] { actionTemplate }
-                : controllerTemplates.DefaultIfEmpty(string.Empty).Select(controllerTemplate => $"{controllerTemplate}/{actionTemplate}"))
-            .ToArray();
-        return effectiveRoutes.Any(HasVisibleParentRoute);
-    }
-
-    private static IEnumerable<string> RouteTemplates(IEnumerable<AttributeData> attributes, params string[] attributeNames) =>
-        attributes
-            .Where(x => attributeNames.Contains(x.AttributeClass?.Name))
-            .Select(x => x.ConstructorArguments.FirstOrDefault().Value as string ?? string.Empty);
-
-    private static bool IsAbsoluteRoute(string template) =>
-        template.StartsWith("/", StringComparison.Ordinal) || template.StartsWith("~/", StringComparison.Ordinal);
-
-    private static bool HasVisibleParentRoute(string routeTemplate)
-    {
-        var segments = routeTemplate.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < segments.Length - 1; i++)
-        {
-            if (segments[i].IndexOf('{') >= 0
-                && segments.Skip(i + 1).Any(x => x.IndexOf('{') < 0))
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static bool IsGuardedByReturnedCollectionEmptiness(InvocationExpressionSyntax invocation, SemanticModel model, SyntaxNode boundary)

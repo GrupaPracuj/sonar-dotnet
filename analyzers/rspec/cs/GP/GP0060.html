@@ -4,6 +4,8 @@
 <code>private</code> contract cannot be referenced by the consuming service at all, so the agreement only holds as long as producer and consumer happen to
 be the same assembly. The first time the consumer moves out, the contract has to be made public anyway, and by then other code depends on its name and
 namespace.</p>
+<p>A type parameter used by a generic consumer base is not itself a declared message contract and is not reported. The rule checks the concrete
+contract type when the generic consumer is closed over one.</p>
 <p>The usual workaround makes it worse. Since the consumer cannot reference the type, someone redeclares it on the other side - and the transport matches
 messages by the full type name including the namespace, so the copy has to sit in an identically named namespace or the message is not consumed at all.
 What was one agreement becomes two declarations kept in step by hand, and the day they drift apart nothing fails to compile.</p>
