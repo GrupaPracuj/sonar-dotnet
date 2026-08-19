@@ -1,0 +1,25 @@
+{
+  "title": "Unique-constraint catches should cover one database operation",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "HIGH"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "database",
+    "error-handling"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0111",
+  "sqKey": "GP0111",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}

@@ -1,0 +1,41 @@
+<p>A catch that translates a SQL Server unique-constraint violation should cover only the database operation whose constraint has domain meaning.</p>
+<h2>Why is this an issue?</h2>
+<p>SQL Server error numbers 2601 and 2627 identify a uniqueness violation, but not which operation in a broad transaction failed. When one catch wraps
+multiple commands, a duplicate in any table is translated into the same domain exception. That can misreport an author-link conflict as an already
+cataloged book and makes later additions to the transaction silently inherit the wrong mapping.</p>
+<p>The rule recognizes Microsoft and System SQL Server exceptions, direct number filters and the conventional
+<code>SqlServerErrors.IsUniqueConstraintViolation</code> helper. It counts only Juno ADO <code>Execute</code> calls made directly in the try block or
+inside an inline Juno <code>RunInTransaction</code> callback. Indirect helper calls are not inferred.</p>
+<h2>How to fix it</h2>
+<p>Move the operation whose unique constraint is translated into a dedicated method and catch the SQL exception immediately around its single
+<code>Execute</code> call. Leave the remaining transaction operations outside that catch.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+try
+{
+    await transactional.RunInTransaction(async transaction =>
+    {
+        await transaction.Execute(new InsertBookOperation(book));
+        await transaction.Execute(new InsertBookAuthorsOperation(book));
+    });
+}
+catch (SqlException exception) when (exception.Number is 2601 or 2627) // Noncompliant
+{
+    throw new BookAlreadyCatalogedException(book.Isbn, exception);
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+private static async Task InsertBookAsync(IDbTransaction transaction, CatalogBook book)
+{
+    try
+    {
+        await transaction.Execute(new InsertBookOperation(book));
+    }
+    catch (SqlException exception) when (SqlServerErrors.IsUniqueConstraintViolation(exception))
+    {
+        throw new BookAlreadyCatalogedException(book.Isbn, exception);
+    }
+}
+</pre>
