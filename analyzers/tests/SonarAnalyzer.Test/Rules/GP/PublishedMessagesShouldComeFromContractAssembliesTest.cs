@@ -118,6 +118,32 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .Verify();
 
     [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_JunoHttpSendIsNotMessaging() =>
+        CreateBuilder()
+            .AddSnippet(
+                """
+                namespace GP.Juno.HttpClient
+                {
+                    public class HttpServiceResponse { }
+
+                    public class HttpRequestProperties
+                    {
+                        public System.Threading.Tasks.Task<T> Send<T>(object verb, T response)
+                            where T : HttpServiceResponse => null;
+                    }
+                }
+
+                public class Service
+                {
+                    public System.Threading.Tasks.Task<GP.Juno.HttpClient.HttpServiceResponse> Send(
+                        GP.Juno.HttpClient.HttpRequestProperties request,
+                        GP.Juno.HttpClient.HttpServiceResponse response) =>
+                        request.Send(new object(), response);
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForReferencedContractsAssembly()
     {
         var contracts = new SnippetCompiler(
@@ -144,6 +170,64 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
                         _publisher.Publish(new GP.Kaczawa.Contracts.OrderAccepted(id));
+                }
+                """)
+            .VerifyNoIssues();
+    }
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForReferencedInnerContractsAssembly()
+    {
+        var contracts = new SnippetCompiler(
+            """
+            namespace GP.Jowisz.InnerContracts.Commands
+            {
+                public sealed class CancelAcceptanceReminder { }
+            }
+            """).Compilation
+            .WithAssemblyName("GP.Jowisz.InnerContracts")
+            .ToMetadataReference();
+
+        CreateBuilder()
+            .AddReferences([contracts])
+            .AddSnippet(
+                MessagingStub + """
+
+                public class ReminderService
+                {
+                    private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                    public System.Threading.Tasks.Task Cancel() =>
+                        _publisher.Send(new GP.Jowisz.InnerContracts.Commands.CancelAcceptanceReminder());
+                }
+                """)
+            .VerifyNoIssues();
+    }
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForReferencedInternalContractsAssembly()
+    {
+        var contracts = new SnippetCompiler(
+            """
+            namespace GP.Jowisz.InternalContracts.Commands
+            {
+                public sealed class RebuildAcceptance { }
+            }
+            """).Compilation
+            .WithAssemblyName("GP.Jowisz.InternalContracts")
+            .ToMetadataReference();
+
+        CreateBuilder()
+            .AddReferences([contracts])
+            .AddSnippet(
+                MessagingStub + """
+
+                public class AcceptanceService
+                {
+                    private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                    public System.Threading.Tasks.Task Rebuild() =>
+                        _publisher.Send(new GP.Jowisz.InternalContracts.Commands.RebuildAcceptance());
                 }
                 """)
             .VerifyNoIssues();
@@ -208,6 +292,67 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
                         _publisher.Publish(new Shared.Models.OrderAccepted(id)); // Noncompliant {{Use 'OrderAccepted' from a contract assembly for this published message; it is declared in 'GP.Kaczawa.ContractsLegacy'.}}
+                }
+                """)
+            .Verify();
+    }
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForReferencedSingularContractAssembly()
+    {
+        var payloads = new SnippetCompiler(
+            """
+            namespace Shared.Messages
+            {
+                public sealed class OrderAccepted
+                {
+                    public OrderAccepted(System.Guid orderId) { }
+                }
+            }
+            """).Compilation
+            .WithAssemblyName("GP.RestApi.Filestore.Contract")
+            .ToMetadataReference();
+
+        CreateBuilder()
+            .AddReferences([payloads])
+            .AddSnippet(
+                MessagingStub + """
+
+                public class OrderService
+                {
+                    private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                    public System.Threading.Tasks.Task Accept(System.Guid id) =>
+                        _publisher.Publish(new Shared.Messages.OrderAccepted(id)); // Noncompliant {{Use 'OrderAccepted' from a contract assembly for this published message; it is declared in 'GP.RestApi.Filestore.Contract'.}}
+                }
+                """)
+            .Verify();
+    }
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForReferencedCommandsAssembly()
+    {
+        var payloads = new SnippetCompiler(
+            """
+            namespace Shared.Messages
+            {
+                public sealed class RebuildAcceptance { }
+            }
+            """).Compilation
+            .WithAssemblyName("GP.FileStoreTools.Commands")
+            .ToMetadataReference();
+
+        CreateBuilder()
+            .AddReferences([payloads])
+            .AddSnippet(
+                MessagingStub + """
+
+                public class AcceptanceService
+                {
+                    private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                    public System.Threading.Tasks.Task Rebuild() =>
+                        _publisher.Send(new Shared.Messages.RebuildAcceptance()); // Noncompliant {{Use 'RebuildAcceptance' from a contract assembly for this sent command; it is declared in 'GP.FileStoreTools.Commands'.}}
                 }
                 """)
             .Verify();
@@ -394,6 +539,22 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForCustomMvcResultWrapper() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                public sealed class HttpResponseMessageActionResult : Microsoft.AspNetCore.Mvc.IActionResult { }
+
+                public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public HttpResponseMessageActionResult Create() => null;
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForMvcRuntimeResponse() =>
         CreateBuilder()
             .AddSnippet(
@@ -409,6 +570,25 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 }
                 """)
             .Verify();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForCustomMinimalApiResultWrapper() =>
+        CreateBuilder()
+            .AddSnippet(
+                MinimalApiStub + """
+
+                public sealed class HttpResponseMessageResult : Microsoft.AspNetCore.Http.IResult { }
+
+                public static class Endpoints
+                {
+                    public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                        Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost<object, HttpResponseMessageResult>(
+                            app,
+                            "/orders",
+                            _ => new HttpResponseMessageResult());
+                }
+                """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForMinimalApiRequestAndResponse() =>
@@ -483,7 +663,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .VerifyNoIssues();
     }
 
-    private static VerifierBuilder CreateBuilder(string contractAssemblyNames = "Contracts") =>
+    private static VerifierBuilder CreateBuilder(string contractAssemblyNames = CS.GpAssemblyNames.DefaultContractAssemblyNames) =>
         new VerifierBuilder()
             .AddAnalyzer(() => new CS.PublishedMessagesShouldComeFromContractAssemblies { ContractAssemblyNames = contractAssemblyNames })
             .WithOptions(LanguageOptions.CSharpLatest);

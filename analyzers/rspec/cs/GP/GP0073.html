@@ -13,8 +13,11 @@ public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOf
 appConfig.Publishes&lt;PaymentReceived&gt;();
 </pre>
 <p>A member counts as a business identifier when its name ends with <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code> or
-<code>Key</code> - configurable through <code>identifierSuffixes</code> - and is not one of the transport metadata names.</p>
+<code>Key</code> - configurable through <code>identifierSuffixes</code> - and is not one of the transport metadata names. The identifier may live inside a
+nested payload object when that is how the contract is shaped, for example <code>Source.FileId</code>.</p>
 <h3>Exceptions</h3>
+<p>Commands, including legacy <code>*Command</code> types dispatched through a publish API, are outside this event rule. Scheduling and forwarding
+envelopes that carry a nested message are commands as well.</p>
 <p>An event with no data members at all is not reported. A marker event such as <code>MaintenanceModeEnabled</code> is about the system rather than about a
 particular object, so there is no identifier for it to carry - and requiring one would only produce a field nobody fills in.</p>
 <h2>How to fix it</h2>
@@ -32,6 +35,12 @@ appConfig.Publishes&lt;PaymentReceived&gt;(); // Noncompliant {{'PaymentReceived
 public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency, DateTimeOffset OccurredAt);
 
 appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<pre data-diff-id="2" data-diff-type="compliant">
+public sealed record FileSource(Guid FileId);
+public sealed record CopyFileToCdn(FileSource Source, string DestinationPath, DateTimeOffset OccurredAt);
+
+appConfig.Publishes&lt;CopyFileToCdn&gt;();
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

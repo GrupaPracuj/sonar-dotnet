@@ -28,13 +28,26 @@ internal static class GpMessageContracts
         ["Newtonsoft.Json.Linq.JObject"] = "a JObject",
     };
 
-    // Publish/Send/Consume only carry real messaging semantics when they come from GP.Juno or MassTransit - the same
-    // namespace-based test CommitAndPublishShouldNotBeADualWrite (GP0048) and PublishedMessageShouldHaveExplicitContract
-    // (GP0055) already rely on, so a same-named member on an unrelated type (MediatR, Prism, Rx, a hand-rolled bus,
-    // AppConfig.Publishes<T> for some other config surface) is never mistaken for one of these APIs.
+    private static readonly HashSet<string> RootMessagingTypes = new(StringComparer.Ordinal)
+    {
+        "IMessageSender",
+        "IPublisher",
+        "ISender",
+    };
+
+    // Juno contains unrelated Send methods for HTTP, email and tracing. Keep the match on the actual EventStream /
+    // Messaging surfaces and on AppConfig message declarations instead of treating the entire GP.Juno namespace as
+    // a message bus.
     internal static bool IsMessagingType(ITypeSymbol type) =>
         type?.ContainingNamespace?.ToDisplayString() is { } containingNamespace
-        && (IsWithinNamespace(containingNamespace, "GP.Juno") || IsWithinNamespace(containingNamespace, "MassTransit"));
+        && (IsWithinNamespace(containingNamespace, "MassTransit")
+            || IsWithinNamespace(containingNamespace, "GP.Juno.EventStream")
+            || IsWithinNamespace(containingNamespace, "GP.Juno.Messaging")
+            || IsWithinNamespace(containingNamespace, "GP.Juno.Abstractions.EventStream")
+            || IsWithinNamespace(containingNamespace, "GP.Juno.Abstractions.Massaging")
+            || IsWithinNamespace(containingNamespace, "GP.Juno.Abstractions.Messaging")
+            || (containingNamespace == "GP.Juno.Configuration" && type.Name == "AppConfig")
+            || (containingNamespace == "GP.Juno.Abstractions" && RootMessagingTypes.Contains(type.Name)));
 
     private static bool IsWithinNamespace(string containingNamespace, string root) =>
         containingNamespace == root || containingNamespace.StartsWith(root + ".", StringComparison.Ordinal);
@@ -140,6 +153,17 @@ internal static class GpMessageContracts
 
     internal static string TypeKey(INamedTypeSymbol type) =>
         $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";
+
+    internal static bool IsNestedMessageEnvelope(INamedTypeSymbol type)
+    {
+        var properties = type.GetMembers().OfType<IPropertySymbol>().Where(x => !x.IsStatic).ToArray();
+        return properties.Any(x =>
+                   (x.Name == "Payload" && x.Type.ToDisplayString() == "System.Text.Json.JsonElement")
+                   || (x.Name == "Message" && x.Type.SpecialType == SpecialType.System_Object))
+               && properties.Any(x =>
+                   x.Name is "Command" or "MessageType"
+                   && x.Type.SpecialType == SpecialType.System_String);
+    }
 
     // The public properties of the type and of everything it inherits - which covers a positional record too, since
     // the compiler turns each of its parameters into exactly such a property.

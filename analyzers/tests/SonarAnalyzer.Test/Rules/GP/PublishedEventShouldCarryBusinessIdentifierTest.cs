@@ -112,6 +112,22 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantWithNestedPayloadIdentifier() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record FileSource(System.Guid FileId);
+            public sealed record CopyFileToCdn(FileSource Source, string DestinationPath, System.DateTimeOffset OccurredAt);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<CopyFileToCdn>();
+            }
+            """)
+            .VerifyNoIssues();
+
     // A marker event is about the system, not a particular object, so there is nothing to identify.
     [TestMethod]
     public void PublishedEventShouldCarryBusinessIdentifier_CompliantForMarkerEvent() =>
@@ -129,11 +145,56 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_NoncompliantWhenNestedPayloadHasNoIdentifier() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record FileSource(string FileName, long Size);
+            public sealed record CopyFileToCdn(FileSource Source, string DestinationPath, System.DateTimeOffset OccurredAt);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<CopyFileToCdn>(); // Noncompliant {{'CopyFileToCdn' carries no business identifier, so a consumer cannot tell what it is about.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void PublishedEventShouldCarryBusinessIdentifier_CompliantWhenNotPublished() =>
         builder.AddSnippet(
             Stubs + """
 
             public sealed record PaymentReceived(decimal Amount);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantForCommandPublishedThroughLegacyApi() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.Juno.Abstractions.EventStream
+            {
+                public interface IPublisher
+                {
+                    System.Threading.Tasks.Task Publish<T>(T message) where T : class;
+                }
+            }
+
+            public sealed class StartMultiStepRegisterCommand
+            {
+                public string Email { get; init; }
+                public string Group { get; init; }
+            }
+
+            public sealed class RegistrationService
+            {
+                public System.Threading.Tasks.Task Start(
+                    GP.Juno.Abstractions.EventStream.IPublisher publisher,
+                    StartMultiStepRegisterCommand command) =>
+                    publisher.Publish(command);
+            }
             """)
             .VerifyNoIssues();
 

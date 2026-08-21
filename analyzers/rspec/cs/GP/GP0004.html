@@ -23,12 +23,17 @@ the contract itself a stable, predictable data shape.</p>
 value rather than act on it: overrides, explicit interface implementations, <code>Equals</code>/<code>GetHashCode</code>/<code>ToString</code>/
 <code>Deconstruct</code>/<code>Clone</code>, and everything a <code>record</code> declaration generates for you. A static method that returns an
 instance of the contract itself is a factory - it constructs the message rather than acting on it - and is not flagged either.</p>
+<p>A narrow exception also exists for a pure display helper such as <code>AsString()</code> when it is clearly just formatting the contract for
+logs or UI: it must return <code>string</code>, take no parameters, and consist only of straightforward formatting with no branching, mutation, or
+other business work. Arbitrary helper methods are still flagged.</p>
 <p>A <code>private</code> method is not flagged: nothing outside the type can call it, so it is not behavior the message offers across the boundary.
 Any other accessibility - <code>internal</code>, <code>protected</code>, <code>public</code> - is.</p>
 <p>Each issue points to the method that introduces behavior. If a contract comes from a compiled assembly whose source location is unavailable, the
 publishing or sending registration is used as a fallback location.</p>
 <p>For messaging APIs with several generic type arguments, only the actual message payload is treated as the contract. Infrastructure types such as
 MassTransit saga state and state-machine data types are not checked by this rule.</p>
+<p>Only GP.Juno EventStream/Messaging APIs and MassTransit are messaging surfaces. Unrelated Juno APIs with methods named <code>Send</code>, such as
+the Juno HTTP client, do not make their arguments or return types message contracts.</p>
 <h2>How to fix it</h2>
 <p>Move any behavior out of the message class and into the component that handles the message. The message class itself should only expose the data
 needed to describe the event or command.</p>

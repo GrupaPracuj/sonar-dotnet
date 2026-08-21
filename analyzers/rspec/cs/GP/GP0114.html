@@ -1,0 +1,18 @@
+<p>A <code>202 Accepted</code> response should tell the client how to track the asynchronous operation.</p>
+<h2>Why is this an issue?</h2>
+<p>Status 202 means that processing has been accepted but has not completed. Without a status URI in the <code>Location</code> header or a response
+body containing tracking information such as an operation identifier, the client cannot determine the eventual outcome.</p>
+<p>The rule reports only framework response factories that provably create status 202 with neither a URI nor a body. It does not infer whether the
+operation actually completed, and it accepts any non-null payload because the payload may contain tracking information.</p>
+<h2>How to fix it</h2>
+<p>Return an accepted response with a status URI, or include a payload containing an operation identifier or other tracking information. MVC
+applications can also use <code>AcceptedAtAction</code> or <code>AcceptedAtRoute</code>.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+return Accepted(); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+return AcceptedAtAction(nameof(GetStatus), new { id = operation.Id }, new { operation.Id });
+</pre>

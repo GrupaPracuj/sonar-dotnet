@@ -28,8 +28,9 @@ fixed in the code, such as <code>Redirect("/orders/" + id)</code>, cannot leave 
 <p>Minimal APIs do not expose the MVC <code>IUrlHelper.IsLocalUrl</code> check. The analysis therefore does not guess that a custom method named
 <code>IsLocalUrl</code> or another arbitrary helper is safe. Prefer a fixed local destination, or validate dynamic destinations with an explicit,
 reviewed allowlist before they reach the redirect expression.</p>
-<p>The analysis does not follow values through local variables, fields, named handlers, nested lambdas, local functions, or other methods, and it does
-not treat endpoint registration arguments as handler input.</p>
+<p>The analysis does not follow values through local variables, fields, named handlers, nested lambdas, local functions, or other methods. In
+particular, it does not assume that an arbitrary URL-building helper returns its request argument unchanged: the helper can safely insert that value
+into a path under a configured trusted origin. Endpoint registration arguments are not treated as handler input.</p>
 <h2>How to fix it</h2>
 <p>Microsoft states the requirement as:</p>
 <blockquote>

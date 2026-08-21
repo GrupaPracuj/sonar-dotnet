@@ -34,7 +34,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     {
         var elementAccess = (ElementAccessExpressionSyntax)context.Node;
         if (IsConfiguration(context.Model.GetTypeInfo(elementAccess.Expression).Type)
-            && !IsServiceRegistrationMethod(context.Model, elementAccess))
+            && !IsCompositionRootContext(context.Model, elementAccess)
+            && !IsInsideJuno(context.Model, elementAccess))
         {
             context.ReportIssue(Rule, elementAccess);
         }
@@ -51,7 +52,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
 
         // GetValue is an extension method on IConfiguration, so the receiver carries the type.
         if ((IsConfiguration(method.ReceiverType) || (method.Parameters.Length > 0 && IsConfiguration(method.Parameters[0].Type)))
-            && !IsServiceRegistrationMethod(context.Model, invocation))
+            && !IsCompositionRootContext(context.Model, invocation)
+            && !IsInsideJuno(context.Model, invocation))
         {
             context.ReportIssue(Rule, invocation);
         }
@@ -62,37 +64,179 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     private static bool IsConfiguration(ITypeSymbol type) =>
         GpJunoTypes.Implements(type, ConfigurationInterface);
 
-    // The composition root is where configuration is intentionally converted into concrete dependencies. Reading
-    // a single value while registering a framework service (for example an EF connection string) does not leak the
-    // configuration bag into runtime application code.
-    private static bool IsServiceRegistrationMethod(SemanticModel model, SyntaxNode node) =>
-        model.GetEnclosingSymbol(node.SpanStart) is IMethodSymbol method
-        && (IsServiceCollection(method.ReturnType)
-            || method.Parameters.Any(x => IsServiceCollection(x.Type))
-            || IsWebApplicationBuilderRegistrationMethod(model, method));
+    private static bool IsInsideJuno(SemanticModel model, SyntaxNode node) =>
+        model.GetEnclosingSymbol(node.SpanStart)?.ContainingNamespace?.ToDisplayString() is { } containingNamespace
+        && (containingNamespace == "GP.Juno" || containingNamespace.StartsWith("GP.Juno.", StringComparison.Ordinal));
+
+    private static bool IsCompositionRootContext(SemanticModel model, SyntaxNode node) =>
+        ContainingExecutionContext(node) is { } context
+        && IsCompositionRootContext(model.Compilation, context, new HashSet<IMethodSymbol>());
 
     private static bool IsServiceCollection(ITypeSymbol type) =>
         type?.ToDisplayString() == ServiceCollectionInterface;
 
-    // Modern ASP.NET composition roots commonly extend WebApplicationBuilder and configure framework services through
-    // builder.Services. Keep the exemption tied to that concrete setup shape rather than exempting every method that
-    // merely receives a builder and could still leak keyed configuration into runtime logic.
-    private static bool IsWebApplicationBuilderRegistrationMethod(SemanticModel model, IMethodSymbol method)
+    private static bool IsCompositionRootContext(Compilation compilation, SyntaxNode context, HashSet<IMethodSymbol> visiting)
     {
-        if (!method.IsExtensionMethod
-            || method.Parameters.FirstOrDefault() is not { Type: { } receiverType } receiver
-            || receiverType.ToDisplayString() != WebApplicationBuilderType)
+        if (context is GlobalStatementSyntax)
+        {
+            return true;
+        }
+
+        if (context is AnonymousFunctionExpressionSyntax lambda)
+        {
+            return IsServiceRegistrationLambda(compilation, lambda);
+        }
+
+        var model = compilation.GetSemanticModel(context.SyntaxTree);
+        return model.GetDeclaredSymbol(context) is IMethodSymbol method
+            && (IsDirectCompositionRootMethod(compilation, method)
+                || IsPrivateSetupHelperUsedOnlyFromCompositionRoot(compilation, method, visiting));
+    }
+
+    // The composition root is where configuration is intentionally converted into concrete dependencies. Reading a
+    // single value while registering a framework service (for example an EF connection string) does not leak the
+    // configuration bag into runtime application code.
+    private static bool IsDirectCompositionRootMethod(Compilation compilation, IMethodSymbol method) =>
+        IsTopLevelLocalFunction(method)
+        || IsServiceCollection(method.ReturnType)
+        || method.Parameters.Any(x => IsServiceCollection(x.Type))
+        || UsesWebApplicationBuilderServices(compilation, method);
+
+    private static bool IsPrivateSetupHelperUsedOnlyFromCompositionRoot(Compilation compilation, IMethodSymbol method, HashSet<IMethodSymbol> visiting)
+    {
+        if (!IsLocalFunction(method) && method.DeclaredAccessibility != Accessibility.Private)
+        {
+            return false;
+        }
+
+        if (!visiting.Add(method))
+        {
+            return false;
+        }
+
+        try
+        {
+            var callSites = FindCallSites(compilation, method).ToList();
+            return callSites.Count > 0 && callSites.All(x => IsCompositionRootContext(compilation, x, visiting));
+        }
+        finally
+        {
+            visiting.Remove(method);
+        }
+    }
+
+    private static IEnumerable<SyntaxNode> FindCallSites(Compilation compilation, IMethodSymbol method)
+    {
+        var scopes = IsLocalFunction(method)
+            ? method.DeclaringSyntaxReferences.Select(x => x.GetSyntax().Parent).WhereNotNull().Select(ContainingExecutionContext).WhereNotNull()
+            : method.ContainingType.DeclaringSyntaxReferences.Select(x => x.GetSyntax());
+
+        foreach (var scope in scopes.Distinct())
+        {
+            var model = compilation.GetSemanticModel(scope.SyntaxTree);
+            foreach (var invocation in scope.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+            {
+                if (model.GetSymbolInfo(invocation).Symbol is IMethodSymbol candidate
+                    && candidate.OriginalDefinition.Equals(method.OriginalDefinition)
+                    && !Equals(model.GetEnclosingSymbol(invocation.SpanStart), method))
+                {
+                    yield return ContainingExecutionContext(invocation) ?? invocation;
+                }
+            }
+
+            foreach (var argument in scope.DescendantNodesAndSelf().OfType<ArgumentSyntax>())
+            {
+                if (model.GetSymbolInfo(argument.Expression).Symbol is IMethodSymbol candidate
+                    && candidate.OriginalDefinition.Equals(method.OriginalDefinition)
+                    && !Equals(model.GetEnclosingSymbol(argument.SpanStart), method))
+                {
+                    yield return ContainingExecutionContext(argument) ?? argument;
+                }
+            }
+        }
+    }
+
+    private static SyntaxNode ContainingExecutionContext(SyntaxNode node) =>
+        node.AncestorsAndSelf().FirstOrDefault(x =>
+            (x is GlobalStatementSyntax
+            or AnonymousFunctionExpressionSyntax
+            or AccessorDeclarationSyntax
+            or BaseMethodDeclarationSyntax)
+            || x.Kind() == SyntaxKindEx.LocalFunctionStatement);
+
+    // Modern ASP.NET composition roots commonly start from top-level Program bootstrapping or a dedicated
+    // registration method and then fan out into registration lambdas and small private setup helpers. Keep the
+    // exemption tied to those shapes instead of suppressing arbitrary "Configure*" methods by name.
+    private static bool IsServiceRegistrationLambda(Compilation compilation, AnonymousFunctionExpressionSyntax lambda)
+    {
+        var invocation = lambda.Ancestors()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(x => x.ArgumentList.Arguments.Any(a => a.DescendantNodesAndSelf().Contains(lambda)));
+        var model = compilation.GetSemanticModel(lambda.SyntaxTree);
+        if (invocation is not null)
+        {
+            return IsServiceRegistrationInvocation(model, invocation);
+        }
+
+        return lambda.Parent is EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax declarator }
+            && model.GetDeclaredSymbol(declarator) is ILocalSymbol local
+            && lambda.SyntaxTree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>().Any(candidate =>
+                IsServiceRegistrationInvocation(model, candidate)
+                && candidate.ArgumentList.Arguments.Any(argument =>
+                    argument.Expression.DescendantNodesAndSelf().OfType<IdentifierNameSyntax>().Any(identifier =>
+                        local.Equals(model.GetSymbolInfo(identifier).Symbol))));
+    }
+
+    private static bool IsServiceRegistrationInvocation(SemanticModel model, InvocationExpressionSyntax invocation) =>
+        (model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method && IsServiceRegistrationInvocation(method))
+        || InvocationChainContainsServiceRegistration(model, invocation.Expression);
+
+    private static bool InvocationChainContainsServiceRegistration(SemanticModel model, SyntaxNode expression) =>
+        expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>().Any(x =>
+            model.GetSymbolInfo(x).Symbol is IMethodSymbol method && IsServiceRegistrationInvocation(method))
+        || expression.DescendantNodesAndSelf().OfType<MemberAccessExpressionSyntax>().Any(x => IsBuilderServicesAccess(model, x));
+
+    private static bool IsServiceRegistrationInvocation(IMethodSymbol method) =>
+        IsServiceCollection(method.ReceiverType)
+        || (method.Parameters.FirstOrDefault() is { Type: { } firstParameterType } && IsServiceCollection(firstParameterType))
+        || (method.ReducedFrom ?? method) is { Name: "ConfigureServices", ContainingType.Name: "HostingHostBuilderExtensions" } definition
+           && definition.ContainingNamespace.ToDisplayString() == "Microsoft.Extensions.Hosting"
+           && definition.Parameters.Any(x =>
+               x.Type.TypeKind == TypeKind.Delegate
+               && x.Type.GetMembers("Invoke").OfType<IMethodSymbol>().Any(invoke =>
+                   invoke.Parameters.Any(parameter => IsServiceCollection(parameter.Type))));
+
+    private static bool IsLocalFunction(IMethodSymbol method) =>
+        method.DeclaringSyntaxReferences.Any(x => x.GetSyntax().Kind() == SyntaxKindEx.LocalFunctionStatement);
+
+    private static bool IsTopLevelLocalFunction(IMethodSymbol method) =>
+        IsLocalFunction(method)
+        && method.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .Any(x => x.Ancestors().OfType<GlobalStatementSyntax>().Any());
+
+    private static bool UsesWebApplicationBuilderServices(Compilation compilation, IMethodSymbol method)
+    {
+        var builderParameters = method.Parameters.Where(x => x.Type.ToDisplayString() == WebApplicationBuilderType).ToList();
+        if (builderParameters.Count == 0)
         {
             return false;
         }
 
         return method.DeclaringSyntaxReferences
             .Select(x => x.GetSyntax())
-            .OfType<MethodDeclarationSyntax>()
-            .Where(x => x.SyntaxTree == model.SyntaxTree)
-            .SelectMany(x => x.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
-            .Any(x => x.Name.Identifier.ValueText == "Services"
-                      && x.Expression is IdentifierNameSyntax identifier
-                      && receiver.Equals(model.GetSymbolInfo(identifier).Symbol));
+            .Any(declaration =>
+            {
+                var model = compilation.GetSemanticModel(declaration.SyntaxTree);
+                return declaration.DescendantNodes().OfType<MemberAccessExpressionSyntax>().Any(access =>
+                    access.Name.Identifier.ValueText == "Services"
+                    && access.Expression is IdentifierNameSyntax identifier
+                    && builderParameters.Any(parameter => parameter.Equals(model.GetSymbolInfo(identifier).Symbol)));
+            });
     }
+
+    private static bool IsBuilderServicesAccess(SemanticModel model, MemberAccessExpressionSyntax access) =>
+        access.Name.Identifier.ValueText == "Services"
+        && access.Expression is { } expression
+        && model.GetTypeInfo(expression).Type?.ToDisplayString() == WebApplicationBuilderType;
 }

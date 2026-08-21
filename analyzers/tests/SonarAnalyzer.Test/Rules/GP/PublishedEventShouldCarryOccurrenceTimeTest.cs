@@ -176,6 +176,52 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             """)
             .VerifyNoIssues();
 
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantWithCloudEventsEnvelopeTime() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public abstract record CloudEventsEnvelope<T>
+            {
+                public string Id { get; init; }
+                public string Source { get; init; }
+                public string SpecVersion { get; init; }
+                public string Type { get; init; }
+                public System.DateTime? Time { get; init; }
+                public T Data { get; init; }
+            }
+
+            public sealed record HookData(System.Guid HookId, decimal Amount);
+            public sealed record IntakeHookCaptured : CloudEventsEnvelope<HookData>;
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<IntakeHookCaptured>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForUnrelatedCloudEventsEnvelopeName() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public abstract record CloudEventsEnvelope
+            {
+                public System.DateTimeOffset? Time { get; init; }
+            }
+
+            public sealed record PaymentReceived(System.Guid PaymentId) : CloudEventsEnvelope; // Noncompliant
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .Verify();
+
     // DateTime is not enough - an instant crossing a service boundary needs its offset, as S6566 also requires.
     [TestMethod]
     public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForDateTime() =>
@@ -183,6 +229,21 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             Stubs + """
 
             public sealed record PaymentReceived(System.Guid PaymentId, System.DateTime OccurredAt); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<PaymentReceived>();
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForArbitraryTimeMember() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record PaymentReceived(System.Guid PaymentId, System.DateTimeOffset Time); // Noncompliant {{'PaymentReceived' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
 
             public static class Startup
             {
@@ -220,6 +281,48 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             Stubs + """
 
             public sealed record PaymentReceived(System.Guid PaymentId, decimal Amount);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantForCommandPublishedThroughLegacyApi() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class SendMultiStepRegisterEmailCommand
+            {
+                public System.Guid ProcessId { get; init; }
+            }
+
+            public sealed class Handler
+            {
+                public System.Threading.Tasks.Task Handle(
+                    GP.Juno.Abstractions.EventStream.IPublisher publisher,
+                    SendMultiStepRegisterEmailCommand command) =>
+                    publisher.Publish(command);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantForScheduledMessageEnvelope() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class SpecificScheduleForEndpoint
+            {
+                public object Message { get; init; }
+                public string MessageType { get; init; }
+                public System.TimeSpan Delay { get; init; }
+            }
+
+            public sealed class Scheduler
+            {
+                public System.Threading.Tasks.Task Schedule(
+                    GP.Juno.Abstractions.EventStream.IPublisher publisher,
+                    SpecificScheduleForEndpoint command) =>
+                    publisher.Publish(command);
+            }
             """)
             .VerifyNoIssues();
 }

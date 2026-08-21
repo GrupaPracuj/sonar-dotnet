@@ -1,25 +1,25 @@
 {
-  "title": "Database access should preserve the Juno connection and transaction context",
+  "title": "202 Accepted responses should provide tracking information",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
       "MAINTAINABILITY": "MEDIUM"
     },
-    "attribute": "CONVENTIONAL"
+    "attribute": "COMPLETE"
   },
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "20min"
+    "constantCost": "10min"
   },
   "tags": [
     "gp",
-    "juno",
-    "sql"
+    "asp.net",
+    "http"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0035",
-  "sqKey": "GP0035",
+  "ruleSpecification": "GP-0114",
+  "sqKey": "GP0114",
   "scope": "Main",
-  "quickfix": "unknown"
+  "quickfix": "infeasible"
 }

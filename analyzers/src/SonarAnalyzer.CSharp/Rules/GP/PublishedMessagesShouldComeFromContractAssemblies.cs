@@ -14,7 +14,6 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
     internal const string RuleId = "GP0043";
 
     private const string MessageFormat = "Use '{0}' from a contract assembly for this {1}; it is declared in '{2}'.";
-    private const string DefaultContractAssemblyNames = "Contracts";
     private const string ApiControllerAttribute = "Microsoft.AspNetCore.Mvc.ApiControllerAttribute";
     private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
     private const string FromTokenAttribute = "GP.Juno.Hosting.AspNetCore.Security.UserContexts.FromTokenAttribute";
@@ -55,8 +54,8 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
-    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated names or suffixes identifying contract assemblies", DefaultContractAssemblyNames)]
-    public string ContractAssemblyNames { get; set; } = DefaultContractAssemblyNames;
+    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated names or suffixes identifying contract assemblies", GpAssemblyNames.DefaultContractAssemblyNames)]
+    public string ContractAssemblyNames { get; set; } = GpAssemblyNames.DefaultContractAssemblyNames;
 
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>
@@ -202,6 +201,11 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
             return null;
         }
 
+        if (IsSemanticHttpResult(named))
+        {
+            return null;
+        }
+
         if (!IsFrameworkType(named))
         {
             return named;
@@ -216,6 +220,14 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
             || containing.StartsWith("System.", StringComparison.Ordinal)
             || containing == "Microsoft"
             || containing.StartsWith("Microsoft.", StringComparison.Ordinal));
+
+    private static bool IsSemanticHttpResult(INamedTypeSymbol type) =>
+        type.Is(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.Implements(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.DerivesFrom(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.Is(KnownType.Microsoft_AspNetCore_Http_IResult)
+        || type.Implements(KnownType.Microsoft_AspNetCore_Http_IResult)
+        || type.DerivesFrom(KnownType.Microsoft_AspNetCore_Http_IResult);
 
     private static bool IsServiceParameter(IParameterSymbol parameter) =>
         parameter.GetAttributes().Any(x => ServiceBindingAttributes.Contains(x.AttributeClass?.ToDisplayString() ?? string.Empty));

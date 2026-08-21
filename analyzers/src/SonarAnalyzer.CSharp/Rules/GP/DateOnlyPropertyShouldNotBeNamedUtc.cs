@@ -34,14 +34,18 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
     {
         if (context.Node is not TypeDeclarationSyntax declaration
             || !RecordDeclarationSyntaxWrapper.IsInstance(declaration)
-            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList)
+            || ((RecordDeclarationSyntaxWrapper)declaration).ParameterList is not { } parameterList
+            || context.Model.GetDeclaredSymbol(declaration) is not { } recordType)
         {
             return;
         }
 
         foreach (var parameter in parameterList.Parameters.Where(x => x.Type is not null))
         {
-            if (IsDateOnlyType(context.Model.GetTypeInfo(parameter.Type).Type) && GpIdentifierWords.ContainsWord(parameter.Identifier.ValueText, "Utc"))
+            var generatedProperty = recordType.GetMembers(parameter.Identifier.ValueText).OfType<IPropertySymbol>().FirstOrDefault();
+            if (IsDateOnlyType(context.Model.GetTypeInfo(parameter.Type).Type)
+                && GpIdentifierWords.ContainsWord(parameter.Identifier.ValueText, "Utc")
+                && generatedProperty?.HasAttribute(KnownType.System_ObsoleteAttribute) != true)
             {
                 context.ReportIssue(Rule, parameter.Identifier, parameter.Identifier.ValueText);
             }
@@ -51,7 +55,10 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
     private static void AnalyzeProperty(SonarSyntaxNodeReportingContext context)
     {
         var declaration = (PropertyDeclarationSyntax)context.Node;
-        if (IsDateOnlyType(context.Model.GetTypeInfo(declaration.Type).Type) && GpIdentifierWords.ContainsWord(declaration.Identifier.ValueText, "Utc"))
+        if (IsDateOnlyType(context.Model.GetTypeInfo(declaration.Type).Type)
+            && GpIdentifierWords.ContainsWord(declaration.Identifier.ValueText, "Utc")
+            && context.Model.GetDeclaredSymbol(declaration) is { } property
+            && !property.HasAttribute(KnownType.System_ObsoleteAttribute))
         {
             context.ReportIssue(Rule, declaration.Identifier, declaration.Identifier.ValueText);
         }
@@ -67,7 +74,9 @@ public sealed class DateOnlyPropertyShouldNotBeNamedUtc : SonarDiagnosticAnalyze
 
         foreach (var variable in declaration.Declaration.Variables)
         {
-            if (GpIdentifierWords.ContainsWord(variable.Identifier.ValueText, "Utc"))
+            if (GpIdentifierWords.ContainsWord(variable.Identifier.ValueText, "Utc")
+                && context.Model.GetDeclaredSymbol(variable) is { } field
+                && !field.HasAttribute(KnownType.System_ObsoleteAttribute))
             {
                 context.ReportIssue(Rule, variable.Identifier, variable.Identifier.ValueText);
             }

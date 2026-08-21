@@ -13,7 +13,7 @@ public sealed class HttpActionShouldDocumentResponseStatusCodes : SonarDiagnosti
 {
     internal const string RuleId = "GP0100";
 
-    private const string MessageFormat = "Document the non-200 response {0} with ProducesResponseType.";
+    private const string MessageFormat = "HTTP status {0} is returned but not declared. Add ProducesResponseType for this status.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -38,17 +38,16 @@ public sealed class HttpActionShouldDocumentResponseStatusCodes : SonarDiagnosti
             .WhereNotNull()
             .ToHashSet();
         var missing = GpOpenApiMetadata.ReturnedInvocations(declaration)
-            .Select(x => GpOpenApiMetadata.ResponseStatusCode(context.Model, x))
-            .Where(x => x is not null and not 200)
-            .Select(x => x.Value)
-            .Where(x => !documented.Contains(x))
-            .Distinct()
-            .OrderBy(x => x)
+            .Select(x => (Invocation: x, Status: GpOpenApiMetadata.ResponseStatusCode(context.Model, x)))
+            .Where(x => x.Status is { } status && !documented.Contains(status))
+            .Select(x => (x.Invocation, Status: x.Status.Value))
+            .GroupBy(x => x.Status)
+            .Select(x => x.First())
+            .OrderBy(x => x.Status)
             .ToArray();
-        if (missing.Length > 0)
+        foreach (var returned in missing)
         {
-            context.ReportIssue(Rule, declaration.Identifier, string.Join(", ", missing));
+            context.ReportIssue(Rule, returned.Invocation, returned.Status.ToString());
         }
     }
-
 }

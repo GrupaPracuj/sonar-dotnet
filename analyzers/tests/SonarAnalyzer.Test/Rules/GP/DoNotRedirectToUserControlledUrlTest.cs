@@ -285,6 +285,28 @@ public class DoNotRedirectToUserControlledUrlTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotRedirectToUserControlledUrl_CompliantForUrlBuiltByHelper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class AccountController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult LogOn(string acceptanceId) =>
+                    Redirect(_redirections.GetAcceptanceUrl(acceptanceId));
+
+                private readonly Redirections _redirections = new Redirections();
+            }
+
+            public class Redirections
+            {
+                public string GetAcceptanceUrl(string acceptanceId) =>
+                    "https://trusted.example/acceptance/" + acceptanceId;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotRedirectToUserControlledUrl_NoncompliantForRootPrefix() =>
         builder.AddSnippet(
             Stubs + """

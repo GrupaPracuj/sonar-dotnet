@@ -115,6 +115,12 @@ internal static class GpUrlExpressionHelper
 
                 break;
 
+            // An arbitrary helper can prepend a trusted configured origin, encode the value as one path segment,
+            // or return it unchanged. Without inspecting that method, its argument does not prove who controls
+            // the resulting destination.
+            case InvocationExpressionSyntax:
+                break;
+
             default:
                 yield return UrlPart.OfNode(expression);
                 break;

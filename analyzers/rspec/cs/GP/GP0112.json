@@ -1,5 +1,5 @@
 {
-  "title": "Transport code should not depend directly on infrastructure types",
+  "title": "Controller code should not inspect claims directly",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
@@ -10,15 +10,16 @@
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "30min"
+    "constantCost": "20min"
   },
   "tags": [
     "gp",
-    "design"
+    "asp.net",
+    "authentication"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0032",
-  "sqKey": "GP0032",
+  "ruleSpecification": "GP-0112",
+  "sqKey": "GP0112",
   "scope": "Main",
-  "quickfix": "unknown"
+  "quickfix": "infeasible"
 }

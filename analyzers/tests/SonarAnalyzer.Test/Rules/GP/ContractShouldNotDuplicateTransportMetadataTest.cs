@@ -109,4 +109,127 @@ public class ContractShouldNotDuplicateTransportMetadataTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_CompliantForHttpOnlyTrackingResponse() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public abstract class ControllerBase { }
+                public sealed class HttpPostAttribute : System.Attribute { }
+                public class ActionResult<T> { }
+            }
+
+            namespace Contracts
+            {
+                public sealed record CreatedDiscountCode(System.Guid CorrelationId);
+            }
+
+            public sealed class DiscountCodesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public Microsoft.AspNetCore.Mvc.ActionResult<Contracts.CreatedDiscountCode> Create() => null;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_CompliantForHttpOnlyIdempotencyRequest() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public abstract class ControllerBase { }
+                public sealed class ApiControllerAttribute : System.Attribute { }
+                public sealed class HttpPostAttribute : System.Attribute { }
+            }
+
+            namespace Contracts
+            {
+                public sealed class IdempotentCustomerCreateModel
+                {
+                    public System.Guid RequestId { get; init; }
+                }
+            }
+
+            [Microsoft.AspNetCore.Mvc.ApiController]
+            public sealed class CustomersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public void Create(Contracts.IdempotentCustomerCreateModel request) { }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_CompliantForNestedCommandEnvelope() =>
+        builder.AddSnippet(
+            """
+            namespace System.Text.Json
+            {
+                public readonly struct JsonElement { }
+            }
+
+            namespace Contracts
+            {
+                public sealed class CommandSequenceItem
+                {
+                    public string Command { get; init; }
+                    public string RequestId { get; init; }
+                    public System.Text.Json.JsonElement Payload { get; init; }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_CompliantForNestedScheduledMessageEnvelope() =>
+        builder.AddSnippet(
+            """
+            namespace Contracts
+            {
+                public sealed class SpecificScheduleForEndpointRecurringCommand
+                {
+                    public System.Guid CorrelationId { get; init; }
+                    public object Message { get; init; }
+                    public string MessageType { get; init; }
+                    public System.Collections.Generic.KeyValuePair<string, object>[] MessageHeaders { get; init; }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ContractShouldNotDuplicateTransportMetadata_NoncompliantWhenHttpContractIsAlsoPublished() =>
+        builder.AddSnippet(
+            MessagingStub + """
+
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public abstract class ControllerBase { }
+                public sealed class HttpPostAttribute : System.Attribute { }
+                public class ActionResult<T> { }
+            }
+
+            namespace Contracts
+            {
+                public sealed record CreatedDiscountCode(System.Guid CorrelationId); // Noncompliant
+            }
+
+            public sealed class DiscountCodesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public Microsoft.AspNetCore.Mvc.ActionResult<Contracts.CreatedDiscountCode> Create() => null;
+            }
+
+            public sealed class Publisher
+            {
+                public System.Threading.Tasks.Task Publish(
+                    GP.Juno.Abstractions.ISender sender,
+                    Contracts.CreatedDiscountCode message) =>
+                    sender.Send(message);
+            }
+            """)
+            .Verify();
 }

@@ -309,13 +309,17 @@ public class ContractCollectionsShouldBeStableTest
     public void ContractCollectionsShouldBeStable_NoncompliantForRegisteredMessageOutsideContractsNamespace() =>
         builder.AddSnippet(
             """
-            namespace GP.Juno
+            namespace GP.Juno.Configuration
             {
                 public sealed class AppConfig { }
+            }
 
+            namespace GP.Juno.EventStream.Api
+            {
                 public static class MessageRegistration
                 {
-                    public static void Publishes<T>(this AppConfig config) where T : class { }
+                    public static void Publishes<T>(
+                        this GP.Juno.Configuration.AppConfig config) where T : class { }
                 }
             }
 
@@ -328,8 +332,8 @@ public class ContractCollectionsShouldBeStableTest
 
             public static class Startup
             {
-                public static void Configure(GP.Juno.AppConfig config) =>
-                    GP.Juno.MessageRegistration.Publishes<OrderPayload>(config);
+                public static void Configure(GP.Juno.Configuration.AppConfig config) =>
+                    GP.Juno.EventStream.Api.MessageRegistration.Publishes<OrderPayload>(config);
             }
             """)
             .Verify();

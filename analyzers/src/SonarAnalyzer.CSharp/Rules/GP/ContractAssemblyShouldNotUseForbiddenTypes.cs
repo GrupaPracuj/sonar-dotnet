@@ -15,7 +15,6 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
 
     private const string MessageFormat = "'{0}' comes from '{1}', which a contract assembly should not depend on.";
 
-    private const string DefaultContractAssemblyNames = "Contracts";
     private const string DefaultForbiddenNamespaces =
         "Microsoft.EntityFrameworkCore,System.Data.Entity,Microsoft.AspNetCore,MassTransit,RabbitMQ.Client,Consul,Dapper,Microsoft.Extensions.Hosting";
 
@@ -23,8 +22,8 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
-    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated names or suffixes identifying contract assemblies", DefaultContractAssemblyNames)]
-    public string ContractAssemblyNames { get; set; } = DefaultContractAssemblyNames;
+    [RuleParameter("contractAssemblyNames", PropertyType.String, "Comma-separated names or suffixes identifying contract assemblies", GpAssemblyNames.DefaultContractAssemblyNames)]
+    public string ContractAssemblyNames { get; set; } = GpAssemblyNames.DefaultContractAssemblyNames;
 
     [RuleParameter("forbiddenNamespaces", PropertyType.String, "Comma-separated namespaces a contract assembly must not use", DefaultForbiddenNamespaces)]
     public string ForbiddenNamespaces { get; set; } = DefaultForbiddenNamespaces;

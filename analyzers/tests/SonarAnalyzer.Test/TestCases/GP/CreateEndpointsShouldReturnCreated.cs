@@ -70,6 +70,24 @@ public class OrdersController : ControllerBase
         CreatedAtAction(nameof(CreateOrderProperly), new { id = 1 }, order); // Compliant
 
     [HttpPost]
+    public IActionResult CreateOrderDryRun(object order)
+    {
+        return Ok(new { Preview = order }); // Compliant - a DryRun endpoint validates/previews work without creating a resource
+    }
+
+    [HttpPost]
+    public IActionResult CreateOrderDryRunAsync(object order)
+    {
+        return Ok(new { Preview = order }); // Compliant
+    }
+
+    [HttpPost]
+    public IActionResult CreateDryRunOrder(object order)
+    {
+        return Ok(new { Preview = order }); // Compliant
+    }
+
+    [HttpPost]
     public IActionResult CreateOrderWithCreated(object order)
     {
         return Created("/orders/1", order); // Compliant

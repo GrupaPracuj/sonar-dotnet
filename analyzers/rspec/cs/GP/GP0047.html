@@ -1,4 +1,4 @@
-<p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
+﻿<p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
 <h2>Why is this an issue?</h2>
 <p>Juno owns service discovery. Naming a service - <code>Service("orders")</code> on the Juno HTTP client - resolves the address, applies the configured
 retry and timeout policy, and records the call. Reaching for <code>IConsulClient</code> gets you an address and nothing else, so everything Juno layers on
@@ -17,6 +17,8 @@ var response = await _httpClient.GetStringAsync($"http://{address}/orders");
 <h3>Exceptions</h3>
 <p>Types under the <code>GP.Juno</code> namespaces are not reported - that is where the Consul client belongs, since Juno is what wraps it. Using Consul as a
 distributed lock, key-value store, or another non-discovery feature is a different concern and is not reported here.</p>
+<p>Direct catalog/health reads that are used only for inventory, introspection, or building an address list are also excluded. The issue starts when that
+discovery data is then used to make an outbound service call directly instead of handing the service name to Juno.</p>
 <p>A dedicated Akka discovery-provider assembly that implements <code>Akka.Cluster.Discovery.DiscoveryService</code> is also exempt. Its purpose is to
 implement the discovery abstraction itself, so direct Consul registration and health queries are the implementation rather than an application bypass.</p>
 <h2>How to fix it</h2>

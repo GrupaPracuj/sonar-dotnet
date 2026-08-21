@@ -7,6 +7,8 @@ instant, and if so, at which moment of that day? Dropping the suffix removes the
 <code>Utc</code> when the value genuinely is a UTC point in time.</p>
 <p>The same applies to <code>NodaTime.LocalDate</code> and to positional record parameters, which declare public members under their parameter
 names.</p>
+<p>Members marked <code>[Obsolete]</code> are excluded. A compatibility alias may need to preserve its published name while directing consumers to
+the correctly named replacement.</p>
 <pre>
 public DateOnly ExpirationDateUtc { get; set; }
 </pre>

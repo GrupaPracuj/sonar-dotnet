@@ -18,7 +18,10 @@ client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
 <h2>How to fix it</h2>
 <p>Send the message through Juno's email sender, describing it with the email/template info types rather than assembling an SMTP conversation
 yourself.</p>
-<p>The rule reports both direct construction and send calls on an injected SMTP client.</p>
+<p>The rule reports send calls on directly constructed and injected SMTP clients.</p>
+<p>Writing messages to <code>SmtpDeliveryMethod.SpecifiedPickupDirectory</code> is excluded because it stores files locally rather than delivering
+email over SMTP. The approved relay adapter assembly is also excluded; its name is configurable with <code>allowedAssemblyNames</code> and defaults
+to <code>GP.Postman.Sender</code>.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">

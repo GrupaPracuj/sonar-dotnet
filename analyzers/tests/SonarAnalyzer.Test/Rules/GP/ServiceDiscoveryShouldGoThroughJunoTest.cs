@@ -20,6 +20,11 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
         """
         namespace Consul
         {
+            public class QueryResult<T>
+            {
+                public T Response { get; set; }
+            }
+
             public class ServiceEntry
             {
                 public string ServiceAddress { get; set; }
@@ -27,12 +32,14 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
 
             public interface ICatalogEndpoint
             {
-                System.Threading.Tasks.Task<ServiceEntry[]> Service(string name);
+                System.Threading.Tasks.Task<QueryResult<string[]>> Datacenters();
+                System.Threading.Tasks.Task<QueryResult<System.Collections.Generic.Dictionary<string, string[]>>> Services();
+                System.Threading.Tasks.Task<QueryResult<ServiceEntry[]>> Service(string name);
             }
 
             public interface IHealthEndpoint
             {
-                System.Threading.Tasks.Task<ServiceEntry[]> Service(string name);
+                System.Threading.Tasks.Task<QueryResult<ServiceEntry[]>> Service(string name);
             }
 
             public interface IAgentEndpoint
@@ -48,6 +55,7 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             public interface IConsulClient
             {
                 ICatalogEndpoint Catalog { get; }
+                IHealthEndpoint Health { get; }
                 IKVEndpoint KV { get; }
                 System.Threading.Tasks.Task AcquireLock(string key);
             }
@@ -55,6 +63,7 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             public class ConsulClient : IConsulClient
             {
                 public ICatalogEndpoint Catalog => null;
+                public IHealthEndpoint Health => null;
                 public IKVEndpoint KV => null;
                 public System.Threading.Tasks.Task AcquireLock(string key) => null;
             }
@@ -66,19 +75,73 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
         {
             public abstract class DiscoveryService { }
         }
+
+        namespace System.Net.Http
+        {
+            public class HttpClient
+            {
+                public System.Uri BaseAddress { get; set; }
+                public System.Threading.Tasks.Task<string> GetStringAsync(string requestUri) => null;
+            }
+        }
         """;
 
     [TestMethod]
-    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantForCatalogQuery() =>
+    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantWhenCatalogResultFeedsOutboundCall() =>
         builder.AddSnippet(
             Stubs + """
 
             public class OrderClient
             {
                 private readonly Consul.IConsulClient _consul;
+                private readonly System.Net.Http.HttpClient _httpClient;
 
-                public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
-                    _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                public async System.Threading.Tasks.Task<string> Resolve()
+                {
+                    var services = await _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                    var address = services.Response[0].ServiceAddress;
+                    return await _httpClient.GetStringAsync($"http://{address}/orders");
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantWhenHealthResultFeedsOutboundCall() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderClient
+            {
+                private readonly Consul.IConsulClient _consul;
+                private readonly System.Net.Http.HttpClient _httpClient;
+
+                public async System.Threading.Tasks.Task<string> Resolve()
+                {
+                    var services = await _consul.Health.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'IHealthEndpoint' directly.}}
+                    var address = services.Response[0].ServiceAddress;
+                    return await _httpClient.GetStringAsync($"http://{address}/orders");
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantWhenCatalogResultConfiguresHttpClientBaseAddress() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderClient
+            {
+                private readonly Consul.IConsulClient _consul;
+                private readonly System.Net.Http.HttpClient _httpClient;
+
+                public async System.Threading.Tasks.Task<string> Resolve()
+                {
+                    var services = await _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                    _httpClient.BaseAddress = new System.Uri($"http://{services.Response[0].ServiceAddress}");
+                    return await _httpClient.GetStringAsync("/orders");
+                }
             }
             """)
             .Verify();
@@ -91,6 +154,43 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             public class OrderClient
             {
                 public Consul.IConsulClient Create() => new Consul.ConsulClient();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantForCatalogInventoryReads() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class DiscoveryInventory
+            {
+                private readonly Consul.IConsulClient _consul;
+
+                public async System.Threading.Tasks.Task<object> Read()
+                {
+                    var datacenters = await _consul.Catalog.Datacenters();
+                    var services = await _consul.Catalog.Services();
+                    return new object[] { datacenters.Response, services.Response };
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantForHealthAddressListConstruction() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class DiscoveryInventory
+            {
+                private readonly Consul.IConsulClient _consul;
+
+                public async System.Threading.Tasks.Task<string[]> Read()
+                {
+                    var services = await _consul.Health.Service("orders");
+                    return new[] { services.Response[0].ServiceAddress };
+                }
             }
             """)
             .VerifyNoIssues();
@@ -163,7 +263,7 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
                 {
                     private readonly Consul.IConsulClient _consul;
 
-                    public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
+                    public System.Threading.Tasks.Task<Consul.QueryResult<Consul.ServiceEntry[]>> Resolve() =>
                         _consul.Catalog.Service("orders");
                 }
             }
@@ -179,7 +279,7 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             {
                 private readonly Consul.ICatalogEndpoint catalog;
 
-                public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
+                public System.Threading.Tasks.Task<Consul.QueryResult<Consul.ServiceEntry[]>> Resolve() =>
                     catalog.Service("orders");
             }
 
@@ -192,7 +292,7 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ServiceDiscoveryShouldGoThroughJuno_NoncompliantInsideJunoConsumerNamespace() =>
+    public void ServiceDiscoveryShouldGoThroughJuno_CompliantInsideJunoConsumerNamespaceWithoutOutboundCall() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -202,12 +302,12 @@ public class ServiceDiscoveryShouldGoThroughJunoTest
                 {
                     private readonly Consul.IConsulClient _consul;
 
-                    public System.Threading.Tasks.Task<Consul.ServiceEntry[]> Resolve() =>
-                        _consul.Catalog.Service("orders"); // Noncompliant {{Resolve the service through Juno instead of querying 'ICatalogEndpoint' directly.}}
+                    public System.Threading.Tasks.Task<Consul.QueryResult<Consul.ServiceEntry[]>> Resolve() =>
+                        _consul.Catalog.Service("orders");
                 }
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void ServiceDiscoveryShouldGoThroughJuno_CompliantWithoutConsul() =>

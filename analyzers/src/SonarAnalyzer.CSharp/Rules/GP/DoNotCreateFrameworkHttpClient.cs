@@ -36,6 +36,7 @@ public sealed class DoNotCreateFrameworkHttpClient : SonarDiagnosticAnalyzer
         if (!ObjectCreationFactory.TryCreate(context.Node, out var creation)
             || creation.TypeSymbol(context.Model) is not { } type
             || !ClientTypes.Contains(type.ToDisplayString())
+            || IsInsideJuno(context)
             || IsCoveredByControllerReuseRule(context, type))
         {
             return;
@@ -48,6 +49,11 @@ public sealed class DoNotCreateFrameworkHttpClient : SonarDiagnosticAnalyzer
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (context.Model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol method)
+        {
+            return;
+        }
+
+        if (IsInsideJuno(context))
         {
             return;
         }
@@ -74,5 +80,11 @@ public sealed class DoNotCreateFrameworkHttpClient : SonarDiagnosticAnalyzer
 
         return context.Node.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault() is { } method
                && context.Model.GetDeclaredSymbol(method) is { DeclaredAccessibility: Accessibility.Public };
+    }
+
+    private static bool IsInsideJuno(SonarSyntaxNodeReportingContext context)
+    {
+        var containingNamespace = context.Model.GetEnclosingSymbol(context.Node.SpanStart)?.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        return containingNamespace == "GP.Juno" || containingNamespace.StartsWith("GP.Juno.", StringComparison.Ordinal);
     }
 }

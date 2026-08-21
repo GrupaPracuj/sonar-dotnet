@@ -1,0 +1,29 @@
+<p>Controllers should receive application identity through a dedicated identity provider or a Juno <code>[FromToken]</code>
+<code>UserContext</code>, and should express claim requirements through authorization policies.</p>
+<h2>Why is this an issue?</h2>
+<p>Reading or inspecting <code>ClaimsPrincipal</code> in controller code couples the HTTP boundary to token layout and claim names.
+It spreads authentication details across actions and private helpers, makes authorization behavior harder to audit, and makes
+claim-schema changes unnecessarily risky.</p>
+<p>This rule reports direct use of claims lookup and inspection APIs in types derived from ASP.NET Core
+<code>ControllerBase</code>. Passing the principal to <code>IAuthorizationService.AuthorizeAsync</code> remains valid because the
+policy, rather than the controller, performs the authorization decision.</p>
+<h2>How to fix it</h2>
+<p>Move identity extraction to an application identity provider, inject the resulting application identity into the controller,
+or bind Juno <code>UserContext</code> with <code>[FromToken]</code>. Define claim-based access requirements in an authorization
+policy and evaluate that policy through ASP.NET Core authorization.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+public IActionResult Get()
+{
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // Noncompliant
+    return Ok(userId);
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+public IActionResult Get([FromToken] UserContext user)
+{
+    return Ok(user.UserId);
+}
+</pre>

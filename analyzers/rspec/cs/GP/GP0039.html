@@ -1,4 +1,4 @@
-<p>Configuration should be bound to a typed configuration class, not read value by value through a string key.</p>
+﻿<p>Configuration should be bound to a typed configuration class, not read value by value through a string key.</p>
 <h2>Why is this an issue?</h2>
 <p>A key read inline is invisible to everything except the line that reads it. Nothing lists what the service needs in order to start, nothing validates
 it, and a missing or misspelled key does not fail at start-up - it produces <code>null</code> or a default at whatever moment that code path first runs,
@@ -19,9 +19,15 @@ public class OrderService
 <p>Note that <code>IConfiguration</code> itself is not the problem and is not reported - it is how binding is done. Only reading a value out of it by
 key is.</p>
 <h3>Exceptions</h3>
-<p>A direct read inside a method that registers an <code>IServiceCollection</code> is not reported. Such a composition-root method is responsible for
+<p>A direct read inside a method that registers an <code>IServiceCollection</code>, including an <code>IHostBuilder.ConfigureServices</code> callback,
+is not reported. Such composition-root code is responsible for
 turning configuration into concrete framework dependencies; reading one value there, for example an EF Core connection string, does not expose
 <code>IConfiguration</code> to runtime application services.</p>
+<p>The same exemption covers top-level <code>Program</code> bootstrapping, DI registration lambdas, and small private/local setup helpers that are used
+only from that composition-root registration code, including a helper passed as a factory method group to a registration method. It does not extend
+to runtime/business code that merely happens to sit near the bootstrap.</p>
+<p>Juno's own infrastructure implementation is also outside this consumer-facing rule: Juno must read the distributed configuration that it exposes
+through typed APIs to applications.</p>
 <h2>How to fix it</h2>
 <p>Declare a configuration class for the section, bind it once during registration, and inject the class.</p>
 <h3>Code examples</h3>

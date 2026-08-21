@@ -129,4 +129,20 @@ public class DoNotCreateFrameworkHttpClientTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateFrameworkHttpClient_CompliantInsideJunoHttpClientImplementation() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.Juno.HttpClient
+            {
+                public sealed class HttpClientWrapper
+                {
+                    private System.Net.Http.HttpClient CreateHttpClient() =>
+                        new System.Net.Http.HttpClient();
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

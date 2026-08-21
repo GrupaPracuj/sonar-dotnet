@@ -187,6 +187,62 @@ public class PropertyShouldNotReturnArrayTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForSourceContractAssemblyWithNestedContractsEventsNamespace() =>
+        VerifyForAssemblyName(
+            """
+            namespace GP.Warta.Features.Contracts.Events
+            {
+                public interface IPolicyPublished
+                {
+                    int[] ItemIds { get; }
+                }
+            }
+            """,
+            "GP.Warta.Features.Contracts");
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_CompliantForSourceContractAssemblyWithNestedContractsModelsNamespace() =>
+        VerifyForAssemblyName(
+            """
+            namespace GP.Narew.Contracts.Models
+            {
+                public interface IPolicySnapshot
+                {
+                    int[] ItemIds { get; }
+                }
+            }
+            """,
+            "GP.Narew.Contracts");
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantForSingularContractAssemblyName() =>
+        VerifyForAssemblyName(
+            """
+            namespace GP.RestApi.Filestore.Contract.Models
+            {
+                public sealed class ExportedFile
+                {
+                    public string[] Paths { get; } // Noncompliant {{'Paths' returns an array - callers can mutate it through this property. Return a read-only collection, or a method that returns a copy.}}
+                }
+            }
+            """,
+            "GP.RestApi.Filestore.Contract");
+
+    [TestMethod]
+    public void PropertyShouldNotReturnArray_NoncompliantForCommandsAssemblyName() =>
+        VerifyForAssemblyName(
+            """
+            namespace GP.FileStoreTools.Commands.Models
+            {
+                public sealed class BatchCommand
+                {
+                    public string[] Paths { get; } // Noncompliant {{'Paths' returns an array - callers can mutate it through this property. Return a read-only collection, or a method that returns a copy.}}
+                }
+            }
+            """,
+            "GP.FileStoreTools.Commands");
+
+    [TestMethod]
     public void PropertyShouldNotReturnArray_NoncompliantForRequestSuffixAlone() =>
         builder.AddSnippet(
             """
@@ -238,4 +294,13 @@ public class PropertyShouldNotReturnArrayTest
             }
             """)
             .Verify();
+
+    private static void VerifyForAssemblyName(string snippet, string assemblyName) =>
+        DiagnosticVerifier.Verify(
+            new SnippetCompiler(snippet).Compilation.WithAssemblyName(assemblyName),
+            [new CS.PropertyShouldNotReturnArray()],
+            CompilationErrorBehavior.Default,
+            null,
+            [],
+            []);
 }

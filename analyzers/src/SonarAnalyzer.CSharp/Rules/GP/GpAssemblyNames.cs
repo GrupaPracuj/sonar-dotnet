@@ -10,7 +10,14 @@ namespace SonarAnalyzer.CSharp.Rules;
 
 internal static class GpAssemblyNames
 {
+    internal const string DefaultContractAssemblyNames = "*Contracts";
+
+    internal static bool MatchesContractAssembly(string assemblyName) =>
+        Matches(assemblyName, DefaultContractAssemblyNames);
+
     internal static bool Matches(string assemblyName, string configuredName) =>
-        assemblyName.Equals(configuredName, StringComparison.OrdinalIgnoreCase)
-        || assemblyName.EndsWith("." + configuredName, StringComparison.OrdinalIgnoreCase);
+        configuredName.StartsWith("*", StringComparison.Ordinal)
+            ? configuredName.Length > 1 && assemblyName.EndsWith(configuredName.Substring(1), StringComparison.OrdinalIgnoreCase)
+            : assemblyName.Equals(configuredName, StringComparison.OrdinalIgnoreCase)
+              || assemblyName.EndsWith("." + configuredName, StringComparison.OrdinalIgnoreCase);
 }

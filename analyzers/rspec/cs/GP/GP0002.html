@@ -5,13 +5,16 @@ suffix.</p>
 <code>OrderShipped</code>). Once the type is published through the messaging infrastructure, its role as an event is already clear from that context,
 so appending the technical suffix <code>Event</code> to its name (<code>PaymentReceivedEvent</code>) is redundant noise that doesn't add any
 information for the reader.</p>
+<p>This rule only applies when the type is actually used with event semantics: a publish declaration such as
+<code>Publishes&lt;T&gt;()</code> or a real messaging publish operation such as <code>Publish(...)</code> /
+<code>PublishAsync(...)</code>. Merely sending a type whose name ends with <code>Event</code> does not make it a published event.</p>
 <pre>
 public class PaymentReceivedEvent { }
 
 appConfig.Publishes&lt;PaymentReceivedEvent&gt;();
 </pre>
 <h2>How to fix it</h2>
-<p>Rename the event type to a past-tense name that describes what happened, without the technical suffix.</p>
+<p>Rename the published event type to a past-tense name that describes what happened, without the technical suffix.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">

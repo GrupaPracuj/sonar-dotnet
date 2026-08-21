@@ -1,4 +1,4 @@
-<p>A controller should reach data through a service or repository, not by taking a dependency on a <code>DbContext</code>.</p>
+<p>A controller should use application abstractions rather than depend directly on infrastructure types.</p>
 <h2>Why is this an issue?</h2>
 <p>A controller belongs to the layer that handles HTTP: bind the request, call something, turn the result into a response. Microsoft's layering guidance
 draws the line explicitly:</p>
@@ -25,7 +25,12 @@ public class OrdersController : ControllerBase
         Ok(await _context.Orders.FirstOrDefaultAsync(x =&gt; x.Id == id));
 }
 </pre>
-<p>This rule reports a <code>DbContext</code> reaching a controller as a field, a constructor parameter or a local variable.</p>
+<p>This rule reports a <code>DbContext</code>, database connection, <code>HttpClient</code>, <code>IDbExecute</code> or
+<code>ITransactional</code> implementation reaching a controller as a field, constructor parameter or local variable. Types are resolved semantically;
+names such as <code>OrderService</code> are not used as evidence.</p>
+<p>In an assembly whose name ends with <code>.Api</code>, the rule also reports persistence operations and direct
+<code>DbContext</code>/<code>DbConnection</code> dependencies in non-controller runtime types. DI registration such as
+<code>AddDbContext&lt;T&gt;</code> remains allowed because registering an implementation is a composition-root responsibility.</p>
 <h2>How to fix it</h2>
 <p>Move the query behind a service or repository that the controller depends on through an interface, and let the controller call that. The query then
 lives in one place, can be tested without a database, and the controller is left with the HTTP concerns that are actually its job.</p>
@@ -35,7 +40,7 @@ lives in one place, can be tested without a database, and the controller is left
 [ApiController]
 public class OrdersController : ControllerBase
 {
-    private readonly ShopDbContext _context; // Noncompliant {{Do not use 'ShopDbContext' in a controller - reach data through a service or repository instead.}}
+    private readonly ShopDbContext _context; // Noncompliant {{Do not use infrastructure type 'ShopDbContext' directly in a controller - depend on an application abstraction instead.}}
 
     public OrdersController(ShopDbContext context) =&gt;
         _context = context;

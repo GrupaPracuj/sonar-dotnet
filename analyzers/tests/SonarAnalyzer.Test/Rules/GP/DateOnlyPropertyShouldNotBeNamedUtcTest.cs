@@ -57,6 +57,22 @@ public class DateOnlyPropertyShouldNotBeNamedUtcTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_CompliantForObsoleteCompatibilityAlias() =>
+        builder.AddSnippet(
+            """
+            using System;
+
+            public class Contract
+            {
+                public DateOnly OrderDate { get; set; }
+
+                [Obsolete("Use OrderDate instead.")]
+                public DateOnly OrderDateUtc { get; set; }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DateOnlyPropertyShouldNotBeNamedUtc_NoncompliantForNullableDateOnly() =>
         builder.AddSnippet(
             """
@@ -168,6 +184,17 @@ public class DateOnlyPropertyShouldNotBeNamedUtcTest
             using System;
 
             public sealed record BirthdayDto(DateOnly BirthDate);
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DateOnlyPropertyShouldNotBeNamedUtc_CompliantForObsoleteRecordProperty() =>
+        builder.WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+            """
+            using System;
+
+            public sealed record Contract([property: Obsolete("Use OrderDate instead.")] DateOnly OrderDateUtc);
             """)
             .VerifyNoIssues();
 

@@ -1,5 +1,5 @@
 {
-  "title": "HTTP actions should document non-200 responses",
+  "title": "Returned HTTP statuses must be declared in ProducesResponseType",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

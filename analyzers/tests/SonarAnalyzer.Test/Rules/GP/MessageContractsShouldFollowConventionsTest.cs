@@ -41,6 +41,35 @@ public class MessageContractsShouldFollowConventionsTest
             .Verify();
 
     [TestMethod]
+    public void MessageContractsShouldFollowConventions_PublishAsyncEventSuffix() =>
+        builder.AddSnippet(
+            """
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace GP.Juno.Abstractions.EventStream
+            {
+                public interface IPublisher
+                {
+                    Task PublishAsync<T>(T @event, CancellationToken cancellationToken = default(CancellationToken)) where T : class;
+                }
+            }
+
+            public class PaymentReceivedEvent { }
+
+            public class Service
+            {
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public Service(GP.Juno.Abstractions.EventStream.IPublisher publisher) => _publisher = publisher;
+
+                public Task PublishAsync(CancellationToken cancellationToken) =>
+                    _publisher.PublishAsync(new PaymentReceivedEvent(), cancellationToken); // Noncompliant {{Rename event 'PaymentReceivedEvent' to remove the 'Event' suffix.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void MessageContractsShouldFollowConventions_CommandSuffix() =>
         builder.AddSnippet(
             """
@@ -64,6 +93,61 @@ public class MessageContractsShouldFollowConventionsTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_SentEventIsNotClassifiedAsPublishedEvent() =>
+        builder.AddSnippet(
+            """
+            using System.Threading.Tasks;
+
+            namespace MassTransit
+            {
+                public interface ISendEndpoint
+                {
+                    Task Send<T>(T message) where T : class;
+                }
+            }
+
+            public interface IValidEmailEvent { }
+
+            public class Service
+            {
+                private readonly MassTransit.ISendEndpoint _endpoint;
+
+                public Service(MassTransit.ISendEndpoint endpoint) => _endpoint = endpoint;
+
+                public Task Send(IValidEmailEvent message) => _endpoint.Send(message);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_JunoHttpSendIsNotMessaging() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.HttpClient
+            {
+                public class HttpServiceResponse
+                {
+                    public string ReceiveString() => "";
+                }
+
+                public class HttpRequestProperties
+                {
+                    public System.Threading.Tasks.Task<T> Send<T>(object verb, T response)
+                        where T : HttpServiceResponse => null;
+                }
+            }
+
+            public class Service
+            {
+                public System.Threading.Tasks.Task<GP.Juno.HttpClient.HttpServiceResponse> Send(
+                    GP.Juno.HttpClient.HttpRequestProperties request,
+                    GP.Juno.HttpClient.HttpServiceResponse response) =>
+                    request.Send(new object(), response);
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void MessageContractsShouldFollowConventions_Behaviorful() =>
@@ -146,6 +230,68 @@ public class MessageContractsShouldFollowConventionsTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_AsStringFormattingHelper_Compliant() =>
+        builder.AddSnippet(
+            """
+            public enum RecommendationLevel
+            {
+                Bronze,
+                Silver,
+                Gold
+            }
+
+            namespace GP.Juno.Configuration
+            {
+            public class JobOfferAvailableRecommendationLevels
+            {
+                public RecommendationLevel Primary { get; set; }
+                public RecommendationLevel Secondary { get; set; }
+
+                public string AsString() => $"{Primary}/{Secondary}";
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<JobOfferAvailableRecommendationLevels>();
+            }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void MessageContractsShouldFollowConventions_AsStringWithBusinessBranching_Noncompliant() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Configuration
+            {
+            public class JobOfferAvailableRecommendationLevels
+            {
+                public bool IsRecommended { get; set; }
+
+                public string AsString() => IsRecommended ? "recommended" : "not recommended"; // Noncompliant {{Message contract 'JobOfferAvailableRecommendationLevels' should not contain business behavior.}}
+            }
+
+            public class AppConfig
+            {
+                public AppConfig Sends<T>() => this;
+            }
+
+            public static class Startup
+            {
+                public static AppConfig RegisterMessages(this AppConfig appConfig) =>
+                    appConfig.Sends<JobOfferAvailableRecommendationLevels>();
+            }
+            }
+            """)
+            .Verify();
 
     // Nothing outside the type can call a private method, so it is not behavior the message offers across the
     // boundary - unlike the non-private one next to it.

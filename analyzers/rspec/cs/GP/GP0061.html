@@ -16,9 +16,13 @@ public sealed record OrderAccepted(Guid OrderId, Guid MessageId, DateTimeOffset 
 <p>The rule does not infer contracts from type names. It checks source types declared in a <code>Contracts</code> or <code>*.Contracts</code> namespace,
 actual ASP.NET controller or Minimal API response payloads, and types published, sent, responded with or registered through GP.Juno or MassTransit.
 Declarations from referenced projects are not reported.</p>
+<p>A type proven to be used only as an HTTP request or response is not a transport message contract and is not reported. If the same type is also sent
+or published through messaging, the transport-metadata checks apply.</p>
 <h3>Exceptions</h3>
 <p>A field with a genuinely separate business meaning is not the same thing as a copy of the metadata - if the value is the identifier of something in the
 domain, name it after that (<code>OrderId</code>, <code>ProcessId</code>) and the rule will not match it.</p>
+<p>A nested-message envelope is also different: metadata next to a serialized <code>Payload</code>/<code>Command</code> or
+<code>Message</code>/<code>MessageType</code> pair describes the enclosed message, not the envelope's own transport context, and is not reported.</p>
 <h2>How to fix it</h2>
 <p>Drop the duplicate and read the value from the consume context. Keep in the payload only what the transport does not already carry.</p>
 <h3>Code examples</h3>

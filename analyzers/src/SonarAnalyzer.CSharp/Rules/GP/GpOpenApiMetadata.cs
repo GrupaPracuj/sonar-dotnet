@@ -114,8 +114,11 @@ internal static class GpOpenApiMetadata
             return known;
         }
 
-        return method.Name == "StatusCode"
-               && invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression is { } expression
+        var lookup = new CSharpMethodParameterLookup(invocation, method);
+        return method.Name is "Problem" or "StatusCode"
+               && lookup.TryGetSyntax("statusCode", out var arguments)
+               && arguments.Length == 1
+               && arguments[0] is ExpressionSyntax expression
                && model.GetConstantValue(expression) is { HasValue: true, Value: int explicitCode }
             ? explicitCode
             : null;

@@ -12,14 +12,21 @@ public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Curr
 appConfig.Publishes&lt;PaymentReceived&gt;();
 </pre>
 <p>The rule looks at the types actually registered for publishing or passed to a publish call, so a contract that is never published is not reported. It
-requires a <code>DateTimeOffset</code> member named <code>OccurredAt</code> or <code>OccurredAtUtc</code>. Names such as <code>OccurredOn</code> and
-<code>Timestamp</code> are not accepted. <code>DateTimeOffset</code> rather than <code>DateTime</code> is deliberate and matches S6566: an instant crossing
-a service boundary needs its offset.</p>
+requires a <code>DateTimeOffset</code> member named <code>OccurredAt</code> or <code>OccurredAtUtc</code>. Names such as <code>OccurredOn</code>,
+<code>Timestamp</code> and a plain <code>Time</code> member on an unrelated contract are not accepted. <code>DateTimeOffset</code> rather than
+<code>DateTime</code> is deliberate and matches S6566: an instant crossing a service boundary needs its offset.</p>
+<p>One exception is a contract that is itself a CloudEvents envelope or derives from one. CloudEvents already standardises the occurrence timestamp as the
+envelope's <code>Time</code> attribute. A public <code>DateTime</code> or <code>DateTimeOffset</code> <code>Time</code> satisfies the rule only when the
+base type also exposes the standard CloudEvents envelope members such as <code>Id</code>, <code>Source</code>, <code>SpecVersion</code>,
+<code>Type</code> and <code>Data</code>; the type name alone is not enough.</p>
 <p>The issue is reported once on the event type declaration, regardless of how many registrations or publish calls use that type. When the event is
 declared in a referenced assembly whose source is not part of the current analysis, one issue is reported on the first publish use instead because the
 declaration is not available to the analyzer.</p>
 <h3>Exceptions</h3>
 <p>Only publishing is checked, not sending. A command says what should happen next, so it has no occurrence time to state.</p>
+<p>Legacy code can dispatch a type explicitly named <code>*Command</code> through a publish API; GP0051 does not misclassify it as an event. Likewise,
+a scheduling/forwarding envelope with a nested <code>Message</code>/<code>MessageType</code> or <code>Payload</code>/<code>Command</code> pair
+describes work to perform later rather than something that occurred.</p>
 <h2>How to fix it</h2>
 <p>Add the occurrence time to the contract and set it where the fact is recorded - not where the message is published, which may be later.</p>
 <h3>Code examples</h3>
@@ -36,6 +43,21 @@ await publisher.Publish(new PaymentReceived(paymentId, amount, currency)); // No
 public sealed record PaymentReceived(Guid PaymentId, decimal Amount, string Currency, DateTimeOffset OccurredAt);
 
 appConfig.Publishes&lt;PaymentReceived&gt;();
+</pre>
+<pre data-diff-id="2" data-diff-type="compliant">
+public abstract record CloudEventsEnvelope&lt;T&gt;
+{
+    public string Id { get; init; }
+    public string Source { get; init; }
+    public string SpecVersion { get; init; }
+    public string Type { get; init; }
+    public DateTime? Time { get; init; }
+    public T Data { get; init; }
+}
+
+public sealed record IntakeHookCaptured : CloudEventsEnvelope&lt;HookData&gt;;
+
+appConfig.Publishes&lt;IntakeHookCaptured&gt;();
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

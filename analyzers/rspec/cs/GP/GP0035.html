@@ -1,5 +1,6 @@
-<p>A database connection should be obtained from Juno, not created with <code>new SqlConnection(...)</code> or directly through a
-<code>DbProviderFactory</code>.</p>
+<p>Database access should be performed through Juno <code>IDbExecute</code>. Connections should not be created with
+<code>new SqlConnection(...)</code> or directly through a <code>DbProviderFactory</code>, and Dapper calls should remain inside an
+<code>IDbExecute</code> operation.</p>
 <h2>Why is this an issue?</h2>
 <p>Constructing the connection yourself means supplying the connection string yourself, which is the actual problem: the address, credentials, failover
 target and pooling settings stop coming from the service's configured data source and start coming from whatever string is in scope at that point. It
@@ -12,10 +13,14 @@ public async Task&lt;Order&gt; Find(int id)
     return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
 </pre>
-<p>Dapper is deliberately not reported. Juno hands you a raw connection on purpose - <code>IAdoConnectionFactory.CreateConnection()</code> returns a
-<code>DbConnection</code> and <code>IDbExecute.Execute</code> receives an <code>IDbConnection</code> - so querying that connection with Dapper is the
-sanctioned pattern, not a workaround. What this rule objects to is producing a connection outside Juno, not what you do with a connection Juno gave
-you.</p>
+<p>Dapper is reported outside <code>IDbExecute</code>. Keeping SQL in an operation object prevents controllers and application services from becoming
+ad-hoc persistence layers while still allowing Juno to supply the ambient connection and transaction.</p>
+<p>The rule targets Dapper <code>Query*</code> and <code>Execute*</code> operations. Configuration and utility APIs such as
+<code>SqlMapper.AddTypeHandler</code>, <code>AddTypeMap</code>, <code>PurgeQueryCache</code> and <code>AsTableValuedParameter</code> do not access a
+database and are not reported.</p>
+<p>Inside an <code>IDbExecute</code>, Dapper operations must receive the <code>IDbTransaction</code> parameter supplied by Juno. Omitting it can make
+one command escape the surrounding transaction or fail at runtime when the provider requires commands on a transactional connection to enlist
+explicitly. The same requirement applies when the operation uses a Dapper <code>CommandDefinition</code>.</p>
 <h2>How to fix it</h2>
 <p>Take the connection from <code>IAdoConnectionFactory.CreateConnection()</code>, or express the work as an <code>IDbExecute</code> and let Juno pass
 in the connection and the ambient transaction.</p>
@@ -24,9 +29,12 @@ in the connection and the ambient transaction.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public async Task&lt;Order&gt; Find(int id)
 {
-    using var connection = new SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno (IAdoConnectionFactory / IDbExecute) instead of creating it directly with 'SqlConnection'.}}
+    using var connection = new SqlConnection(_connectionString); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'SqlConnection' directly.}}
     return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
+
+public Task&lt;Order&gt; Execute(IDbConnection dbConnection, IDbTransaction dbTransaction = null) =&gt;
+    dbConnection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id = _id }); // Noncompliant {{Pass the IDbExecute transaction to this Dapper operation.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">

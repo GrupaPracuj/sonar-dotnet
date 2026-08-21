@@ -8,9 +8,8 @@ contracts project gives both sides a small, versionable dependency containing on
 <p>Exchanging a type from another assembly is not inherently a runtime failure. This rule enforces the GP assembly-boundary policy so ownership,
 versioning and dependencies remain explicit.</p>
 <h2>How to fix it</h2>
-<p>Move the request, response, message or command type into the repository's contracts project and use that type at the boundary. An assembly named
-<code>Contracts</code> or ending in
-<code>.Contracts</code> is accepted by default.</p>
+<p>Move the request, response, message or command type into the repository's contracts project and use that type at the boundary. Any assembly whose
+name ends in <code>Contracts</code> is accepted by default.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -29,11 +28,15 @@ public sealed record CreateOrder(string ProductCode);
 public ActionResult&lt;Guid&gt; Create(CreateOrder request) => ...;
 </pre>
 <h3>Exceptions</h3>
-<p>The comma-separated <code>contractAssemblyNames</code> parameter changes the accepted exact names or final assembly-name segments. Types from
+<p>The comma-separated <code>contractAssemblyNames</code> parameter changes the accepted exact names, final assembly-name segments or
+<code>*suffix</code> patterns. Types from
 <code>System</code> and <code>Microsoft</code>, including collections containing only such types, are accepted. Controller request parameters are
 checked when the controller uses <code>ApiControllerAttribute</code>; an explicit <code>FromBodyAttribute</code> is also checked outside API
 controllers, while MVC view and form models are ignored. Explicitly service-bound and <code>SwaggerIgnoreAttribute</code> parameters are not request
 contracts. Parameters bound by Juno's <code>FromTokenAttribute</code> are security context rather than request contracts. Unannotated interface and
 abstract Minimal API parameters are also ignored because the runtime can resolve them from dependency injection and static analysis cannot distinguish
-them reliably from request payloads. Anonymous, dynamic and loose messaging payloads remain the responsibility of GP0055 and are not reported twice
-by this rule. MassTransit pipeline forwarding through <code>IPipe&lt;T&gt;.Send</code> and consumer declarations are outside this rule's scope.</p>
+them reliably from request payloads. Custom MVC or Minimal API transport wrappers that semantically implement <code>IActionResult</code> or
+<code>IResult</code> are treated as infrastructure response types rather than response DTOs. Anonymous, dynamic and loose messaging payloads remain the
+responsibility of GP0055 and are not reported twice by this rule. MassTransit pipeline forwarding through <code>IPipe&lt;T&gt;.Send</code> and consumer
+declarations are outside this rule's scope. A method named <code>Send</code> on an unrelated Juno surface such as the HTTP client is not a messaging
+operation.</p>

@@ -30,6 +30,8 @@ back and they legitimately flow through service code. Only acquiring a client of
 <p><code>new HttpClient()</code> inside the body of a controller action is left to rule S6962, which reports exactly that shape; reporting it here as
 well would put two issues on one line. A client created in a controller's field initializer or constructor - which S6962 does not report - is still
 reported here.</p>
+<p>The implementation of Juno itself is not reported: its HTTP abstraction necessarily creates the framework client that consuming applications are
+required to obtain through Juno.</p>
 <h2>How to fix it</h2>
 <p>Take an <code>IHttpClientBuilder</code> from dependency injection and start the call with <code>Service("&lt;service-name&gt;")</code>, so the
 address comes from discovery and the configured policies apply.</p>

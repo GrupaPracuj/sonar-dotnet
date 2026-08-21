@@ -46,6 +46,8 @@ internal sealed class GpSemanticContractDetector
     private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete"];
 
     private readonly Dictionary<string, INamedTypeSymbol> contracts;
+    private readonly HashSet<string> httpContracts = new(StringComparer.Ordinal);
+    private readonly HashSet<string> messagingContracts = new(StringComparer.Ordinal);
 
     private GpSemanticContractDetector(Compilation compilation)
     {
@@ -53,7 +55,7 @@ internal sealed class GpSemanticContractDetector
 
         foreach (var type in SourceTypes(compilation.Assembly.GlobalNamespace))
         {
-            if (IsContractsNamespace(type.ContainingNamespace?.ToDisplayString() ?? string.Empty))
+            if (IsSourceContractType(type))
             {
                 AddContract(type);
             }
@@ -61,7 +63,7 @@ internal sealed class GpSemanticContractDetector
 
         foreach (var type in HttpContractTypes(compilation))
         {
-            AddContract(type);
+            AddHttpContract(type);
         }
 
         foreach (var tree in compilation.SyntaxTrees.Where(x => !x.IsGenerated(CSharpGeneratedCodeRecognizer.Instance)))
@@ -70,8 +72,8 @@ internal sealed class GpSemanticContractDetector
             var root = tree.GetRoot();
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
-                AddRuntimeContract(GpMessageContracts.MessagingPayloadType(model, invocation, MessagingMethods));
-                AddRuntimeContract(HttpResponsePayloadType(model, invocation));
+                AddMessagingContract(GpMessageContracts.MessagingPayloadType(model, invocation, MessagingMethods));
+                AddHttpContract(HttpResponsePayloadType(model, invocation));
             }
 
             foreach (var handler in root.DescendantNodes().OfType<AnonymousFunctionExpressionSyntax>())
@@ -94,6 +96,13 @@ internal sealed class GpSemanticContractDetector
     internal bool IsContract(INamedTypeSymbol type) =>
         type is { DeclaringSyntaxReferences.Length: > 0 } && contracts.ContainsKey(TypeKey(type));
 
+    internal bool IsMessagingContract(INamedTypeSymbol type)
+    {
+        var key = TypeKey(type);
+        return messagingContracts.Contains(key)
+            || (!httpContracts.Contains(key) && IsContract(type));
+    }
+
     private void AddMinimalApiContracts(SemanticModel model, AnonymousFunctionExpressionSyntax handler)
     {
         if (!GpMinimalApi.TryGetInlineHandler(handler.Body, model, MinimalApiMapMethods, out _, out _, out _, out _))
@@ -103,7 +112,7 @@ internal sealed class GpSemanticContractDetector
 
         if (handler.Body is ExpressionSyntax expression)
         {
-            AddRuntimeContract(model.GetTypeInfo(expression).Type);
+            AddHttpContract(model.GetTypeInfo(expression).Type);
             return;
         }
 
@@ -113,15 +122,22 @@ internal sealed class GpSemanticContractDetector
                  .Select(x => x.Expression)
                  .WhereNotNull())
         {
-            AddRuntimeContract(model.GetTypeInfo(returned).Type);
+            AddHttpContract(model.GetTypeInfo(returned).Type);
         }
     }
 
-    private void AddRuntimeContract(ITypeSymbol type)
+    private void AddHttpContract(ITypeSymbol type) =>
+        AddRuntimeContract(type, httpContracts);
+
+    private void AddMessagingContract(ITypeSymbol type) =>
+        AddRuntimeContract(type, messagingContracts);
+
+    private void AddRuntimeContract(ITypeSymbol type, HashSet<string> usage)
     {
         if (ContractPayloadType(type) is INamedTypeSymbol contract && !IsFrameworkType(contract))
         {
             AddContract(contract);
+            usage.Add(TypeKey(contract));
         }
     }
 
@@ -137,6 +153,14 @@ internal sealed class GpSemanticContractDetector
                 if (ContractPayloadType(action.ReturnType) is INamedTypeSymbol contract)
                 {
                     yield return contract;
+                }
+
+                foreach (var parameterContract in action.Parameters
+                             .Select(x => ContractPayloadType(x.Type))
+                             .OfType<INamedTypeSymbol>()
+                             .Where(IsSourceContractType))
+                {
+                    yield return parameterContract;
                 }
             }
         }
@@ -198,12 +222,17 @@ internal sealed class GpSemanticContractDetector
 
         if (current is IArrayTypeSymbol array)
         {
-            return array.ElementType;
+            return ContractPayloadType(array.ElementType);
         }
 
-        return current is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } collection
-               && GpCollectionEndpointHelper.IsCollectionLike(collection)
-            ? collection.TypeArguments[0]
+        if (current is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } collection
+            && GpCollectionEndpointHelper.IsCollectionLike(collection))
+        {
+            return ContractPayloadType(collection.TypeArguments[0]);
+        }
+
+        return current is INamedTypeSymbol namedType && IsSemanticHttpResult(namedType)
+            ? null
             : current;
     }
 
@@ -217,8 +246,28 @@ internal sealed class GpSemanticContractDetector
             || containing.StartsWith("System.", StringComparison.Ordinal)
             || containing.StartsWith("Microsoft.", StringComparison.Ordinal));
 
+    private static bool IsSourceContractType(INamedTypeSymbol type)
+    {
+        var containingNamespace = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        return IsContractsNamespace(containingNamespace)
+            || (GpAssemblyNames.MatchesContractAssembly(type.ContainingAssembly?.Name ?? string.Empty)
+                && IsNestedContractsNamespace(containingNamespace));
+    }
+
     private static bool IsContractsNamespace(string containingNamespace) =>
         containingNamespace == "Contracts" || containingNamespace.EndsWith(".Contracts", StringComparison.Ordinal);
+
+    private static bool IsNestedContractsNamespace(string containingNamespace) =>
+        containingNamespace.StartsWith("Contracts.", StringComparison.Ordinal)
+        || containingNamespace.IndexOf(".Contracts.", StringComparison.Ordinal) >= 0;
+
+    private static bool IsSemanticHttpResult(INamedTypeSymbol type) =>
+        type.Is(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.Implements(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.DerivesFrom(KnownType.Microsoft_AspNetCore_Mvc_IActionResult)
+        || type.Is(KnownType.Microsoft_AspNetCore_Http_IResult)
+        || type.Implements(KnownType.Microsoft_AspNetCore_Http_IResult)
+        || type.DerivesFrom(KnownType.Microsoft_AspNetCore_Http_IResult);
 
     private static string TypeKey(INamedTypeSymbol type) =>
         $"{type.ContainingAssembly?.Identity}|{type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}";

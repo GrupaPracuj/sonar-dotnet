@@ -1,0 +1,23 @@
+<p><code>CreatedAtAction</code> should identify an action by the name that ASP.NET Core MVC exposes for routing.</p>
+<h2>Why is this an issue?</h2>
+<p>MVC suppresses the <code>Async</code> suffix in action names by default. Consequently, <code>nameof(GetAsync)</code> evaluates to
+<code>"GetAsync"</code>, while the routable action name is <code>"Get"</code>. A <code>CreatedAtAction</code> response using that value may fail to
+generate its <code>Location</code> header at runtime.</p>
+<p>The rule reports only real MVC <code>CreatedAtAction</code> calls that use <code>nameof</code> for an MVC action. It does not report when the action
+has an explicit matching <code>ActionName</code>, or when the compilation consistently disables
+<code>SuppressAsyncSuffixInActionNames</code>.</p>
+<h2>How to fix it</h2>
+<p>Give the target endpoint a named route and generate the response with <code>CreatedAtRoute</code>. This avoids coupling link generation to MVC's
+action-name transformation.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+return CreatedAtAction(nameof(GetAsync), new { id = order.Id }, order); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+[HttpGet("{id}", Name = "GetOrder")]
+public async Task&lt;IActionResult&gt; GetAsync(int id) { /* ... */ }
+
+return CreatedAtRoute("GetOrder", new { id = order.Id }, order);
+</pre>

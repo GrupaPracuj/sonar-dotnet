@@ -23,6 +23,16 @@ public sealed class PublishedEventShouldCarryOccurrenceTime : SonarDiagnosticAna
         "OccurredAtUtc",
     };
 
+    private static readonly HashSet<string> CloudEventsEnvelopeMembers = new(StringComparer.Ordinal)
+    {
+        "Data",
+        "Id",
+        "Source",
+        "SpecVersion",
+        "Time",
+        "Type",
+    };
+
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
@@ -40,6 +50,12 @@ public sealed class PublishedEventShouldCarryOccurrenceTime : SonarDiagnosticAna
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (GpMessageContracts.PublishedType(context.Model, invocation) is not { } eventType)
+        {
+            return;
+        }
+
+        if (eventType.Name.EndsWith("Command", StringComparison.Ordinal)
+            || GpMessageContracts.IsNestedMessageEnvelope(eventType))
         {
             return;
         }
@@ -84,7 +100,57 @@ public sealed class PublishedEventShouldCarryOccurrenceTime : SonarDiagnosticAna
     private static bool HasOccurrenceTime(INamedTypeSymbol eventType) =>
         GpMessageContracts.DataMembers(eventType)
             .Any(x => OccurrenceTimeNames.Contains(x.Name)
-                      && x.Type.Is(KnownType.System_DateTimeOffset));
+                      && x.Type.Is(KnownType.System_DateTimeOffset))
+        || HasCloudEventsEnvelopeTime(eventType);
+
+    // CloudEvents defines the occurrence timestamp as the envelope's Time attribute. Accept it only when that exact
+    // CloudEvents-envelope shape is present, so an arbitrary Time member on some unrelated contract still does not
+    // satisfy the rule.
+    private static bool HasCloudEventsEnvelopeTime(INamedTypeSymbol eventType) =>
+        BaseTypesAndSelf(eventType)
+            .SelectMany(x => x.GetMembers("Time").OfType<IPropertySymbol>())
+            .Any(IsCloudEventsEnvelopeTimeProperty);
+
+    private static bool IsCloudEventsEnvelopeTimeProperty(IPropertySymbol property) =>
+        property is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, IsIndexer: false }
+        && IsDateTimeOrDateTimeOffset(property.Type)
+        && DeclaredOnCloudEventsEnvelope(property);
+
+    private static bool DeclaredOnCloudEventsEnvelope(IPropertySymbol property)
+    {
+        for (var current = property; current is not null; current = current.OverriddenProperty)
+        {
+            if (current.ContainingType is { Name: "CloudEventsEnvelope" } envelope
+                && CloudEventsEnvelopeMembers.All(name =>
+                    envelope.GetMembers(name).OfType<IPropertySymbol>().Any(x =>
+                        x is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, IsIndexer: false })))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsDateTimeOrDateTimeOffset(ITypeSymbol type) =>
+        type.IsAny(KnownType.System_DateTime, KnownType.System_DateTimeOffset)
+        || type is INamedTypeSymbol { IsGenericType: true } named
+           && named.OriginalDefinition.Is(KnownType.System_Nullable_T)
+           && named.TypeArguments[0].IsAny(KnownType.System_DateTime, KnownType.System_DateTimeOffset);
+
+    private static bool IsDateTimeOffsetOrNullableDateTimeOffset(ITypeSymbol type) =>
+        type.Is(KnownType.System_DateTimeOffset)
+        || type is INamedTypeSymbol { IsGenericType: true } named
+           && named.OriginalDefinition.Is(KnownType.System_Nullable_T)
+           && named.TypeArguments[0].Is(KnownType.System_DateTimeOffset);
+
+    private static IEnumerable<INamedTypeSymbol> BaseTypesAndSelf(INamedTypeSymbol type)
+    {
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            yield return current;
+        }
+    }
 
     private sealed class PublishedEventUse(INamedTypeSymbol type)
     {

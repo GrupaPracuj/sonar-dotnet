@@ -33,9 +33,11 @@ public class Book
 deriving from <code>System.Attribute</code> (an attribute argument can only be an array, never a collection,
 so there is no alternative shape to move to); one-dimensional <code>byte[]</code> properties used for binary payloads, where collection wrappers are
 not compatible with common file and stream APIs and defensive copying can be prohibitively expensive; properties on a source type semantically recognized
-as a message or HTTP response contract - these legitimately expose arrays for wire serialization, with no in-process aliasing risk; and
+as a message or HTTP response contract - including source types declared under nested <code>.Contracts.*</code> namespaces inside an assembly whose name
+matches <code>*Contracts</code> - these legitimately expose arrays for wire serialization, with no in-process aliasing risk; and
 <code>override</code> properties, since the property's
-shape is dictated by the member it overrides. Properties proven to create a fresh array on every getter path, for example with an expression-bodied
+shape is dictated by the member it overrides. Similarly named assemblies such as <code>*.Contract</code> or <code>*.Commands</code> are not treated as
+contract assemblies. Properties proven to create a fresh array on every getter path, for example with an expression-bodied
 collection expression, <code>new</code> array, or LINQ <code>ToArray()</code>, are also not reported because callers cannot mutate stored object state.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>

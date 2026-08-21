@@ -1,12 +1,14 @@
-<p>Every action in a controller should explicitly state whether it requires authorization, once other actions in the same controller already do.</p>
+﻿<p>Every REST API action should explicitly state whether it requires authorization. Classic MVC controllers are checked when sibling actions
+establish a per-action <code>[Authorize]</code> convention.</p>
 <h2>Why is this an issue?</h2>
 <p>When some actions in a controller carry <code>[Authorize]</code> and others don't, the missing declaration is ambiguous: it might be an
 intentionally public endpoint, or it might be an endpoint that was simply forgotten when access control was added to the rest of the controller.
 Making the omission explicit with <code>[AllowAnonymous]</code> removes that ambiguity - a reviewer (and the next person to touch the file) can tell
 at a glance that the endpoint is public on purpose, not by oversight.</p>
-<p>The rule only detects an inconsistency between explicit attributes in one controller. It does not prove that an action is reachable anonymously:
-authorization can also come from a fallback policy, global filters, application conventions, middleware, or other framework configuration. GP still
-requires the action-level intent to be explicit so that it can be reviewed locally.</p>
+<p>Controllers marked with <code>[ApiController]</code> on the type, a base type, or the assembly are held to a stricter default: every action must
+have <code>[Authorize]</code> or <code>[AllowAnonymous]</code>, unless the compilation directly configures an authenticated fallback policy, adds
+the ASP.NET Core MVC <code>AuthorizeFilter</code> globally, or applies <code>RequireAuthorization()</code> directly to
+<code>MapControllers()</code>.</p>
 <pre>
 public class UsersController : ControllerBase
 {
@@ -17,11 +19,13 @@ public class UsersController : ControllerBase
 }
 </pre>
 <h3>Exceptions</h3>
-<p>The rule only compares actions within the same controller class. A controller where no action uses <code>[Authorize]</code> at all is not
-checked - there is no established convention in that controller to be inconsistent with. A controller (or the specific action) already carrying
-<code>[Authorize]</code> or <code>[AllowAnonymous]</code> at the class level is not checked either, since in that case every action already inherits
-an explicit default. A class-level declaration inherited from a base controller counts the same way, because ASP.NET Core applies it to the derived
-controller's actions.</p>
+<p>A classic MVC controller where no action uses <code>[Authorize]</code> is not checked. A controller or base controller carrying
+<code>[Authorize]</code> or <code>[AllowAnonymous]</code> already declares the default for its actions. The rule also accepts directly detectable
+global protection: assignment to <code>AuthorizationOptions.FallbackPolicy</code> whose policy construction calls
+<code>RequireAuthenticatedUser()</code>, adding the framework's <code>Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter</code> to MVC's
+global filter collection, or <code>MapControllers().RequireAuthorization()</code>. Merely calling <code>AddAuthorization</code>, configuring a
+named policy, application conventions, or unrelated lookalike types does not provide sufficiently strong evidence and is not treated as global
+protection.</p>
 <h2>How to fix it</h2>
 <p>Add <code>[Authorize]</code> if the endpoint should require authorization, or <code>[AllowAnonymous]</code> if it is meant to stay public.</p>
 <h3>Code examples</h3>

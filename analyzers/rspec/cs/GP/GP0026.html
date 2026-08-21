@@ -1,4 +1,4 @@
-<p>An endpoint that creates a resource should return <code>201 Created</code>, not a bare <code>200 OK</code>.</p>
+﻿<p>An endpoint that creates a resource should return <code>201 Created</code>, not a bare <code>200 OK</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>The Microsoft REST API Guidelines describe a resource-creating operation as returning <code>201-Created with URL of created resource</code>. MDN
 is more specific about why the URL matters:</p>
@@ -24,6 +24,8 @@ a calculation), where <code>200</code> is the correct response and there is noth
 real response factory - <code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<code>Controller</code>, or
 <code>Results</code>/<code>TypedResults</code>, since an action may return an <code>IResult</code> too - so a same-named helper declared elsewhere is
 not reported.</p>
+<p>Actions explicitly named as a <code>DryRun</code> are also excluded. A <code>Create...DryRun</code> endpoint validates or previews what would happen
+without actually creating a resource, so there is no created URL to return and <code>200 OK</code> is the expected outcome.</p>
 <h2>How to fix it</h2>
 <p>Return <code>CreatedAtAction</code>/<code>CreatedAtRoute</code> (or <code>Created</code> with an explicit URL) instead of <code>Ok</code>.</p>
 <h3>Code examples</h3>

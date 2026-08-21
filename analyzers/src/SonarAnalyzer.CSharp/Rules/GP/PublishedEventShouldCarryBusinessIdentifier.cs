@@ -16,6 +16,7 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
     private const string MessageFormat = "'{0}' carries no business identifier, so a consumer cannot tell what it is about.";
 
     private const string DefaultIdentifierSuffixes = "Id,Number,Reference,Code,Key";
+    private const int MaxNestedContractDepth = 5;
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -45,11 +46,17 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
             return;
         }
 
+        if (eventType.Name.EndsWith("Command", StringComparison.Ordinal)
+            || GpMessageContracts.IsNestedMessageEnvelope(eventType))
+        {
+            return;
+        }
+
         var members = GpMessageContracts.DataMembers(eventType).ToList();
         var suffixes = GpEntityTypes.SplitParameter(IdentifierSuffixes);
 
         // A marker event has nothing to identify, and demanding a key would only produce an unused field.
-        if (members.Count == 0 || suffixes.Length == 0 || members.Any(x => IsBusinessIdentifier(x.Name, suffixes)))
+        if (members.Count == 0 || suffixes.Length == 0 || HasBusinessIdentifier(eventType, suffixes))
         {
             return;
         }
@@ -60,4 +67,80 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
     private static bool IsBusinessIdentifier(string memberName, string[] suffixes) =>
         !TransportIdentifiers.Contains(memberName)
         && Array.Exists(suffixes, x => memberName.EndsWith(x, StringComparison.Ordinal));
+
+    private static bool HasBusinessIdentifier(INamedTypeSymbol type, string[] suffixes) =>
+        HasBusinessIdentifier(type, suffixes, 0, new HashSet<string>(StringComparer.Ordinal));
+
+    // Traverse nested contract-like members by symbol shape rather than invocation syntax. Depth is capped and already
+    // visited types are skipped, so a self-referential payload cannot recurse forever.
+    private static bool HasBusinessIdentifier(INamedTypeSymbol type, string[] suffixes, int depth, HashSet<string> visited)
+    {
+        if (!visited.Add(GpMessageContracts.TypeKey(type)))
+        {
+            return false;
+        }
+
+        var members = GpMessageContracts.DataMembers(type).ToList();
+        if (members.Any(x => IsBusinessIdentifier(x.Name, suffixes)))
+        {
+            return true;
+        }
+
+        if (depth >= MaxNestedContractDepth)
+        {
+            return false;
+        }
+
+        foreach (var nested in members
+                     .SelectMany(x => NestedContractTypes(x.Type))
+                     .GroupBy(x => GpMessageContracts.TypeKey(x), StringComparer.Ordinal)
+                     .Select(x => x.First()))
+        {
+            if (HasBusinessIdentifier(nested, suffixes, depth + 1, visited))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static IEnumerable<INamedTypeSymbol> NestedContractTypes(ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol array)
+        {
+            foreach (var nested in NestedContractTypes(array.ElementType))
+            {
+                yield return nested;
+            }
+
+            yield break;
+        }
+
+        if (type is INamedTypeSymbol { IsGenericType: true } generic
+            && (generic.OriginalDefinition.Is(KnownType.System_Nullable_T) || GpCollectionEndpointHelper.IsCollectionLike(generic)))
+        {
+            foreach (var argument in generic.TypeArguments)
+            {
+                foreach (var nested in NestedContractTypes(argument))
+                {
+                    yield return nested;
+                }
+            }
+
+            yield break;
+        }
+
+        if (type is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct, SpecialType: SpecialType.None } named
+            && !IsFrameworkType(named))
+        {
+            yield return named;
+        }
+    }
+
+    private static bool IsFrameworkType(ITypeSymbol type) =>
+        (type.ContainingNamespace?.ToDisplayString() ?? string.Empty) is var containing
+        && (containing == "System"
+            || containing.StartsWith("System.", StringComparison.Ordinal)
+            || containing.StartsWith("Microsoft.", StringComparison.Ordinal));
 }

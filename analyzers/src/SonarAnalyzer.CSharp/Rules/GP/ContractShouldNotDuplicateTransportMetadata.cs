@@ -49,7 +49,8 @@ public sealed class ContractShouldNotDuplicateTransportMetadata : SonarDiagnosti
         var declaration = (PropertyDeclarationSyntax)context.Node;
         if (TransportMetadataNames.Contains(declaration.Identifier.ValueText)
             && context.Model.GetDeclaredSymbol(declaration) is { ContainingType: { } containingType }
-            && contracts.IsContract(containingType))
+            && contracts.IsMessagingContract(containingType)
+            && !GpMessageContracts.IsNestedMessageEnvelope(containingType))
         {
             context.ReportIssue(Rule, declaration.Identifier, declaration.Identifier.ValueText);
         }
@@ -64,7 +65,9 @@ public sealed class ContractShouldNotDuplicateTransportMetadata : SonarDiagnosti
             return;
         }
 
-        if (context.Model.GetDeclaredSymbol(declaration) is not { } type || !contracts.IsContract(type))
+        if (context.Model.GetDeclaredSymbol(declaration) is not { } type
+            || !contracts.IsMessagingContract(type)
+            || GpMessageContracts.IsNestedMessageEnvelope(type))
         {
             return;
         }
@@ -74,4 +77,5 @@ public sealed class ContractShouldNotDuplicateTransportMetadata : SonarDiagnosti
             context.ReportIssue(Rule, parameter.Identifier, parameter.Identifier.ValueText);
         }
     }
+
 }
