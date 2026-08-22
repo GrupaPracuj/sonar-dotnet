@@ -206,6 +206,36 @@ public class HttpCallShouldPropagateCancellationTokenTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void HttpCallShouldPropagateCancellationToken_NoncompliantForJunoHttpSenderWithMandatoryToken() =>
+        builder.AddSnippet(
+            """
+            using GP.Juno.HttpApiClient.HttpSending;
+
+            namespace GP.Juno.HttpApiClient.HttpSending
+            {
+                public sealed class HttpSender
+                {
+                }
+
+                public static class HttpSenderHttpMethodsExtensions
+                {
+                    public static System.Threading.Tasks.Task<string> Get(
+                        this HttpSender sender,
+                        System.Threading.CancellationToken cancellation) => null;
+                }
+            }
+
+            public sealed class OrderClient
+            {
+                private readonly HttpSender sender = new HttpSender();
+
+                public System.Threading.Tasks.Task<string> GetOrder(System.Threading.CancellationToken cancellation) =>
+                    sender.Get(System.Threading.CancellationToken.None); // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void HttpCallShouldPropagateCancellationToken_CodeFix() =>
         builder.WithBasePath("GP")
             .AddPaths("HttpCallShouldPropagateCancellationToken.cs")

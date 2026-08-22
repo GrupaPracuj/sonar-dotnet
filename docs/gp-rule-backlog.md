@@ -198,9 +198,7 @@ So a rule would fire almost entirely on legacy code that nobody is going to chan
 
 ---
 
-## Not a new rule — GP0027 has a stale assumption that silences it
-
-**Confidence: high. This is a bug in a shipped rule, not a candidate.**
+## Not a new rule — GP0027 had a stale comment, but handles the current API
 
 `HttpCallShouldPropagateCancellationToken.cs` carries this comment:
 
@@ -208,13 +206,21 @@ So a rule would fire almost entirely on legacy code that nobody is going to chan
 > IHttpClientBuilder.Service, nor any HttpRequestProperties extension such as GetJson/PostJson/…) exposes an
 > overload accepting a CancellationToken anywhere, so those calls can never propagate one and must not be reported.
 
-That is not true of the surface in use today. `submodules/juno/src/Juno/GP.Juno.Abstractions/HttpApiClient/
+That is not true of the entire surface in use today. `submodules/juno/src/Juno/GP.Juno.Abstractions/HttpApiClient/
 HttpSending/HttpMethods/HttpSenderHttpMethodsExtensions.cs` declares `Get`, `Post`, `Put`, `Delete` on
 `HttpSender` with a **mandatory** `CancellationToken cancellation`, and
-`Json/HttpSenderResponseJsonExtensions.cs:16` does the same for `ReceiveJson<T>`. Whoever picks this up should
-re-derive which Juno surface `GpHttpCallHelper` actually matches and check that `CancellationTokenParameter` is
-not rejecting calls it should report. Note that `GP0116` only covers the disjoint case (no token anywhere in the
-enclosing scope), so a gap here is not covered by it.
+`Json/HttpSenderResponseJsonExtensions.cs:16` does the same for `ReceiveJson<T>`.
+
+Verification showed that the implementation is already correct for the request methods: `GpHttpCallHelper`
+recognizes reduced extension methods on `HttpSender`, and `CancellationTokenParameter` inspects
+`method.ReducedFrom.OriginalDefinition`, where it finds the mandatory token. A regression for
+`HttpSender.Get(CancellationToken.None)` was added to `HttpCallShouldPropagateCancellationTokenTest`; it is
+reported when a caller token is available. The stale comment in GP0027 was corrected to distinguish the legacy
+`GP.Juno.HttpClient` builder, which has no token overload, from the newer `HttpSender` API.
+
+`ReceiveJson<T>` is not classified as an outgoing HTTP request by GP0027. That is intentional for now: it
+deserializes an already received response, and a correctly diagnosed request call in the same chain is the
+higher-value cancellation boundary.
 
 ---
 

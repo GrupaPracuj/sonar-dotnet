@@ -41,12 +41,11 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
     // (IHttpClient, IHttpClientBuilder, HttpRequestProperties) - because that same broad detection is also shared by
     // GP0007 (SharedDictionariesShouldUseJunoDictionaries) and DatabaseTransactionsShouldNotContainExternalNetworkCalls,
     // which only need to know "is this an outgoing HTTP call", not whether it can be cancelled.
-    // For GP0027 specifically, a call is only actionable if it can actually be fixed. Verified against the
-    // submodules/juno source: none of the GP.Juno fluent API surface (IHttpClient.Send, IHttpClientBuilder.Service,
-    // nor any HttpRequestProperties extension such as GetJson/PostJson/PutJson/PatchJson/Delete/...) exposes an
-    // overload accepting a CancellationToken anywhere, so those calls can never propagate one and must not be
-    // reported. A call is only reported when another member sharing its name in the same containing type - a sibling
-    // overload for instance methods, or a sibling extension method for extension methods - actually accepts one.
+    // For GP0027 specifically, a call is only actionable if it can actually be fixed. The legacy GP.Juno.HttpClient
+    // builder surface (IHttpClient.Send, IHttpClientBuilder.Service and HttpRequestProperties extensions) exposes no
+    // CancellationToken overload, so those calls are not reported. The newer GP.Juno.HttpApiClient HttpSender
+    // extensions have a mandatory token and are reported through the method's own parameter. An omitted token is
+    // otherwise actionable only when a sibling overload with the same signature accepts one.
     internal static IParameterSymbol CancellationTokenParameter(IMethodSymbol method)
     {
         var definition = (method.ReducedFrom ?? method).OriginalDefinition;
