@@ -1,0 +1,43 @@
+<h2>Why is this an issue?</h2>
+<p>An action behind <code>[Authorize]</code> can answer <code>401 Unauthorized</code>, and - when the attribute names a policy or a role - also
+<code>403 Forbidden</code>. Those responses are produced by the authorization middleware, not by a <code>return</code> statement in the action, so nothing in
+the method body reveals them.</p>
+<p>Because they are invisible in the body, they are also missing from the generated OpenAPI document unless somebody adds
+<code>ProducesResponseType</code> by hand. Consumers generating clients from that document get no branch for "your token expired" or "you may not do this",
+and typically surface an authorization failure as an unexplained deserialization error against the success schema.</p>
+<p>This is exactly the gap rules that inspect returned statuses cannot close: they only see what the action itself returns.</p>
+<h3>What is the potential impact?</h3>
+<p>Generated clients and API documentation silently omit the authorization failure contract of a protected endpoint.</p>
+<h2>How to fix it</h2>
+<p>Declare the responses the action's authorization can produce. Add <code>401</code> for any <code>[Authorize]</code>, and <code>403</code> as well when a
+policy or a role is named. The attribute may sit on the action or on the controller; both are honoured.</p>
+<h3>Noncompliant code example</h3>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[ApiController]
+[Authorize(Policy = "RoleReadAccess")]
+public class RoleDefinitionsController : ControllerBase
+{
+    [HttpGet("roles")]
+    [ProducesResponseType(typeof(GetRoleDefinitionsResponse), StatusCodes.Status200OK)]
+    public IActionResult GetRoleDefinitions() =&gt; Ok(definitions); // Noncompliant: 401 and 403 are reachable but undeclared
+}
+</pre>
+<h3>Compliant solution</h3>
+<pre data-diff-id="1" data-diff-type="compliant">
+[ApiController]
+[Authorize(Policy = "RoleReadAccess")]
+public class RoleDefinitionsController : ControllerBase
+{
+    [HttpGet("roles")]
+    [ProducesResponseType(typeof(GetRoleDefinitionsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public IActionResult GetRoleDefinitions() =&gt; Ok(definitions);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li> Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/authorization/introduction">Authorization in ASP.NET Core</a> </li>
+  <li> Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/web-api/action-return-types">Controller action return types</a> </li>
+</ul>

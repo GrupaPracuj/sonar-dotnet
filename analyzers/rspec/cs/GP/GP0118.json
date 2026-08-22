@@ -1,0 +1,25 @@
+{
+  "title": "Queries that take a subset of rows should order deterministically",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "sql",
+    "dapper"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0118",
+  "sqKey": "GP0118",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}
