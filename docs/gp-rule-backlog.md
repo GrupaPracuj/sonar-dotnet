@@ -8,11 +8,20 @@ Read `AGENTS.md` first — it owns the conventions.
 
 ### How these were found, and what that bounds
 
-Two passes. A mechanical one over all 223 549 added production lines, scanning a fixed set of ~35 patterns — that
-is complete for those patterns and blind to anything not on the list. Then a line-by-line read of the four
-highest domain-risk repositories (money and permissions): `GP.Wierzbiak` and `GP.Kaczawa` in full, `GP.Odra` and
-`GP.Yoda` only partly. Every candidate from GP0122 down came out of the reading, not the scanning, which is the
-argument for reading more of the remaining ~120 repositories if this backlog runs dry.
+Two passes, and the second one is much thinner than it sounds.
+
+The mechanical pass covered all 223 549 added production lines against a fixed set of ~35 patterns. That is
+complete for those patterns and blind to everything else.
+
+The reading pass was a selective read of the four highest domain-risk repositories (money and permissions), and it
+covered roughly **5%** of them: about 1 600 of 6 054 production-diff lines in `GP.Wierzbiak`, 270 of 6 847 in
+`GP.Kaczawa`, 185 of 17 447 in `GP.Odra`, and none of `GP.Yoda` in this pass — around 2 050 lines of 37 618. What
+was read was the domain logic; what was skipped was Db/Commands boilerplate, models, migrations, and in
+`GP.Wierzbiak` also `SwapServiceWriter`, the cohesion validator, `AdhibitionService` and the V2 controllers.
+
+That ratio is the main thing to take from this document. Every candidate from GP0122 down came out of the reading,
+none out of the scanning, and the reading touched a twentieth of four repositories out of 132. The remaining ~120
+repositories have been seen only by the pattern scan.
 
 Several candidates rest on a single confirmed defect. That is deliberate: one real bug is enough reason to try to
 prevent the next one, and waiting for a second occurrence means shipping the rule after it has already cost twice.
