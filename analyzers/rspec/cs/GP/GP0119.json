@@ -1,0 +1,24 @@
+{
+  "title": "FluentMigrator migrations should use expressions for tables and indexes",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "database",
+    "fluentmigrator"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0119",
+  "sqKey": "GP0119",
+  "scope": "Main"
+}

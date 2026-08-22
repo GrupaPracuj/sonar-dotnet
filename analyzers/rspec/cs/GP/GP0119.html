@@ -1,0 +1,40 @@
+<h2>Why is this an issue?</h2>
+<p>Creating complete tables or indexes through <code>Execute.Sql</code> bypasses FluentMigrator's schema expressions. The migration becomes harder to
+review and refactor, loses FluentMigrator's structured representation, and encourages the corresponding <code>Down</code> operation to drift away from
+the schema created in <code>Up</code>.</p>
+<p>This rule recognizes the FluentMigrator API semantically and reports only when the first instruction of constant SQL is
+<code>CREATE TABLE</code> or <code>CREATE INDEX</code>. Raw SQL remains allowed for operations without an adequate FluentMigrator expression, such as
+adding a <code>CHECK</code> constraint with <code>ALTER TABLE</code>, creating a schema, defining or executing a stored procedure, using temporary
+tables, or migrating data.</p>
+<h2>How to fix it</h2>
+<p>Use <code>Create.Table(...)</code> and <code>Create.Index(...)</code> expressions. Keep <code>Execute.Sql</code> only for database operations that
+FluentMigrator cannot represent directly.</p>
+<h3>Noncompliant code example</h3>
+<pre>
+Execute.Sql("""
+    CREATE TABLE [dbo].[BookItems]
+    (
+        [Id] uniqueidentifier NOT NULL,
+        [Isbn] nvarchar(20) NOT NULL
+    );
+
+    CREATE INDEX [IX_BookItems_Isbn] ON [dbo].[BookItems] ([Isbn]);
+    """); // Noncompliant
+</pre>
+<h3>Compliant solution</h3>
+<pre>
+Create.Table("BookItems").InSchema("dbo")
+    .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
+    .WithColumn("Isbn").AsString(20).NotNullable();
+
+Create.Index("IX_BookItems_Isbn")
+    .OnTable("BookItems").InSchema("dbo")
+    .OnColumn("Isbn").Ascending();
+
+// FluentMigrator has no expression for this CHECK constraint.
+Execute.Sql("""
+    ALTER TABLE [dbo].[BookEditions]
+    ADD CONSTRAINT [CK_BookEditions_AuthorsJson]
+        CHECK (ISJSON([AuthorsJson]) = 1);
+    """);
+</pre>
