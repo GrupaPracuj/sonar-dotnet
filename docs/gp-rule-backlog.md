@@ -13,15 +13,15 @@ Two passes, and the second one is much thinner than it sounds.
 The mechanical pass covered all 223 549 added production lines against a fixed set of ~35 patterns. That is
 complete for those patterns and blind to everything else.
 
-The reading pass was a selective read of the four highest domain-risk repositories (money and permissions), and it
-covered roughly **5%** of them: about 1 600 of 6 054 production-diff lines in `GP.Wierzbiak`, 270 of 6 847 in
-`GP.Kaczawa`, 185 of 17 447 in `GP.Odra`, and none of `GP.Yoda` in this pass — around 2 050 lines of 37 618. What
-was read was the domain logic; what was skipped was Db/Commands boilerplate, models, migrations, and in
-`GP.Wierzbiak` also `SwapServiceWriter`, the cohesion validator, `AdhibitionService` and the V2 controllers.
+The reading pass is an in-progress line-by-line sweep of all 95 repositories that have production changes,
+worked in descending order of size. Progress so far: `GP.Wierzbiak` ~1 600 of 6 054 diff lines, `GP.Kaczawa` ~270
+of 6 847, `GP.Odra` ~1 500 of 7 855 added-only lines, `GP.Yoda` only its final two weeks. Everything else has been
+seen by the pattern scan alone.
 
 That ratio is the main thing to take from this document. Every candidate from GP0122 down came out of the reading,
-none out of the scanning, and the reading touched a twentieth of four repositories out of 132. The remaining ~120
-repositories have been seen only by the pattern scan.
+none out of the scanning, and the reading has so far touched a few percent of four repositories out of 132. The
+yield per line read is roughly two orders of magnitude above the yield per line scanned, which is the argument for
+continuing.
 
 Several candidates rest on a single confirmed defect. That is deliberate: one real bug is enough reason to try to
 prevent the next one, and waiting for a second occurrence means shipping the rule after it has already cost twice.
@@ -391,6 +391,181 @@ returning 422) is cheap.
 
 ---
 
+## GP0127 — DELETE or UPDATE with no WHERE clause
+
+**Confidence: high. Value: high. One confirmed instance, currently dormant.**
+
+This is the most valuable thing the sweep found, and it is the cheapest of the candidates to implement.
+
+### Evidence
+
+Two purge commands in `GP.Odra` write `SELECT` where `FROM` belongs. That splits the text into two statements and
+leaves the `DELETE` unqualified:
+
+`src/GP.Odra.Internal/Companies/Purging/DataAccess/ClearCommonOffersInheritance.cs`
+```sql
+DELETE schOffers.tCommonOffersInheritance
+SELECT DISTINCT coi.* FROM schOffers.tCommonOffersInheritance coi
+INNER JOIN schOffers.tCommonOffers co
+  ON coi.sourceCommonOfferId = co.commonOfferID OR coi.targetCommonOfferID = co.commonOfferID
+WHERE co.companyID = @companyId;
+```
+
+`ClearCommonOffersProfeo.cs` has the same shape. The `WHERE` belongs to the `SELECT`, not to the `DELETE`, so the
+`DELETE` removes **every row in the table**.
+
+The sibling file in the same directory shows what was meant, and is the proof that this is a typo rather than a
+design:
+
+`ClearCommonOfferAddons.cs`
+```sql
+DELETE schOffers.tCommonOfferAddons
+FROM   schOffers.tCommonOfferAddons coa      -- FROM, so this is ONE statement
+INNER JOIN schOffers.tCommonOffers co ON coa.commonOfferId = co.commonOfferID
+WHERE co.companyID = @companyId
+```
+
+### Reachability — read this before rating the severity
+
+Both broken commands are instantiated only by `ClearCommonOffers`, and `ClearCommonOffers` is commented out in
+`ClearCompanies.cs:40` (`//new ClearCommonOffers(companyId, loggerFactory),`). **No data is being lost today.**
+What makes it worth a rule is what happens when somebody uncomments that line — which looks like unfinished work,
+since clearing offers plainly belongs in a company purge: a single-company purge then wipes
+`tCommonOffersInheritance` and `tCommonOffersProfeo` for every company in the database.
+
+### Why nothing catches it today
+
+No `S` rule and no GP rule looks at the shape of a DML statement. `S2077` is about dynamic formatting, `S2857`
+about keyword spacing.
+
+### Detection
+
+A SQL string literal containing a `DELETE` or `UPDATE` statement with no `WHERE`. No schema knowledge, no dataflow,
+no naming heuristics.
+
+The one piece of real work is statement splitting: the rule has to see that `DELETE x` followed by `SELECT` is two
+statements, while `DELETE x FROM x JOIN …` is one. That distinction *is* the bug, so it cannot be skipped —
+splitting on a naive `;` or on newlines will miss both instances, because neither has a separator. Split on
+statement-introducing keywords (`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `WITH`) at parenthesis depth zero,
+and treat a `FROM`/`OUTPUT` immediately following the delete target as part of the same statement.
+
+Reporting `UPDATE` without `WHERE` costs nothing extra once the splitter exists.
+
+### FP profile
+
+Deliberate full-table deletes do exist — clearing a staging table, test fixtures — but they are rare in `Main`
+scope and `TRUNCATE TABLE` is the idiomatic form. Expect a handful of legitimate hits; they are worth the two this
+catches.
+
+---
+
+## GP0128 — an optional positional member on a record used for equality
+
+**Confidence: high on the hazard, medium on any single call site misfiring. Value: high.**
+
+### Evidence
+
+`GP.Odra/src/GP.Odra.Credits/Models/Product.cs` gained a fourth positional member this year:
+
+```csharp
+public record struct Product(int OptionId, int? ParameterN = null,
+                             AdditinalParameters? Parameters = null,
+                             int RestrictionLevel = int.MaxValue) : IEquatable<Product>
+```
+
+Exactly one construction site passes `RestrictionLevel`
+(`src/GP.Odra.Orders/Products/ProductsMapper.cs:49`, via `CalculateRestrictionLevel(...)`). Around nineteen others
+take the default. A record struct's generated equality includes every positional member, and `Product` is compared
+by value in the credit-consumption path:
+
+- `src/GP.Odra.CreditsConsumption/Models/FulfilledService.cs:15` — `SuitableProducts.Contains(reservedCredit.Product)`
+- `src/GP.Odra.CreditsConsumption/CreditsConsumptionService.cs:30` — `sp == cr.Product`
+- `src/GP.Odra.CreditsReservation/Models/ReservationRequirement.cs:25` — `new HashSet<Product>(suitableProducts)`
+
+The clearest sign that provenance really is mixed:
+`src/GP.Odra.Orders/Credits/Consumptions/CreditsConsumptionService.cs:31` rebuilds a product from parts —
+`new Product(mainService.Product.OptionId, mainService.Product.ParameterN)` — silently resetting **both**
+`Parameters` and `RestrictionLevel` to their defaults, and line 37 then puts that value into `SuitableProducts`.
+Comparing it against a fully populated `Product` cannot match.
+
+`Parameters` was already optional before `RestrictionLevel` arrived, so the hazard pre-existed and was widened.
+Which credit is judged suitable is a billing decision, so a silent equality change here is not cosmetic.
+
+### Why nothing catches it today
+
+`GP0085` reports default struct equality, but only when the struct has *no* `Equals` override — its check is
+`method.ContainingType.SpecialType == SpecialType.System_ValueType`. A record struct has compiler-generated
+`Equals`/`GetHashCode`, so `GP0085` skips it by design. No `S` rule covers it either.
+
+### Detection
+
+Decidable without history: a `record` or `record struct` that has a positional parameter with a default value, and
+whose type is used in an equality context somewhere in the compilation — `==`/`!=`, `Contains`, `Distinct`,
+`Except`, `Union`, `HashSet<T>`, or as a `Dictionary<T,_>` key.
+
+The argument is not that defaults are wrong, it is that a defaulted member silently participates in identity while
+callers do not think of it as part of identity. The fix is either to exclude it from equality (custom `Equals`) or
+to make it non-optional so every construction site has to state it.
+
+Report on the record declaration, and mention the member. Do not report records never used in an equality context —
+that is what keeps this from firing on every DTO.
+
+---
+
+## GP0129 — an identifier column typed as NVARCHAR(MAX) in a migration
+
+**Confidence: high. Value: medium.**
+
+### Evidence
+
+`GP.Odra/src/GP.Odra.Database/Migrations/M20260119_1800_AllocationsEditSessionsTable.cs` creates
+`schOrders.tAllocationsEditSessionsSwaps` with four identifier columns as `.AsString(int.MaxValue)` —
+`CreatedAllocationId`, `TopUpId`, `WalletId`, `RollBackTopUpId`. NVARCHAR(MAX) cannot be indexed, cannot take part
+in a key, and forces off-row storage. The same table's own primary key uses `SwapId` as `.AsString(112)`.
+
+The inconsistency is visible within the same repository: `M20260529_1000_AddTopUpResultToComplimentaryAllocations.cs`
+declares `WalletId` as `.AsString(256)` **and indexes it**. So one logical column is bounded and indexed in one
+table and unbounded in another.
+
+### Detection
+
+Syntactic. Flag `.WithColumn(name).AsString(int.MaxValue)` (and `.AsString(-1)`) in a FluentMigrator migration
+where `name` ends in `Id`. A stronger second check, still decidable, is to flag any `AsString(int.MaxValue)` column
+that a `Create.Index`/`PrimaryKey` in the same compilation references — indexing a MAX column fails at runtime.
+
+Note the neighbouring rule: `GP0119` already polices raw DDL in migrations, so migration-shaped rules have a home.
+
+---
+
+## FINDING — a command named `Anonymize…` does not anonymize
+
+Not a rule candidate — an analyzer cannot know which columns are personal data. Raise with the owning team.
+
+`GP.Odra/src/GP.Odra.Internal/Companies/Purging/DataAccess/AnonymizeUsersAssignedToCompanyExclusively.cs`, for
+users belonging exclusively to the company being purged, runs:
+
+```sql
+UPDATE schCustomers.tUsers
+   SET isActive = '0', admUnitID = NULL, userLogin = userLogin + '*' + @dateString
+ WHERE userID IN (SELECT userID FROM @usersTable)
+```
+
+It deactivates the account, nulls `admUnitID` and suffixes the login. `userFirstName`, `userLastName` and
+`positionName` are left as they are, and the login itself is preserved rather than replaced. I checked the rest of
+the purge chain: the only writers of those three columns anywhere in the repository are ordinary update commands
+(`Customers/Users/Sql/UpdateUserCommand.cs`, `IdmApi/Data/Commands/UpdateUser.cs`), neither of which is in
+`ClearCompanies`' command list. So after the "anonymisation" the identifying fields are still there.
+
+Four smaller defects in the same statement:
+
+- `DATEPART(dd/mm/hh/mi/ss)` is cast to `NVARCHAR(2)` with no zero-padding, so the suffix is variable width and
+  ambiguous — day 1 with month 12 and day 11 with month 2 both render as `112`.
+- `userLogin + '*' + @dateString` has no length guard. If the column is near capacity SQL Server raises *String or
+  binary data would be truncated* and the whole purge transaction rolls back.
+- `GETDATE()` rather than `GETUTCDATE()`, in a codebase that is otherwise UTC throughout.
+- `u.isPracuj = '0'` compares a numeric column against a string literal.
+
+---
 ## Investigate — an idempotency check separated from its write by a network call
 
 **One confirmed risk. No detection proposed.**
