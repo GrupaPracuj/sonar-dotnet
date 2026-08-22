@@ -6,6 +6,17 @@ Candidates found by reviewing every commit on the default branch of all 132 acti
 
 Read `AGENTS.md` first — it owns the conventions.
 
+### How these were found, and what that bounds
+
+Two passes. A mechanical one over all 223 549 added production lines, scanning a fixed set of ~35 patterns — that
+is complete for those patterns and blind to anything not on the list. Then a line-by-line read of the four
+highest domain-risk repositories (money and permissions): `GP.Wierzbiak` and `GP.Kaczawa` in full, `GP.Odra` and
+`GP.Yoda` only partly. Every candidate from GP0122 down came out of the reading, not the scanning, which is the
+argument for reading more of the remaining ~120 repositories if this backlog runs dry.
+
+Several candidates rest on a single confirmed defect. That is deliberate: one real bug is enough reason to try to
+prevent the next one, and waiting for a second occurrence means shipping the rule after it has already cost twice.
+
 ### Status of the rules this review previously shipped
 
 GP0115–GP0118 were committed in `f1c6cbd89`. **`996b7609b` then removed GP0116, GP0117 and GP0118**, keeping only
@@ -154,34 +165,248 @@ ship it scoped to non-`DataLake` schemas, or drop it.
 
 ---
 
-## Investigate — `ToDictionary` over pairs that legitimately repeat
+## GP0122 — A publish that precedes the write it announces
 
-**Confidence: low. Do not implement without a sharper formulation.**
+**Confidence: high. Value: high. One confirmed instance.**
 
 ### Evidence
 
-`GP.Scylla`, commit `d8bc4f8f5` — *"fix: RecommendedJobOffersQueryExtensions created wrong type of array query
-params"*:
+`GP.Wierzbiak/src/GP.Wierzbiak.Api/AllocationHistory/AllocationHistoryHandler.cs`, `HandleAsync` — current line
+numbers, not just the diff:
 
-```csharp
--        var pairs = model.AsQueryParams().ToDictionary(x => x.Key, x => x.Value);
-+        var pairs = model.AsQueryParams();
+```
+line 45   var alreadyProcessed = await _repository.ExistsChangeBySnapshotId(status.AllocationSwapId);
+line 81   await _eventStream.Publish(@event);              // announce
+line 96   await _repository.InsertChangeWithProducts(...)  // ...then write, once per change, in a loop
 ```
 
-`AsQueryParams` was an iterator yielding `KeyValuePair<string,string>`, including several entries **sharing a key**
-for array parameters (`EnumerateCollectionQueryParams`). The fix also changed the element type to Juno's
-`StringPair`. 124 `.ToDictionary(` calls were added across the year, so the pattern is common.
+The event says a change was registered before anything is stored. If the insert throws — or the process dies in
+between — consumers acted on a change that `GetChangesByAllocationId` will never return. The loop makes it worse:
+each iteration is its own connection and transaction, so a failure halfway leaves part of the history written and
+the event already gone.
 
-### Why it is hard
+The idempotency guard at line 45 does not help. It checks whether a *change row* exists, and on a retry after a
+failed insert there is none, so the handler republishes and tries again.
 
-"This sequence can contain duplicate keys" is not statically decidable in general. A narrow version — flag
-`.ToDictionary(x => x.Key, …)` applied to an `IEnumerable<KeyValuePair<,>>` produced by an iterator that yields
-inside a loop — is decidable but fragile and easy to route around. A different framing that might be worth more:
-**query parameters should be passed as Juno's `StringPair` sequence, never as a dictionary**, which is a Juno-API
-convention rule rather than a correctness rule, and would have caught this exact commit.
+### Why nothing catches it today
+
+`GP0048` ("A database commit and a message publish should not be a dual write") is **directional**. Its
+implementation collects commit sites and publish sites in the analysed method, builds the CFG, and reports a
+publish only when `commitSites.Any(x => CanReach(x, publishSite))` — commit *then* publish. The reverse order,
+which is the more damaging one, is not reported at all.
+
+There is a second gap in the same rule: `CommitMethods` is the literal set
+`{SaveChanges, SaveChangesAsync, Commit, CommitAsync}`, matched against invocations **inside the analysed method**.
+Here the write is `_repository.InsertChangeWithProducts(...)`, which opens its own transaction and commits
+internally, so even the commit→publish direction would be invisible.
+
+### Detection
+
+Both fixes reuse machinery `GP0048` already has:
+
+1. **Make it bidirectional.** Also report when a publish site can reach a commit site. Use a distinct message —
+   the failure mode and the fix differ ("you announced a change that may not exist" vs "you changed data and may
+   not have told anyone").
+2. **See through one level of indirection.** Treat a call as a commit when the invoked method's own body — resolved
+   within the compilation, following interface members to their implementers — contains a commit. One level is
+   enough for the repository pattern used here and keeps the analysis bounded.
+
+Step 1 alone catches this instance and is much the cheaper half; step 2 is worth doing separately.
 
 ---
 
+## GP0123 — A static clock used where an injected clock is available
+
+**Confidence: high. Value: medium-high. One confirmed instance.**
+
+### Evidence
+
+`GP.Kaczawa/src/GP.Kaczawa.Broker/Wallets/Usage/UseReservationsConsumer.cs` injects `TimeProvider` and then
+bypasses it for the audit timestamp, inside the same class:
+
+```csharp
+private readonly TimeProvider _timeProvider;          // injected, used in Validate():
+    ... message.Payload.UsageDateUtc < _timeProvider.GetUtcNow().UtcDateTime.AddDays(MaxBackPeriodInDays)
+
+// ...and then, in Consume():
+var auditTrace = new Core.AuditTrace(..., TimeProvider.System.GetUtcNow().UtcDateTime);
+```
+
+The injection exists so the clock can be controlled. Using `TimeProvider.System` for the audit stamp defeats it:
+a test that fixes the clock still writes a real timestamp, and one logical operation ends up carrying two
+timestamps from two different clocks.
+
+I swept `GP.Kaczawa`, `GP.Wierzbiak`, `GP.Odra`, `GP.Yoda`, `GP.Shrek`, `GP.Scylla`, `GP.Bobr` and `GP.Gleipnir`
+for files that both inject a clock abstraction and call a static one. This is the only real violation:
+`GP.Gleipnir/src/GP.Gleipnir/AppTimeProvider.cs` also matches, but it *is* the abstraction, and the third match is
+a test accessor. So: one instance, which is the whole point of the rule — it is the kind of thing that appears once
+per service and is invisible in review.
+
+### Why nothing catches it today
+
+No `S` rule and no GP rule covers it. `GP0017` and `GP0018` police the naming and the `DateTimeKind` of date
+members, not which clock produced the value.
+
+### Detection
+
+This is the same shape as `GP0027`, which is shipped and accepted: an abstraction is available in scope and the
+code used a static escape hatch instead. Nothing heuristic about it.
+
+1. The containing type has a clock available: a field, a primary-constructor parameter or a constructor parameter
+   of type `System.TimeProvider`, or of a project abstraction (`ISystemClock`, `IClock`, `IDateTimeProvider` —
+   make this list a rule parameter, the way `GP0048` parameterises `outboxTypes`).
+2. The method body reads a static clock: `TimeProvider.System`, `DateTime.Now/UtcNow/Today`,
+   `DateTimeOffset.Now/UtcNow`, `GP.Juno.Abstractions.SystemTime.UtcNow()`/`OffsetUtcNow()`.
+3. Report the static read.
+
+Exclusions: the type that *implements* the abstraction (it has to call the static clock somewhere), and types
+whose name ends in `TimeProvider`/`Clock`. `scope: Main` keeps test doubles out.
+
+---
+
+## GP0124 — A row-limiting query with no ORDER BY at all
+
+**Confidence: high. Value: medium. One confirmed instance.**
+
+### Evidence
+
+`GP.Odra/src/GP.Odra.Adapter/Logic/Credits/GetReservedCreditQuery.cs` — a correlated subquery that picks one of
+several matching rows arbitrarily:
+
+```sql
+(SELECT TOP 1 rc2.reservCreditID
+ FROM schOrders.tReservedCredits rc2
+ WHERE rc2.orderDetailID = rc.orderDetailID
+   AND rc2.isBundleItem = 0
+   AND rc2.orderDetailID IN (SELECT orderDetailID FROM schOrders.tReservedCredits WHERE isBundleItem = 1)
+) AS BundleReservedCreditId
+```
+
+Nothing constrains the result to one row, and there is no `ORDER BY`, so which `reservCreditID` becomes
+`BundleReservedCreditId` depends on the plan. This is a credits/billing path.
+
+### Why this is not the rule that was removed
+
+`GP0118` was removed for guessing whether a timestamp column is unique. **This rule guesses nothing**: it fires
+only when a row limiter is present and there is no `ORDER BY` in that query at all. "Rows returned are undefined"
+is then not an inference about the schema, it is what T-SQL specifies. I deliberately left this case out of
+`GP0118` (its test corpus lists `SELECT TOP (1) … WHERE …` as compliant, commented "a different problem, and not
+this rule's") — it is that different problem.
+
+### Detection
+
+String literal → looks like SQL → has a row limiter (`TOP n`, `FETCH NEXT`, `OFFSET`) → the same statement has no
+`ORDER BY`. `GpSqlText` from `f1c6cbd89` already has `HasRowLimiter` and `OrderByColumns`; recovering it gives both
+predicates for free.
+
+The one real subtlety is scoping the check to the statement the limiter belongs to, since a literal can hold
+several statements and, as here, nested subqueries. Simplest safe version: only analyse literals containing exactly
+one `SELECT`, and accept the false negatives on multi-statement literals rather than mis-pairing a limiter with
+another statement's `ORDER BY`. Note that the instance above would be **missed** by that simplification, because
+its literal holds several SELECTs — so if the rule is meant to catch this evidence, the limiter/ORDER BY pairing
+has to be per-`SELECT`, which means tracking parenthesis depth. Decide which of the two you want before starting.
+
+---
+
+## GP0125 — Dapper `splitOn` marker that leaves the mapped type's key unmapped
+
+**Confidence: medium-high, reasoned but not executed. Value: high — it silently empties a response.**
+
+### Evidence
+
+`GP.Wierzbiak/src/GP.Wierzbiak.Api/AllocationHistory/Db/Queries/GetChangesByAllocationIdQuery.cs`:
+
+```sql
+cp.Id        AS ProductId,          -- the split marker
+cp.ChangeId, cp.ProductType,
+cp.ProductId AS ProductProductId,   -- the real product id
+...
+```
+```csharp
+splitOn: "ProductId"
+...
+if (product != null && product.Id != 0) changeEntry.Products.Add(product);
+```
+
+`ChangeProductReadModel` has both `Id` (int) and `ProductId` (string). The second object starts at the column named
+`ProductId`, and that segment contains no column named `Id`, so `product.Id` keeps its default `0` — which makes
+the `product.Id != 0` guard permanently false and `Products` permanently empty. Separately,
+`ProductProductId` matches no property at all, so the real product id is dropped.
+
+The guard being written as `product.Id != 0` says the author expected `Id` to be populated. There is no test over
+this path — it is the only `splitOn` in the repository and nothing in `src` covers
+`GetChangesByAllocationId`/`ChangeWithProducts` — so I could not confirm it by running anything. Verify before
+fixing, but the alias arrangement cannot populate `Id`.
+
+### Detection
+
+Narrow and mechanical: for a Dapper multi-mapping call with a literal `splitOn`, take the mapped type of the
+segment and check that the columns from the marker onward cover its properties — in particular that a property
+named `Id` has a matching column when the type has one. Report a selected alias matching no property on any mapped
+type as well; that is the `ProductProductId` half and is the same check `GP0117` did, minus the cross-statement
+guessing that got `GP0117` removed.
+
+Only handle a literal `splitOn` and literal SQL. Anything computed, skip.
+
+---
+
+## GP0126 — `ToDictionary` over a caller-supplied collection
+
+**Confidence: medium. Value: medium. Two instances, one of them already cost a fix.**
+
+### Evidence
+
+1. `GP.Wierzbiak/src/GP.Wierzbiak.Api/Services/ComplimentarySwapServiceWriter.cs`, `PostProductsAsync`:
+   ```csharp
+   var incomingModels = products.Select(p => new ComplimentarySwapProductReadModel { ... })
+                                .ToDictionary(m => m.AllocatedProductId);
+   ```
+   `products` is the HTTP request body and `AllocatedProductId` is derived from `ProductId` + `Parameters`. Two
+   entries for the same product with the same parameters therefore collide, and `ToDictionary` throws
+   `ArgumentException` — an unhandled 500 driven entirely by request content.
+2. `GP.Scylla`, commit `d8bc4f8f5`: `AsQueryParams().ToDictionary(x => x.Key, x => x.Value)` over query parameters
+   where array parameters legitimately repeat a key. Already fixed by dropping the dictionary.
+
+### Why it is hard, and what to do about it
+
+"This sequence can contain duplicate keys" is undecidable in general, which is why I first recorded this as an
+idea rather than a candidate. The tractable version restricts the source: report `.ToDictionary(...)` whose source
+chain originates in a parameter of the enclosing method (directly, or through `Select`/`Where`), and which has no
+preceding `Distinct`/`DistinctBy`/`GroupBy`. That is a local dataflow question with a definite answer, not a guess
+about the data.
+
+It will still flag call sites where the caller genuinely guarantees uniqueness, and there is no way for the
+analyzer to see that guarantee. Weigh that before shipping; the honest framing is that `ToDictionary` on data you
+did not construct is an unstated precondition, and the fix (`ToLookup`, `GroupBy`, or an explicit duplicate check
+returning 422) is cheap.
+
+---
+
+## Investigate — an idempotency check separated from its write by a network call
+
+**One confirmed risk. No detection proposed.**
+
+`GP.Wierzbiak/src/GP.Wierzbiak.Api/Services/ComplimentarySwapServiceWriter.cs`, `AdhibitAsync`:
+
+```csharp
+var existingAdhibition = await _swapRepository.GetAdhibitionBySwapIdAsync(swapId, ct);
+if (existingAdhibition is not null) return Success(existingAdhibition.ComplimentaryAllocationId);
+...
+foreach (var product in swap.Products) { await _eligibilityClient.CheckAsync(...); }   // network
+...
+var createdId = await _swapRepository.AdhibitAsync(allocation, allocationProducts, adhibition, ...);
+```
+
+Two concurrent calls both find no adhibition, both pass eligibility, both mint a fresh `Ulid` allocation id and
+both write — granting the complimentary products twice, unless a unique constraint on `ComplimentarySwapId` stops
+the second. The window is as wide as the eligibility calls, one per product.
+
+Worth checking whether that constraint exists; the code does not rely on it (there is no duplicate-key handling,
+which `GP0111` would be the rule for). I have no low-false-positive detection for "check-then-act with a network
+call in the middle" — `GP0008` only covers external calls *inside* a transaction, which this is not. Recorded so
+the finding is not lost.
+
+---
 ## Investigate — `DateTime.Now` where the codebase means UTC
 
 **Confidence: low as a rule. Noise risk high.**
