@@ -76,16 +76,22 @@ public class ContractMembersShouldHaveConcreteTypesTest
             """)
             .Verify();
 
-    // Read-only collection interfaces are the shapes GP0058 asks for.
+    // Standard collection interfaces have well-defined concrete types in JSON serializers.
     [TestMethod]
-    public void ContractMembersShouldHaveConcreteTypes_CompliantForReadOnlyCollections() =>
+    public void ContractMembersShouldHaveConcreteTypes_CompliantForMaterializedCollections() =>
         builder.AddSnippet(
             Stubs + """
 
-            public sealed record OrderAcceptedContract(
-                System.Collections.Generic.IReadOnlyList<string> Tags,
-                System.Collections.Generic.IReadOnlyCollection<int> Quantities,
-                System.Collections.Generic.IReadOnlyDictionary<string, string> Metadata);
+            public sealed class CreateSecretRequest
+            {
+                public System.Collections.Generic.IDictionary<string, string> Metadata { get; init; }
+                public System.Collections.Generic.ICollection<string> Items { get; init; }
+                public System.Collections.Generic.IList<string> ErrorMessages { get; init; }
+                public System.Collections.Generic.ISet<string> Tags { get; init; }
+                public System.Collections.Generic.IReadOnlyList<string> ReadOnlyTags { get; init; }
+                public System.Collections.Generic.IReadOnlyCollection<int> Quantities { get; init; }
+                public System.Collections.Generic.IReadOnlyDictionary<string, string> ReadOnlyMetadata { get; init; }
+            }
             }
             """)
             .VerifyNoIssues();

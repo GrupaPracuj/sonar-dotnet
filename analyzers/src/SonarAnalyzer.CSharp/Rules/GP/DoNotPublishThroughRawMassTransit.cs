@@ -46,7 +46,6 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
     protected override void Initialize(SonarAnalysisContext context)
     {
         context.RegisterNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
-        context.RegisterNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression, SyntaxKindEx.ImplicitObjectCreationExpression);
     }
 
     private static void AnalyzeInvocation(SonarSyntaxNodeReportingContext context)
@@ -61,16 +60,6 @@ public sealed class DoNotPublishThroughRawMassTransit : SonarDiagnosticAnalyzer
         }
 
         context.ReportIssue(Rule, invocation, method.Name);
-    }
-
-    private static void AnalyzeObjectCreation(SonarSyntaxNodeReportingContext context)
-    {
-        if (ObjectCreationFactory.TryCreate(context.Node, out var creation)
-            && creation.TypeSymbol(context.Model) is { } type
-            && type.ToDisplayString() == "RabbitMQ.Client.ConnectionFactory")
-        {
-            context.ReportIssue(Rule, creation.Expression, type.Name);
-        }
     }
 
     // The method may be declared on a base interface (IBus derives from IPublishEndpoint and ISendEndpointProvider),

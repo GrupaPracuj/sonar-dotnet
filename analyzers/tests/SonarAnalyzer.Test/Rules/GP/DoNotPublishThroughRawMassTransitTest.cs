@@ -156,6 +156,39 @@ public class DoNotPublishThroughRawMassTransitTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotPublishThroughRawMassTransit_CompliantForRabbitMqConnectionUsedToInspectQueue() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace RabbitMQ.Client
+            {
+                public interface IConnection
+                {
+                    IModel CreateModel();
+                }
+
+                public interface IModel
+                {
+                    object BasicGet(string queue, bool autoAck);
+                }
+
+                public sealed class ConnectionFactory
+                {
+                    public IConnection CreateConnection() => null;
+                }
+            }
+
+            public sealed class RabbitMqQueueInspector
+            {
+                private readonly RabbitMQ.Client.IModel model =
+                    new RabbitMQ.Client.ConnectionFactory().CreateConnection().CreateModel();
+
+                public object Peek(string queue) => model.BasicGet(queue, false);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void DoNotPublishThroughRawMassTransit_CompliantForJunoPublisher() =>
         builder.AddSnippet(
             Stubs + """

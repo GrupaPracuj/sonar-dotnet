@@ -26,9 +26,9 @@ public sealed class OrderAcceptedContract
 }
 </pre>
 <h3>Exceptions</h3>
-<p>Read-only collection interfaces are not reported: <code>IReadOnlyList&lt;T&gt;</code>, <code>IReadOnlyCollection&lt;T&gt;</code>,
-<code>IReadOnlyDictionary&lt;TKey, TValue&gt;</code> and <code>IReadOnlySet&lt;T&gt;</code>. A deserializer knows what to create for these - a
-materialized collection - so the ambiguity this rule is about does not arise. The lazy sequence interfaces
+<p>Standard materialized collection interfaces are not reported: <code>ICollection&lt;T&gt;</code>, <code>IList&lt;T&gt;</code>,
+<code>ISet&lt;T&gt;</code>, <code>IDictionary&lt;TKey, TValue&gt;</code> and their read-only counterparts. A deserializer knows what to create for
+these, so the ambiguity this rule is about does not arise. The lazy sequence interfaces
 - <code>IEnumerable&lt;T&gt;</code>, <code>IQueryable&lt;T&gt;</code>, <code>IAsyncEnumerable&lt;T&gt;</code> - are not reported here either: a member that
 defers execution is a separate defect with a separate fix. Additional interfaces can be allowed through the <code>allowedInterfaces</code> parameter.</p>
 <p>A type carrying polymorphic configuration - <code>[JsonDerivedType]</code>, <code>[JsonPolymorphic]</code>, <code>[JsonConverter]</code> or

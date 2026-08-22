@@ -1,5 +1,5 @@
 <p>A message should be published or sent through Juno's <code>IPublisher</code>, <code>IMessageSender</code> or <code>EventStream</code>, not through MassTransit's
-<code>IPublishEndpoint</code>/<code>ISendEndpointProvider</code>/<code>IBus</code> or a raw RabbitMQ connection.</p>
+<code>IPublishEndpoint</code>/<code>ISendEndpointProvider</code>/<code>IBus</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>Juno wraps MassTransit rather than hiding it, and the wrapper is where the conventions live: the message-type naming and schema headers, the
 encryption support, the correlation context carried from the incoming request, and the publish metrics. Publishing straight through MassTransit

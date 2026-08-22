@@ -16,7 +16,7 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
     private const string InterfaceMessage = "'{0}' is declared as the interface '{1}', so a consumer cannot tell what to deserialize it into.";
     private const string AbstractMessage = "'{0}' is declared as the abstract type '{1}', so a consumer cannot tell what to deserialize it into.";
 
-    private const string DefaultAllowedInterfaces = "IReadOnlyList,IReadOnlyCollection,IReadOnlyDictionary,IReadOnlySet";
+    private const string DefaultAllowedInterfaces = "ICollection,IList,ISet,IDictionary,IReadOnlyList,IReadOnlyCollection,IReadOnlyDictionary,IReadOnlySet";
 
     private static readonly DiagnosticDescriptor InterfaceRule = DescriptorFactory.Create(RuleId, InterfaceMessage);
     private static readonly DiagnosticDescriptor AbstractRule = DescriptorFactory.Create(RuleId, AbstractMessage);
