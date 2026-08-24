@@ -650,7 +650,9 @@ higher-value cancellation boundary.
 
 ## Code findings that need fixing regardless of any rule
 
-These are defects in product code, not rule candidates. They should go to the owning teams.
+All of these now have issues in their owning repositories, indexed with links in
+[gp-product-findings.md](gp-product-findings.md) — including the ones I checked and deliberately did not file, so
+nobody re-investigates them.
 
 1. **`GP.Plunger` — SOQL injection**, 3 sites, `IPracujClubMembershipService.cs:145,242,279`. Values arrive from
    MassTransit message fields. Fix by parameterising or, at minimum, escaping `'` before interpolation.
