@@ -11,9 +11,9 @@ using CS = SonarAnalyzer.CSharp.Rules;
 namespace SonarAnalyzer.Test.Rules.GP;
 
 [TestClass]
-public class DoNotCreateDatabaseConnectionTest
+public class JunoDataAccessConventionsTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.DoNotCreateDatabaseConnection>()
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.JunoDataAccessConventions>()
         .AddReferences(MetadataReferenceFacade.SystemData)
         .AddReferences(MetadataReferenceFacade.SystemComponentModelPrimitives)
         .WithOptions(LanguageOptions.CSharpLatest);
@@ -125,7 +125,7 @@ public class DoNotCreateDatabaseConnectionTest
         """;
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForSqlConnection() =>
+    public void JunoDataAccessConventions_NoncompliantForSqlConnection() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -140,7 +140,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForProviderFactory() =>
+    public void JunoDataAccessConventions_NoncompliantForProviderFactory() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -158,7 +158,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForJunoFactory() =>
+    public void JunoDataAccessConventions_CompliantForJunoFactory() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -173,7 +173,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantWhenDbExecuteOmitsTransaction() =>
+    public void JunoDataAccessConventions_NoncompliantWhenDbExecuteOmitsTransaction() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -188,7 +188,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantWhenDbExecutePassesTransaction() =>
+    public void JunoDataAccessConventions_CompliantWhenDbExecutePassesTransaction() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -208,7 +208,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForPositionalTransactionInExecuteAsync() =>
+    public void JunoDataAccessConventions_CompliantForPositionalTransactionInExecuteAsync() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -223,7 +223,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForDifferentTransaction() =>
+    public void JunoDataAccessConventions_NoncompliantForDifferentTransaction() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -241,7 +241,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_ChecksInlineAndLocalCommandDefinitions() =>
+    public void JunoDataAccessConventions_ChecksInlineAndLocalCommandDefinitions() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -299,7 +299,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_ChecksCapturedTransactionInsideLambda() =>
+    public void JunoDataAccessConventions_ChecksCapturedTransactionInsideLambda() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -327,7 +327,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_DoesNotGuessInsideUnknownCommandDefinition() =>
+    public void JunoDataAccessConventions_DoesNotGuessInsideUnknownCommandDefinition() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -343,7 +343,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForProviderFactoryInsideJuno() =>
+    public void JunoDataAccessConventions_CompliantForProviderFactoryInsideJuno() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -364,7 +364,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForJunoSiblingNamespace() =>
+    public void JunoDataAccessConventions_NoncompliantForJunoSiblingNamespace() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -385,7 +385,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForDapperOutsideDbExecute() =>
+    public void JunoDataAccessConventions_NoncompliantForDapperOutsideDbExecute() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -398,7 +398,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForDapperInsideDbExecute() =>
+    public void JunoDataAccessConventions_CompliantForDapperInsideDbExecute() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -411,7 +411,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForFactoryDapperMethods() =>
+    public void JunoDataAccessConventions_CompliantForFactoryDapperMethods() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -438,7 +438,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForFactoryDapperWithTransaction() =>
+    public void JunoDataAccessConventions_CompliantForFactoryDapperWithTransaction() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -473,7 +473,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_ReportsMissingTransactionOrCancellation() =>
+    public void JunoDataAccessConventions_ReportsMissingTransactionOrCancellation() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -503,7 +503,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_ReportsDifferentTransactionOrConnection() =>
+    public void JunoDataAccessConventions_ReportsDifferentTransactionOrConnection() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -540,7 +540,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForConnectionAndTransactionHelper() =>
+    public void JunoDataAccessConventions_CompliantForConnectionAndTransactionHelper() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -560,7 +560,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForConnectionAndCancellationHelper() =>
+    public void JunoDataAccessConventions_CompliantForConnectionAndCancellationHelper() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -577,7 +577,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_DoesNotDuplicateManualConnectionDiagnostic() =>
+    public void JunoDataAccessConventions_DoesNotDuplicateManualConnectionDiagnostic() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -598,7 +598,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_NoncompliantForDapperInsideTransactionalService() =>
+    public void JunoDataAccessConventions_NoncompliantForDapperInsideTransactionalService() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -611,7 +611,7 @@ public class DoNotCreateDatabaseConnectionTest
             .Verify();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForDapperTypeHandlerRegistration() =>
+    public void JunoDataAccessConventions_CompliantForDapperTypeHandlerRegistration() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -633,7 +633,7 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void DoNotCreateDatabaseConnection_CompliantForAdoOperationOnProvidedConnection() =>
+    public void JunoDataAccessConventions_CompliantForAdoOperationOnProvidedConnection() =>
         builder.AddSnippet(
             Stubs + """
 

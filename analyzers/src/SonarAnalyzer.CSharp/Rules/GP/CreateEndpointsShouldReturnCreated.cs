@@ -13,7 +13,7 @@ public sealed class CreateEndpointsShouldReturnCreated : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0026";
 
-    private const string MessageFormat = "Method '{0}' looks like it creates a resource - return 201 (Created/CreatedAtAction) instead of 200 (Ok).";
+    private const string MessageFormat = "POST action '{0}' is named for creation - return 201 Created, for example with CreatedAtAction, instead of 200 Ok.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 

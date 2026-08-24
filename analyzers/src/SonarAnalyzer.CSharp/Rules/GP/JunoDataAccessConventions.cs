@@ -9,7 +9,7 @@
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
+public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
 {
     internal const string ConnectionRuleId = "GP0035";
     internal const string TransactionRuleId = "GP0129";
