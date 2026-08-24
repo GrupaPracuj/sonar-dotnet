@@ -1,0 +1,26 @@
+<p>A SQL Server string column referenced by an index or primary key should have a bounded length.</p>
+<h2>Why is this an issue?</h2>
+<p>FluentMigrator's <code>AsString(int.MaxValue)</code> and <code>AsString(-1)</code> create
+<code>NVARCHAR(MAX)</code>. SQL Server does not allow a MAX column as an index key, so a migration that indexes such a column fails when deployed.</p>
+<p>The rule correlates FluentMigrator table and index expressions by constant schema, table and column names. It also recognizes
+<code>PrimaryKey()</code> on the column chain. Unindexed MAX columns, computed names and lookalike APIs are deliberately ignored.</p>
+<h2>How to fix it</h2>
+<p>Choose the smallest length that covers the identifier or value domain.</p>
+<h3>Noncompliant code example</h3>
+<pre>
+Create.Table("Sessions")
+    .WithColumn("WalletId")
+    .AsString(int.MaxValue); // Noncompliant
+Create.Index("IX_Sessions_WalletId")
+    .OnTable("Sessions")
+    .OnColumn("WalletId");
+</pre>
+<h3>Compliant solution</h3>
+<pre>
+Create.Table("Sessions")
+    .WithColumn("WalletId")
+    .AsString(256);
+Create.Index("IX_Sessions_WalletId")
+    .OnTable("Sessions")
+    .OnColumn("WalletId");
+</pre>

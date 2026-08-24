@@ -1,0 +1,24 @@
+{
+  "title": "DELETE statements should not accidentally start a SELECT",
+  "type": "BUG",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "sql",
+    "database"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0121",
+  "sqKey": "GP0121",
+  "scope": "Main"
+}

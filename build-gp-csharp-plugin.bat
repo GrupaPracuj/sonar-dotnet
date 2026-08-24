@@ -5,7 +5,8 @@ pushd "%~dp0"
 if errorlevel 1 exit /b 1
 
 for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddHHmmss"') do set "BUILD_NUMBER=%%i"
-set "PLUGIN_VERSION=10.31.0.%BUILD_NUMBER%"
+for /f %%i in ('powershell -NoProfile -Command "$pom = [xml](Get-Content -Raw 'pom.xml'); ($pom.project.properties.revision -replace '-SNAPSHOT$', '') + '.0'"') do set "BASE_VERSION=%%i"
+set "PLUGIN_VERSION=%BASE_VERSION%.%BUILD_NUMBER%"
 
 echo Building GP CSharp plugin version %PLUGIN_VERSION%
 echo.

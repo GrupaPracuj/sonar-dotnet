@@ -1,0 +1,24 @@
+{
+  "title": "Injected clocks should not be bypassed by static clocks",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "TESTED"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "time",
+    "testability"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0120",
+  "sqKey": "GP0120",
+  "scope": "Main"
+}

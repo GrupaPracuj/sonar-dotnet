@@ -36,7 +36,7 @@ That sets the bar for everything below, so read it as a constraint rather than t
 text shape rather than by semantics will be rejected, however good its motivating example is. Where a candidate
 here is still partly heuristic, that is called out under its own heading.
 
-`GP0119` is taken by `MigrationDdlShouldUseFluentMigratorExpressions` (`47dc077f3`), so **the next free id is GP0120**. `GpSqlText.cs`, the shared SQL text reader, was deleted along with
+`GP0120`–`GP0122` are now shipped, so **the next free id is GP0123**. `GpSqlText.cs`, the shared SQL text reader, was deleted along with
 GP0117/GP0118; it is recoverable from `f1c6cbd89` if a future rule needs it.
 
 Each candidate below states what the evidence is, why the rules we already have cannot see it, and how to detect
@@ -44,7 +44,7 @@ it. Confidence is about *whether the rule is worth shipping*, not about whether 
 
 ---
 
-## GP0120 — Query text built by interpolation and passed to a company query API
+## Rejected candidate — Query text built by interpolation and passed to a company query API
 
 **Confidence: high. Value: high (security).**
 
@@ -134,7 +134,7 @@ a syntactic rule. Document it with a `// FN:` comment.
 
 ---
 
-## GP0121 — `WITH(NOLOCK)` inside a view definition
+## Rejected candidate — `WITH(NOLOCK)` inside a view definition
 
 **Confidence: medium-high. Value: medium.**
 
@@ -174,7 +174,7 @@ ship it scoped to non-`DataLake` schemas, or drop it.
 
 ---
 
-## GP0122 — A publish that precedes the write it announces
+## Candidate — A publish that precedes the write it announces
 
 **Confidence: high. Value: high. One confirmed instance.**
 
@@ -224,7 +224,9 @@ Step 1 alone catches this instance and is much the cheaper half; step 2 is worth
 
 ---
 
-## GP0123 — A static clock used where an injected clock is available
+## GP0120 — A static clock used where an injected clock is available
+
+**Shipped as `StaticClockShouldNotBypassInjectedTimeProvider`.**
 
 **Confidence: high. Value: medium-high. One confirmed instance.**
 
@@ -273,7 +275,7 @@ whose name ends in `TimeProvider`/`Clock`. `scope: Main` keeps test doubles out.
 
 ---
 
-## GP0124 — A row-limiting query with no ORDER BY at all
+## Candidate — A row-limiting query with no ORDER BY at all
 
 **Confidence: high. Value: medium. One confirmed instance.**
 
@@ -317,7 +319,7 @@ has to be per-`SELECT`, which means tracking parenthesis depth. Decide which of 
 
 ---
 
-## GP0125 — Dapper `splitOn` marker that leaves the mapped type's key unmapped
+## Candidate — Dapper `splitOn` marker that leaves the mapped type's key unmapped
 
 **Confidence: medium-high, reasoned but not executed. Value: high — it silently empties a response.**
 
@@ -359,7 +361,7 @@ Only handle a literal `splitOn` and literal SQL. Anything computed, skip.
 
 ---
 
-## GP0126 — `ToDictionary` over a caller-supplied collection
+## Candidate — `ToDictionary` over a caller-supplied collection
 
 **Confidence: medium. Value: medium. Two instances, one of them already cost a fix.**
 
@@ -391,7 +393,10 @@ returning 422) is cheap.
 
 ---
 
-## GP0127 — DELETE or UPDATE with no WHERE clause
+## GP0121 — A DELETE target accidentally followed by SELECT
+
+**Shipped as `DeleteStatementShouldNotBeFollowedBySelect`.** The implementation deliberately does not report every
+`DELETE` or `UPDATE` without `WHERE`; it reports only the confirmed `DELETE target SELECT ...` typo.
 
 **Confidence: high. Value: high. 21 confirmed instances in one directory, all currently dormant.**
 
@@ -474,7 +479,7 @@ two-schema identifier that would fail at runtime (commented out at `ClearCompani
 `ClearSentRequestForPaymentHeaders` is commented out at line 46.
 
 ---
-## GP0128 — an optional positional member on a record used for equality
+## Candidate — an optional positional member on a record used for equality
 
 **Confidence: high on the hazard, medium on any single call site misfiring. Value: high.**
 
@@ -527,7 +532,10 @@ that is what keeps this from firing on every DTO.
 
 ---
 
-## GP0129 — an identifier column typed as NVARCHAR(MAX) in a migration
+## GP0122 — an indexed column typed as NVARCHAR(MAX) in a migration
+
+**Shipped as `IndexedMigrationColumnShouldNotUseMaxLength`.** The implementation deliberately does not decide by an
+`Id` suffix. It reports only a MAX column correlated with an index or primary key in the same migration.
 
 **Confidence: high. Value: medium.**
 

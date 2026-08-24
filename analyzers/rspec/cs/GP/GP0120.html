@@ -1,0 +1,26 @@
+<p>Code with an injected <code>TimeProvider</code> should use it consistently instead of reading a static clock.</p>
+<h2>Why is this an issue?</h2>
+<p>An injected clock makes time deterministic in tests and keeps one operation on one time source. Reading
+<code>TimeProvider.System</code>, <code>DateTime.Now</code>, <code>DateTime.UtcNow</code> or their
+<code>DateTimeOffset</code> equivalents bypasses that abstraction. Tests that freeze the injected clock then still produce real timestamps, and one
+operation can observe inconsistent times.</p>
+<p>The rule reports only when the containing type already has a <code>System.TimeProvider</code> field, property, or primary-constructor parameter.
+Clock implementations and types named <code>*TimeProvider</code> or <code>*Clock</code> are excluded because they need a system time source.</p>
+<h2>How to fix it</h2>
+<p>Read time through the available provider, for example with <code>GetUtcNow()</code>.</p>
+<h3>Noncompliant code example</h3>
+<pre>
+public sealed class ReservationConsumer(TimeProvider timeProvider)
+{
+    public AuditTrace CreateTrace() =>
+        new(DateTimeOffset.UtcNow); // Noncompliant
+}
+</pre>
+<h3>Compliant solution</h3>
+<pre>
+public sealed class ReservationConsumer(TimeProvider timeProvider)
+{
+    public AuditTrace CreateTrace() =>
+        new(timeProvider.GetUtcNow());
+}
+</pre>
