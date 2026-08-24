@@ -32,14 +32,37 @@ public class HttpCallShouldNotBeMadeInALoopTest
             }
         }
 
+        namespace Microsoft.AspNetCore.Mvc
+        {
+            public sealed class HttpGetAttribute : Attribute { }
+            public abstract class ControllerBase { }
+        }
+
+        namespace Microsoft.AspNetCore.Routing
+        {
+            public interface IEndpointRouteBuilder { }
+        }
+
+        namespace Microsoft.AspNetCore.Builder
+        {
+            public static class EndpointRouteBuilderExtensions
+            {
+                public static void MapGet(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    Func<Task> handler) { }
+            }
+        }
+
         """;
 
     [TestMethod]
     public void HttpCallShouldNotBeMadeInALoop_NoncompliantInForEach() =>
         builder.AddSnippet(
             Stubs + """
-            public class Client
+            public class Client : Microsoft.AspNetCore.Mvc.ControllerBase
             {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
                 public async Task GetAll(HttpClient client, IEnumerable<int> ids)
                 {
                     foreach (var id in ids)
@@ -52,16 +75,60 @@ public class HttpCallShouldNotBeMadeInALoopTest
             .Verify();
 
     [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_NoncompliantInInlineMinimalApiHandler() =>
+        builder.AddSnippet(
+            Stubs + """
+            public static class Endpoints
+            {
+                public static void Map(
+                    Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app,
+                    HttpClient client,
+                    IEnumerable<int> ids)
+                {
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(app, "/items", async () =>
+                    {
+                        foreach (var id in ids)
+                        {
+                            await client.GetStringAsync($"/items/{id}"); // Noncompliant
+                        }
+                    });
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void HttpCallShouldNotBeMadeInALoop_NoncompliantInFor() =>
         builder.AddSnippet(
             Stubs + """
-            public class Client
+            public class Client : Microsoft.AspNetCore.Mvc.ControllerBase
             {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
                 public async Task GetAll(HttpClient client, int count)
                 {
                     for (int i = 0; i < count; i++)
                     {
                         await client.GetStringAsync($"/items/{i}"); // Noncompliant
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_NoncompliantInHelperReachedFromAction() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Client : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Task GetAll(HttpClient client, IEnumerable<int> ids) => Load(client, ids);
+
+                private static async Task Load(HttpClient client, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        await client.GetStringAsync($"/items/{id}"); // Noncompliant
                     }
                 }
             }

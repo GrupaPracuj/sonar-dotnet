@@ -9,11 +9,11 @@
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class HttpCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
+public sealed class DatabaseCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
 {
-    internal const string RuleId = "GP0096";
+    internal const string RuleId = "GP0126";
 
-    private const string MessageFormat = "This HTTP call directly depends on the loop variable and runs once per iteration - batch the requests or move the call outside the loop.";
+    private const string MessageFormat = "This database call depends on the loop variable and runs once per iteration - query in a batch or move the call outside the loop.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
@@ -27,7 +27,7 @@ public sealed class HttpCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
         var invocation = (InvocationExpressionSyntax)context.Node;
         if (GpLoopCallHelper.DependsOnDirectLoopVariable(invocation, context.Model)
             && context.Model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
-            && GpHttpCallHelper.IsHttpCall(method)
+            && GpDatabaseCallHelper.IsDatabaseCall(context.Model, invocation, method)
             && GpSynchronousApiReachability.IsReachable(context.Model, invocation))
         {
             context.ReportIssue(Rule, invocation);

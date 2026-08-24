@@ -1,0 +1,25 @@
+{
+  "title": "Juno infrastructure handlers should be protected before registration",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "asp.net",
+    "authentication",
+    "juno"
+  ],
+  "defaultSeverity": "Critical",
+  "ruleSpecification": "GP-0128",
+  "sqKey": "GP0128",
+  "scope": "Main"
+}

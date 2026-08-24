@@ -1,4 +1,4 @@
-<p>An HTTP call should not be made once for every element of a loop.</p>
+<p>A synchronous request-response API path should not make an HTTP call once for every element of a loop.</p>
 <h2>Why is this an issue?</h2>
 <p>Every call through <code>HttpClient</code> (or an <code>HttpMessageInvoker</code>) pays for a full network round-trip: DNS resolution, a TCP/TLS
 handshake or connection reuse, and the latency of the remote server itself - typically tens of milliseconds at best. Making that call once per loop
@@ -44,6 +44,8 @@ async Task&lt;List&lt;Order&gt;&gt; GetOrders(HttpClient client, IEnumerable&lt;
 }
 </pre>
 <h3>Exceptions</h3>
+<p>The rule follows calls within one compilation from MVC actions and inline Minimal API handlers. Calls that are not reachable from such an endpoint
+are not reported. Calls through another project are deliberately not guessed.</p>
 <p>Only a direct call whose receiver or arguments reference a variable declared by the enclosing loop is reported. This is a deliberately narrow
 signal that the request changes for each element. Retry and polling loops that repeat the same request are not reported.</p>
 <p>A call made from a nested lambda, local function, or LINQ query clause is not attributed to the outer loop. Indirect dependencies through a

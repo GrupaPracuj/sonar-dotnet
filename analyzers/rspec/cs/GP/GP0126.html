@@ -1,0 +1,23 @@
+<p>A synchronous request-response API path should not execute a separate database operation for every loop element.</p>
+<h2>Why is this an issue?</h2>
+<p>Database calls in a loop create N+1 round trips and make endpoint latency grow with input size. They also consume connection-pool capacity for the
+entire request and can amplify a small request into a large database load.</p>
+<p>The rule follows calls within one compilation from MVC actions and inline Minimal API handlers. It reports Dapper, Entity Framework Core and Juno
+<code>IDbExecute</code> operations only when their arguments directly depend on a variable declared by the loop. Retry and polling loops whose request
+does not vary per iteration are not reported. Calls through another project are deliberately not guessed.</p>
+<h2>How to fix it</h2>
+<p>Collect the identifiers and issue one set-based query, use an appropriate bulk operation, or load the required data before entering the loop.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+foreach (var id in request.Ids)
+{
+    results.Add(await connection.QuerySingleAsync&lt;Item&gt;(
+        new CommandDefinition(SqlById, new { id }, cancellationToken: cancellationToken))); // Noncompliant
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+var results = await connection.QueryAsync&lt;Item&gt;(
+    new CommandDefinition(SqlByIds, new { request.Ids }, cancellationToken: cancellationToken));
+</pre>

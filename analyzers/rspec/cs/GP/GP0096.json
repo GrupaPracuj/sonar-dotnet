@@ -1,5 +1,5 @@
 {
-  "title": "HTTP calls should not directly depend on a loop variable",
+  "title": "Synchronous API paths should not perform HTTP calls in loops",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
