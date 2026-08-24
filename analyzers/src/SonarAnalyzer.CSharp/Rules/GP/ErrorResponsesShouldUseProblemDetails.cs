@@ -11,17 +11,18 @@ namespace SonarAnalyzer.CSharp.Rules;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnalyzer
 {
-    internal const string RuleId = "GP0110";
+    internal const string ProblemDetailsRuleId = "GP0110";
+    internal const string StatusMismatchRuleId = "GP0131";
 
-    private const string MessageFormat = "Use ProblemDetails for the response body of status {0} instead of '{1}'.";
+    private const string ProblemDetailsMessageFormat = "Use ProblemDetails for the response body of status {0} instead of '{1}'.";
     private const string StatusMismatchMessageFormat = "ProblemDetails.Status is {0}, but this response returns HTTP {1}; keep them consistent.";
     private const string ProblemDetailsType = "Microsoft.AspNetCore.Mvc.ProblemDetails";
 
-    private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
-    private static readonly DiagnosticDescriptor StatusMismatchRule = DescriptorFactory.Create(RuleId, StatusMismatchMessageFormat);
+    private static readonly DiagnosticDescriptor ProblemDetailsRule = DescriptorFactory.Create(ProblemDetailsRuleId, ProblemDetailsMessageFormat);
+    private static readonly DiagnosticDescriptor StatusMismatchRule = DescriptorFactory.Create(StatusMismatchRuleId, StatusMismatchMessageFormat);
     private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete", "MapMethods"];
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule, StatusMismatchRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(ProblemDetailsRule, StatusMismatchRule);
 
     protected override void Initialize(SonarAnalysisContext context)
     {
@@ -85,7 +86,7 @@ public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnaly
             {
                 if (!IsProblemDetails(payloadType))
                 {
-                    context.ReportIssue(Rule, invocation, statusCode.Value.ToString(), TypeDescription(payloadType));
+                    context.ReportIssue(ProblemDetailsRule, invocation, statusCode.Value.ToString(), TypeDescription(payloadType));
                     reportedStatuses.Add(statusCode.Value);
                 }
                 else if (ExplicitProblemStatus(context.Model, payload) is { } problemStatus
@@ -118,7 +119,7 @@ public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnaly
                 && !IsProblemDetails(responseType)
                 && attribute.ApplicationSyntaxReference?.GetSyntax() is { } syntax)
             {
-                context.ReportIssue(Rule, syntax, statusCode.Value.ToString(), TypeDescription(responseType));
+                context.ReportIssue(ProblemDetailsRule, syntax, statusCode.Value.ToString(), TypeDescription(responseType));
             }
         }
     }

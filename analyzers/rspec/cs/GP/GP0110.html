@@ -7,8 +7,6 @@ application-specific extensions.</p>
 with response metadata. When a returned body and method-level metadata violate the rule for the same status, only the returned body is reported.
 Controller-level metadata remains a separate shared contract and is reported independently. Bodyless errors, framework <code>Problem</code> and
 <code>ValidationProblem</code> factories, middleware-generated responses and types derived from <code>ProblemDetails</code> are accepted.</p>
-<p>When a returned <code>ProblemDetails</code> object initializer sets <code>Status</code> to a compile-time constant, that value must match the HTTP
-status selected by the response factory. The rule does not infer dynamically assigned status values.</p>
 <h2>How to fix it</h2>
 <p>Return <code>Problem()</code>, <code>ValidationProblem()</code>, <code>Results.Problem()</code>, or pass a suitable
 <code>ProblemDetails</code> subtype as the error body. Keep internal exception details out of the public fields.</p>
@@ -24,10 +22,7 @@ return Problem(
     title: "The order is invalid",
     statusCode: StatusCodes.Status400BadRequest);
 </pre>
-<p>Keep an explicitly embedded status consistent with the response:</p>
-<pre>
-return BadRequest(new ProblemDetails { Status = StatusCodes.Status400BadRequest });
-</pre>
+<p>A returned <code>ProblemDetails</code> whose <code>Status</code> contradicts the HTTP status is the subject of GP0131.</p>
 <h2>Resources</h2>
 <ul>
   <li><a href="https://www.rfc-editor.org/rfc/rfc9457">RFC 9457 - Problem Details for HTTP APIs</a></li>

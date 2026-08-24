@@ -1,0 +1,33 @@
+<p>When a returned <code>ProblemDetails</code> sets <code>Status</code>, it should carry the same status the response itself returns.</p>
+<h2>Why is this an issue?</h2>
+<p>The status now appears twice: once in the HTTP status line and once inside the body. When the two disagree, the response answers the same question
+in two different ways and there is nothing to say which one is authoritative. A client branching on the transport status takes one path, a client
+reading <code>ProblemDetails.Status</code> takes another, and the same error is handled inconsistently across consumers. Proxies, gateways and logs
+follow the status line, so the body's value is the one that quietly goes unnoticed.</p>
+<p>RFC 9457 makes this normative. The <code>status</code> member is advisory and exists for the consumer's convenience, but "Generators MUST use the
+same status code in the actual HTTP response, to assure that generic HTTP software that does not understand this format still behaves correctly". A
+mismatch also defeats the one diagnostic use the RFC grants consumers: reading <code>status</code> to recover the code the generator originally
+produced, in case an intermediary or cache has changed it since.</p>
+<p>The rule compares the two only when <code>Status</code> is set to a compile-time constant in the object initializer of a returned
+<code>ProblemDetails</code>, and when the response factory selects a known status. A value assigned dynamically is not guessed at, and a
+<code>ProblemDetails</code> that leaves <code>Status</code> unset is fine - the framework fills it in from the response.</p>
+<h2>How to fix it</h2>
+<p>Set <code>Status</code> to the status the response returns, or leave it unset and let the framework supply it.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+return BadRequest(new ProblemDetails { Status = StatusCodes.Status422UnprocessableEntity }); // Noncompliant: the response returns 400
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+return BadRequest(new ProblemDetails { Status = StatusCodes.Status400BadRequest });
+</pre>
+<p>Leaving it out is equally correct:</p>
+<pre>
+return BadRequest(new ProblemDetails { Title = "The order is invalid" });
+</pre>
+<h2>Resources</h2>
+<ul>
+  <li><a href="https://www.rfc-editor.org/rfc/rfc9457#name-status">RFC 9457, Section 3.1.2 - the "status" member</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/aspnet/core/web-api/handle-errors">Microsoft Learn - Handle errors in ASP.NET Core APIs</a></li>
+</ul>

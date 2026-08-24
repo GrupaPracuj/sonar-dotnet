@@ -1,0 +1,26 @@
+{
+  "title": "ProblemDetails.Status should match the response status code",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "LOGICAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "asp.net",
+    "api",
+    "rfc9457"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0131",
+  "sqKey": "GP0131",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}
