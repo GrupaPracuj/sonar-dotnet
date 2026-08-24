@@ -393,72 +393,87 @@ returning 422) is cheap.
 
 ## GP0127 — DELETE or UPDATE with no WHERE clause
 
-**Confidence: high. Value: high. One confirmed instance, currently dormant.**
+**Confidence: high. Value: high. 21 confirmed instances in one directory, all currently dormant.**
 
-This is the most valuable thing the sweep found, and it is the cheapest of the candidates to implement.
+Do this one first. It is the cheapest candidate to implement and the only one where the evidence is a systemic
+defect rather than a single slip.
 
 ### Evidence
 
-Two purge commands in `GP.Odra` write `SELECT` where `FROM` belongs. That splits the text into two statements and
-leaves the `DELETE` unqualified:
+`GP.Odra/src/GP.Odra.Internal/Companies/Purging/DataAccess/` contains 47 table-clearing commands. **21 of them**
+write `SELECT` where `FROM` belongs, which splits the literal into two statements and leaves the `DELETE`
+unqualified:
 
-`src/GP.Odra.Internal/Companies/Purging/DataAccess/ClearCommonOffersInheritance.cs`
 ```sql
-DELETE schOffers.tCommonOffersInheritance
-SELECT DISTINCT coi.* FROM schOffers.tCommonOffersInheritance coi
-INNER JOIN schOffers.tCommonOffers co
-  ON coi.sourceCommonOfferId = co.commonOfferID OR coi.targetCommonOfferID = co.commonOfferID
-WHERE co.companyID = @companyId;
+DELETE schOffers.tOffers              -- a complete statement. No WHERE. Whole table.
+SELECT * FROM schOffers.tOffers o
+INNER JOIN schOffers.tCommonOffers co ON o.commonOfferID = co.commonOfferID
+WHERE co.companyID = @companyId       -- this WHERE belongs to the SELECT
 ```
 
-`ClearCommonOffersProfeo.cs` has the same shape. The `WHERE` belongs to the `SELECT`, not to the `DELETE`, so the
-`DELETE` removes **every row in the table**.
+The other **26** get it right, and the contrast is what proves this is a typo rather than a design:
 
-The sibling file in the same directory shows what was meant, and is the proof that this is a typo rather than a
-design:
-
-`ClearCommonOfferAddons.cs`
 ```sql
 DELETE schOffers.tCommonOfferAddons
-FROM   schOffers.tCommonOfferAddons coa      -- FROM, so this is ONE statement
+FROM   schOffers.tCommonOfferAddons coa   -- FROM, so the whole thing is ONE statement
 INNER JOIN schOffers.tCommonOffers co ON coa.commonOfferId = co.commonOfferID
 WHERE co.companyID = @companyId
 ```
 
+The sharpest pair sits on the same target table: `ClearOffersCategoriesByReservedCreditId.cs` deletes from
+`schOffers.tOffersCategories` correctly with `FROM`, while `ClearOffersCategoriesByCommonOfferId.cs` deletes from
+the same table with `SELECT` and would wipe it.
+
+The 21: `ClearCommonOffersInheritance`, `ClearCommonOffersProfeo`, `ClearOfferLocations`, `ClearOfferRellocation`,
+`ClearOffers`, `ClearOffersBranches`, `ClearOffersCategoriesByCommonOfferId`, `ClearOffersCompanyLogos`,
+`ClearOffersCompetencesLanguages`, `ClearOffersEducations`, `ClearOffersEmploymentsFroms`,
+`ClearOffersEmploymentsTypes`, `ClearOffersExperiences`, `ClearOffersHtml`, `ClearOffersMapCoordinates`,
+`ClearOffersNewCategories`, `ClearOffersSalaries`, `ClearOffersSalaryRanges`, `ClearOffersToDeleteFromArchive`,
+`ClearOffersTypesOfContracts`, `ClearOffersWorkSchedules`.
+
 ### Reachability — read this before rating the severity
 
-Both broken commands are instantiated only by `ClearCommonOffers`, and `ClearCommonOffers` is commented out in
-`ClearCompanies.cs:40` (`//new ClearCommonOffers(companyId, loggerFactory),`). **No data is being lost today.**
-What makes it worth a rule is what happens when somebody uncomments that line — which looks like unfinished work,
-since clearing offers plainly belongs in a company purge: a single-company purge then wipes
-`tCommonOffersInheritance` and `tCommonOffersProfeo` for every company in the database.
+All 21 hang off `ClearCommonOffers`, and `ClearCommonOffers` is commented out in `ClearCompanies.cs:40`
+(`//new ClearCommonOffers(companyId, loggerFactory),`). I checked each of the 21 against the 48 uncommented direct
+children of `ClearCompanies`: none appears there. **So no data is being lost today.**
+
+That is also why this is worth a rule rather than just a bug report. The entire offer-clearing subtree was written
+with the same misunderstanding, it sits behind a single commented-out line that plainly represents unfinished work,
+and nothing in the build, the tests or the current analysers says a word about it. Uncommenting that line turns a
+one-company purge into a global wipe of twenty-one tables.
 
 ### Why nothing catches it today
 
-No `S` rule and no GP rule looks at the shape of a DML statement. `S2077` is about dynamic formatting, `S2857`
-about keyword spacing.
+No `S` rule and no GP rule inspects the shape of a DML statement. `S2077` is about dynamic formatting, `S2857`
+about keyword spacing. There is no test coverage over these commands either.
 
 ### Detection
 
-A SQL string literal containing a `DELETE` or `UPDATE` statement with no `WHERE`. No schema knowledge, no dataflow,
-no naming heuristics.
+A SQL string literal containing a `DELETE` or `UPDATE` statement with no `WHERE`. No schema knowledge, no
+dataflow, no naming heuristics.
 
 The one piece of real work is statement splitting: the rule has to see that `DELETE x` followed by `SELECT` is two
-statements, while `DELETE x FROM x JOIN …` is one. That distinction *is* the bug, so it cannot be skipped —
-splitting on a naive `;` or on newlines will miss both instances, because neither has a separator. Split on
+statements while `DELETE x FROM x JOIN …` is one. That distinction *is* the bug, so it cannot be skipped — and note
+that splitting on `;` or on newlines finds none of the 21, because none of them has a separator. Split on
 statement-introducing keywords (`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `WITH`) at parenthesis depth zero,
-and treat a `FROM`/`OUTPUT` immediately following the delete target as part of the same statement.
+and treat `FROM`, `OUTPUT` or `WHERE` immediately following the delete target as continuations of the same
+statement.
 
-Reporting `UPDATE` without `WHERE` costs nothing extra once the splitter exists.
+Reporting `UPDATE` without `WHERE` costs nothing once the splitter exists.
 
 ### FP profile
 
-Deliberate full-table deletes do exist — clearing a staging table, test fixtures — but they are rare in `Main`
-scope and `TRUNCATE TABLE` is the idiomatic form. Expect a handful of legitimate hits; they are worth the two this
-catches.
+Deliberate full-table deletes exist — clearing a staging table, resetting a fixture — but they are rare in `Main`
+scope and `TRUNCATE TABLE` is the idiomatic form. `ClearLayouts.cs` in this same directory shows the compliant
+multi-statement shape: `UPDATE … WHERE …; DELETE FROM … WHERE …`, both qualified, so a correct implementation must
+not flag it.
+
+Two neighbouring defects found while checking reachability, both also dormant and both worth a mention to the
+team: `ClearNavisionBankAccounts.cs` targets `schCustomers.[schCustomers.tNavisionBankAccounts]`, a malformed
+two-schema identifier that would fail at runtime (commented out at `ClearCompanies.cs:19`), and
+`ClearSentRequestForPaymentHeaders` is commented out at line 46.
 
 ---
-
 ## GP0128 — an optional positional member on a record used for equality
 
 **Confidence: high on the hazard, medium on any single call site misfiring. Value: high.**
