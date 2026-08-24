@@ -94,7 +94,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
-                        _publisher.Publish(new OrderAccepted(id)); // Noncompliant {{Use 'OrderAccepted' from a contract assembly for this published message; it is declared in 'project0'.}}
+                        _publisher.Publish(new OrderAccepted(id)); // Noncompliant {{Declare 'OrderAccepted' in a contract assembly; this published message uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();
@@ -112,7 +112,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
-                        _publisher.Send(new AcceptOrder(id)); // Noncompliant {{Use 'AcceptOrder' from a contract assembly for this sent command; it is declared in 'project0'.}}
+                        _publisher.Send(new AcceptOrder(id)); // Noncompliant {{Declare 'AcceptOrder' in a contract assembly; this sent command uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();
@@ -291,7 +291,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
-                        _publisher.Publish(new Shared.Models.OrderAccepted(id)); // Noncompliant {{Use 'OrderAccepted' from a contract assembly for this published message; it is declared in 'GP.Kaczawa.ContractsLegacy'.}}
+                        _publisher.Publish(new Shared.Models.OrderAccepted(id)); // Noncompliant {{Declare 'OrderAccepted' in a contract assembly; this published message uses it from 'GP.Kaczawa.ContractsLegacy', which is not one.}}
                 }
                 """)
             .Verify();
@@ -323,7 +323,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                     public System.Threading.Tasks.Task Accept(System.Guid id) =>
-                        _publisher.Publish(new Shared.Messages.OrderAccepted(id)); // Noncompliant {{Use 'OrderAccepted' from a contract assembly for this published message; it is declared in 'GP.RestApi.Filestore.Contract'.}}
+                        _publisher.Publish(new Shared.Messages.OrderAccepted(id)); // Noncompliant {{Declare 'OrderAccepted' in a contract assembly; this published message uses it from 'GP.RestApi.Filestore.Contract', which is not one.}}
                 }
                 """)
             .Verify();
@@ -352,7 +352,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
 
                     public System.Threading.Tasks.Task Rebuild() =>
-                        _publisher.Send(new Shared.Messages.RebuildAcceptance()); // Noncompliant {{Use 'RebuildAcceptance' from a contract assembly for this sent command; it is declared in 'GP.FileStoreTools.Commands'.}}
+                        _publisher.Send(new Shared.Messages.RebuildAcceptance()); // Noncompliant {{Declare 'RebuildAcceptance' in a contract assembly; this sent command uses it from 'GP.FileStoreTools.Commands', which is not one.}}
                 }
                 """)
             .Verify();
@@ -435,7 +435,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                     public System.Threading.Tasks.Task Accept(
                         MassTransit.ISendEndpoint endpoint,
                         System.Guid orderId) =>
-                        endpoint.Send(new AcceptOrder(orderId)); // Noncompliant {{Use 'AcceptOrder' from a contract assembly for this sent command; it is declared in 'project0'.}}
+                        endpoint.Send(new AcceptOrder(orderId)); // Noncompliant {{Declare 'AcceptOrder' in a contract assembly; this sent command uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();
@@ -454,8 +454,8 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public System.Threading.Tasks.Task<Microsoft.AspNetCore.Mvc.ActionResult<OrderCreated>> Create(
-                        CreateOrder request) => // Noncompliant {{Use 'CreateOrder' from a contract assembly for this REST request; it is declared in 'project0'.}}
-                        null; // Noncompliant@-2 {{Use 'OrderCreated' from a contract assembly for this REST response; it is declared in 'project0'.}}
+                        CreateOrder request) => // Noncompliant {{Declare 'CreateOrder' in a contract assembly; this REST request uses it from 'project0', which is not one.}}
+                        null; // Noncompliant@-2 {{Declare 'OrderCreated' in a contract assembly; this REST response uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();
@@ -489,7 +489,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public Microsoft.AspNetCore.Mvc.IActionResult Execute(
-                        [Microsoft.AspNetCore.Mvc.FromBody] ExecuteOrder request) => // Noncompliant {{Use 'ExecuteOrder' from a contract assembly for this REST request; it is declared in 'project0'.}}
+                        [Microsoft.AspNetCore.Mvc.FromBody] ExecuteOrder request) => // Noncompliant {{Declare 'ExecuteOrder' in a contract assembly; this REST request uses it from 'project0', which is not one.}}
                         Ok(null);
                 }
                 """)
@@ -566,7 +566,7 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]
                     public Microsoft.AspNetCore.Mvc.IActionResult Create() =>
-                        Ok(new OrderCreated(System.Guid.NewGuid())); // Noncompliant {{Use 'OrderCreated' from a contract assembly for this REST response; it is declared in 'project0'.}}
+                        Ok(new OrderCreated(System.Guid.NewGuid())); // Noncompliant {{Declare 'OrderCreated' in a contract assembly; this REST response uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();
@@ -605,9 +605,9 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
                         Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(
                             app,
                             "/orders",
-                            (CreateOrder request) => // Noncompliant {{Use 'CreateOrder' from a contract assembly for this REST request; it is declared in 'project0'.}}
+                            (CreateOrder request) => // Noncompliant {{Declare 'CreateOrder' in a contract assembly; this REST request uses it from 'project0', which is not one.}}
                                 Microsoft.AspNetCore.Http.Results.Ok(
-                                    new OrderCreated(System.Guid.NewGuid()))); // Noncompliant@-1 {{Use 'OrderCreated' from a contract assembly for this REST response; it is declared in 'project0'.}}
+                                    new OrderCreated(System.Guid.NewGuid()))); // Noncompliant@-1 {{Declare 'OrderCreated' in a contract assembly; this REST response uses it from 'project0', which is not one.}}
                 }
                 """)
             .Verify();

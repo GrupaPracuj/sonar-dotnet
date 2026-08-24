@@ -134,7 +134,7 @@ public class DoNotCreateDatabaseConnectionTest
                 private readonly string _connectionString;
 
                 public System.Data.Common.DbConnection Open() =>
-                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Preserve the Juno connection and transaction context by using IDbExecute or Dapper on a connection created by IAdoConnectionFactory, passing the active transaction.}}
+                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno: express the work as an IDbExecute, or use Dapper on a connection created by IAdoConnectionFactory.}}
             }
             """)
             .Verify();

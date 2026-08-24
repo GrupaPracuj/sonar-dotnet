@@ -1,5 +1,4 @@
-<p>Database access should preserve the connection and transaction context supplied by Juno. Two equivalent patterns are supported:
-an <code>IDbExecute</code> operation executed by Juno, or direct Dapper access on a connection created by
+<p>A database connection should come from Juno, either supplied to an <code>IDbExecute</code> or created by
 <code>IAdoConnectionFactory.CreateConnection()</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>Constructing the connection yourself means supplying the connection string yourself, which is the actual problem: the address, credentials, failover
@@ -13,19 +12,14 @@ public async Task&lt;Order&gt; Find(int id)
     return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
 </pre>
-<p>Direct Dapper is valid when the receiver can be traced to <code>IAdoConnectionFactory.CreateConnection()</code>. Such calls use
-<code>CommandDefinition</code> so the caller's <code>CancellationToken</code> is preserved. If the method starts a transaction, every Dapper operation
-before its commit or rollback must receive that exact transaction, either in <code>CommandDefinition</code> or in Dapper's
-<code>transaction</code> argument. A transaction opened on one connection cannot be used to justify work on another connection.</p>
-<p>The rule targets Dapper <code>Query*</code> and <code>Execute*</code> operations. Configuration and utility APIs such as
-<code>SqlMapper.AddTypeHandler</code>, <code>AddTypeMap</code>, <code>PurgeQueryCache</code> and <code>AsTableValuedParameter</code> do not access a
-database and are not reported.</p>
-<p>Inside an <code>IDbExecute</code>, Dapper operations must receive the <code>IDbTransaction</code> parameter supplied by Juno. Omitting it can make
-one command escape the surrounding transaction or fail at runtime when the provider requires commands on a transactional connection to enlist
-explicitly. The same requirement applies when the operation uses a Dapper <code>CommandDefinition</code>.</p>
+<p>Both supported shapes are equivalent as far as this rule is concerned. An <code>IDbExecute</code> lets Juno run the work with the ambient
+transaction supplied; <code>IAdoConnectionFactory</code> hands back a connection you use directly, typically with Dapper.</p>
+<p>The rule reports a constructed <code>DbConnection</code>, a connection obtained from a <code>DbProviderFactory</code>, and a Dapper operation whose
+connection cannot be traced back to one of the two supported shapes. It targets Dapper <code>Query*</code> and <code>Execute*</code> operations;
+configuration and utility APIs such as <code>SqlMapper.AddTypeHandler</code>, <code>AddTypeMap</code>, <code>PurgeQueryCache</code> and
+<code>AsTableValuedParameter</code> do not access a database and are not reported.</p>
 <h2>How to fix it</h2>
-<p>Express the work as an <code>IDbExecute</code> and let Juno pass the connection and ambient transaction, or create the connection through
-<code>IAdoConnectionFactory</code> and pass the cancellation token and active transaction in every Dapper command.</p>
+<p>Express the work as an <code>IDbExecute</code>, or create the connection through <code>IAdoConnectionFactory</code>.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -34,33 +28,21 @@ public async Task&lt;Order&gt; Find(int id)
     using var connection = new SqlConnection(_connectionString); // Noncompliant
     return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
-
-public async Task Save(CancellationToken token)
-{
-    await using var connection = connectionFactory.CreateConnection();
-    await using var transaction = await connection.BeginTransactionAsync(token);
-    await connection.ExecuteAsync(
-        new CommandDefinition("update Orders set Saved = 1", cancellationToken: token)); // Noncompliant: transaction omitted
-}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public async Task Save(CancellationToken token)
+public async Task&lt;Order&gt; Find(int id, CancellationToken token)
 {
     await using var connection = connectionFactory.CreateConnection();
-    await using var transaction = await connection.BeginTransactionAsync(token);
-    await connection.ExecuteAsync(
-        new CommandDefinition(
-            "update Orders set Saved = 1",
-            transaction: transaction,
-            cancellationToken: token));
-    await transaction.CommitAsync(token);
+    return await connection.QuerySingleAsync&lt;Order&gt;(
+        new CommandDefinition("select * from Orders where Id = @id", new { id }, cancellationToken: token));
 }
 </pre>
 <h2>Rule history</h2>
 <ul>
   <li>2026-08: direct Dapper on an <code>IAdoConnectionFactory</code> connection became a supported alternative to
-  <code>IDbExecute</code>; active-transaction identity and cancellation propagation are now checked.</li>
+  <code>IDbExecute</code>.</li>
+  <li>2026-08: the transaction and cancellation requirements this rule used to carry moved to GP0129 and GP0130, so each has its own description and examples.</li>
 </ul>
 <h2>Resources</h2>
 <h3>Documentation</h3>

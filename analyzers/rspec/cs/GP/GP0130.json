@@ -1,0 +1,25 @@
+{
+  "title": "Dapper operations should pass the caller's CancellationToken",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "RELIABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "juno",
+    "sql"
+  ],
+  "defaultSeverity": "Minor",
+  "ruleSpecification": "GP-0130",
+  "sqKey": "GP0130",
+  "scope": "Main",
+  "quickfix": "unknown"
+}

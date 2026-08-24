@@ -11,17 +11,19 @@ namespace SonarAnalyzer.CSharp.Rules;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
 {
-    internal const string RuleId = "GP0035";
+    internal const string ConnectionRuleId = "GP0035";
+    internal const string TransactionRuleId = "GP0129";
+    internal const string CancellationRuleId = "GP0130";
 
-    private const string MessageFormat = "Preserve the Juno connection and transaction context by using IDbExecute or Dapper on a connection created by IAdoConnectionFactory, passing the active transaction.";
+    private const string ConnectionMessage = "Obtain the connection from Juno: express the work as an IDbExecute, or use Dapper on a connection created by IAdoConnectionFactory.";
     private const string TransactionMessage = "Pass the active transaction to this Dapper operation.";
     private const string CancellationMessage = "Pass the CancellationToken through Dapper CommandDefinition.";
 
-    private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
-    private static readonly DiagnosticDescriptor TransactionRule = DescriptorFactory.Create(RuleId, TransactionMessage);
-    private static readonly DiagnosticDescriptor CancellationRule = DescriptorFactory.Create(RuleId, CancellationMessage);
+    private static readonly DiagnosticDescriptor ConnectionRule = DescriptorFactory.Create(ConnectionRuleId, ConnectionMessage);
+    private static readonly DiagnosticDescriptor TransactionRule = DescriptorFactory.Create(TransactionRuleId, TransactionMessage);
+    private static readonly DiagnosticDescriptor CancellationRule = DescriptorFactory.Create(CancellationRuleId, CancellationMessage);
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule, TransactionRule, CancellationRule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(ConnectionRule, TransactionRule, CancellationRule);
 
     protected override void Initialize(SonarAnalysisContext context)
     {
@@ -35,7 +37,7 @@ public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
             && creation.TypeSymbol(context.Model) is { } type
             && GpJunoTypes.DerivesFrom(type, "System.Data.Common.DbConnection"))
         {
-            context.ReportIssue(Rule, creation.Expression);
+            context.ReportIssue(ConnectionRule, creation.Expression);
         }
     }
 
@@ -55,7 +57,7 @@ public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
         else if (method.Name == "CreateConnection"
                  && GpJunoTypes.DerivesFrom(method.ContainingType, "System.Data.Common.DbProviderFactory"))
         {
-            context.ReportIssue(Rule, invocation);
+            context.ReportIssue(ConnectionRule, invocation);
         }
     }
 
@@ -74,7 +76,7 @@ public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
 
         if (DapperConnection(invocation, method) is not { } connection)
         {
-            context.ReportIssue(Rule, invocation);
+            context.ReportIssue(ConnectionRule, invocation);
             return;
         }
 
@@ -88,12 +90,12 @@ public sealed class DoNotCreateDatabaseConnection : SonarDiagnosticAnalyzer
         var helperTransaction = HelperTransaction(context.Model, invocation, connection);
         if (origin is not (ConnectionOrigin.AdoFactory or ConnectionOrigin.HelperParameter))
         {
-            context.ReportIssue(Rule, invocation);
+            context.ReportIssue(ConnectionRule, invocation);
             return;
         }
         if (origin == ConnectionOrigin.HelperParameter && !IsAdoHelper(context.Model, invocation, connection))
         {
-            context.ReportIssue(Rule, invocation);
+            context.ReportIssue(ConnectionRule, invocation);
             return;
         }
 

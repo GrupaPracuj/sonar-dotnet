@@ -1,0 +1,58 @@
+<p>A Dapper operation should receive the transaction that is already open for its connection.</p>
+<h2>Why is this an issue?</h2>
+<p>Dapper does not pick up an ambient transaction. An operation that omits it runs outside the transaction on its own implicit one, so it commits
+immediately and survives a later rollback - the method reads as one atomic unit of work but is not. Some providers do not even allow it: a command on a
+connection with an open transaction fails at runtime unless it enlists explicitly.</p>
+<p>Two shapes carry a transaction. Inside an <code>IDbExecute</code>, Juno supplies an <code>IDbTransaction</code> parameter, and every Dapper
+operation in that method must be given it. On a connection created by <code>IAdoConnectionFactory</code>, a transaction begun on that connection must
+reach every Dapper operation issued before its commit or rollback.</p>
+<p>The transaction can be passed either in Dapper's <code>transaction</code> argument or in a <code>CommandDefinition</code>. It must be the transaction
+belonging to the connection being used: one opened on a different connection does not make the work transactional, and the rule reports that case too.
+Operations issued after a commit or rollback are outside the transaction's lifetime and are not reported.</p>
+<h2>How to fix it</h2>
+<p>Pass the available transaction to the operation.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task Save(CancellationToken token)
+{
+    await using var connection = connectionFactory.CreateConnection();
+    await using var transaction = await connection.BeginTransactionAsync(token);
+    await connection.ExecuteAsync(
+        new CommandDefinition("update Orders set Saved = 1", cancellationToken: token)); // Noncompliant: the open transaction is not passed
+    await transaction.CommitAsync(token);
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public async Task Save(CancellationToken token)
+{
+    await using var connection = connectionFactory.CreateConnection();
+    await using var transaction = await connection.BeginTransactionAsync(token);
+    await connection.ExecuteAsync(
+        new CommandDefinition(
+            "update Orders set Saved = 1",
+            transaction: transaction,
+            cancellationToken: token));
+    await transaction.CommitAsync(token);
+}
+</pre>
+<h4>Noncompliant code example - inside an IDbExecute</h4>
+<pre>
+public async Task Execute(IDbConnection connection, IDbTransaction transaction, CancellationToken token)
+{
+    await connection.ExecuteAsync("update Orders set Saved = 1"); // Noncompliant: Juno supplied a transaction for this connection
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+public async Task Execute(IDbConnection connection, IDbTransaction transaction, CancellationToken token)
+{
+    await connection.ExecuteAsync("update Orders set Saved = 1", transaction: transaction);
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows both shapes that carry a transaction.</li>
+</ul>

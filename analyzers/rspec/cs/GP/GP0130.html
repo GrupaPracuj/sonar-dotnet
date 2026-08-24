@@ -1,0 +1,36 @@
+<p>A Dapper operation on a Juno connection should pass the caller's <code>CancellationToken</code> through a <code>CommandDefinition</code>.</p>
+<h2>Why is this an issue?</h2>
+<p>Dapper's convenience overloads take no token, so a query started through them cannot be cancelled. When the caller goes away - the HTTP request is
+aborted, a timeout fires, the host shuts down - the query keeps running and holds its connection until the database finishes it. Under load these
+abandoned queries accumulate and exhaust the connection pool, which turns one slow client into a service-wide outage.</p>
+<p>Passing <code>CancellationToken.None</code> or <code>default</code> has the same effect as passing nothing and is reported as well. A command built
+elsewhere and handed to the operation is not inspected, because the token may already be inside it.</p>
+<p>The rule applies to Dapper operations on a connection created by <code>IAdoConnectionFactory</code>. Work expressed as an <code>IDbExecute</code> is
+out of scope: there Juno owns the command's lifetime.</p>
+<h2>How to fix it</h2>
+<p>Build a <code>CommandDefinition</code> and give it the token the method received.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public async Task&lt;Order&gt; Find(int id, CancellationToken token)
+{
+    await using var connection = connectionFactory.CreateConnection();
+    return await connection.QuerySingleAsync&lt;Order&gt;(
+        "select * from Orders where Id = @id", new { id }); // Noncompliant: the token is dropped
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public async Task&lt;Order&gt; Find(int id, CancellationToken token)
+{
+    await using var connection = connectionFactory.CreateConnection();
+    return await connection.QuerySingleAsync&lt;Order&gt;(
+        new CommandDefinition("select * from Orders where Id = @id", new { id }, cancellationToken: token));
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows Dapper access on an
+  <code>IAdoConnectionFactory</code> connection.</li>
+</ul>

@@ -1,16 +1,16 @@
 {
-  "title": "Database connections should come from Juno",
+  "title": "Dapper operations should receive the active transaction",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "MAINTAINABILITY": "MEDIUM"
+      "RELIABILITY": "HIGH"
     },
-    "attribute": "CONVENTIONAL"
+    "attribute": "LOGICAL"
   },
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "20min"
+    "constantCost": "15min"
   },
   "tags": [
     "gp",
@@ -18,8 +18,8 @@
     "sql"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0035",
-  "sqKey": "GP0035",
+  "ruleSpecification": "GP-0129",
+  "sqKey": "GP0129",
   "scope": "Main",
   "quickfix": "unknown"
 }

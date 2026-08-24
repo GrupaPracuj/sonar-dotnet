@@ -13,7 +13,7 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
 {
     internal const string RuleId = "GP0043";
 
-    private const string MessageFormat = "Use '{0}' from a contract assembly for this {1}; it is declared in '{2}'.";
+    private const string MessageFormat = "Declare '{0}' in a contract assembly; this {1} uses it from '{2}', which is not one.";
     private const string ApiControllerAttribute = "Microsoft.AspNetCore.Mvc.ApiControllerAttribute";
     private const string FromBodyAttribute = "Microsoft.AspNetCore.Mvc.FromBodyAttribute";
     private const string FromTokenAttribute = "GP.Juno.Hosting.AspNetCore.Security.UserContexts.FromTokenAttribute";
