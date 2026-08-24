@@ -26,6 +26,8 @@ real response factory - <code>Microsoft.AspNetCore.Mvc.ControllerBase</code>/<co
 not reported.</p>
 <p>Actions explicitly named as a <code>DryRun</code> are also excluded. A <code>Create...DryRun</code> endpoint validates or previews what would happen
 without actually creating a resource, so there is no created URL to return and <code>200 OK</code> is the expected outcome.</p>
+<p>An <code>Add...</code> action whose POST route is exactly one existing resource parameter, such as <code>[HttpPost("{id:guid}")]</code>, is also
+excluded. That shape represents an action on the addressed resource rather than creating a new member in a collection.</p>
 <h2>How to fix it</h2>
 <p>Return <code>CreatedAtAction</code>/<code>CreatedAtRoute</code> (or <code>Created</code> with an explicit URL) instead of <code>Ok</code>.</p>
 <h3>Code examples</h3>

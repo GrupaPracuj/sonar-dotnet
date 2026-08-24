@@ -390,6 +390,104 @@ public class CancellationShouldNotBeSuppressedTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantForLocallyOwnedTimeout() =>
+        builder.AddSnippet(
+            """
+            public class Queue
+            {
+                public async System.Threading.Tasks.Task TryQueue()
+                {
+                    try
+                    {
+                        using var timeout = new System.Threading.CancellationTokenSource();
+                        timeout.CancelAfter(System.TimeSpan.FromSeconds(10));
+                        await System.Threading.Tasks.Task.Delay(1000, timeout.Token);
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Queue timeout");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantAtHostedServiceStopBoundary() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.Extensions.Hosting
+            {
+                public interface IHostedService
+                {
+                    System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken);
+                    System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken);
+                }
+            }
+
+            public class Worker : Microsoft.Extensions.Hosting.IHostedService
+            {
+                public System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken) =>
+                    System.Threading.Tasks.Task.CompletedTask;
+
+                public async System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        await System.Threading.Tasks.Task.Delay(-1, cancellationToken);
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Host stopped waiting");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantForHostedPeriodicTimerHelper() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.Extensions.Hosting
+            {
+                public interface IHostedService
+                {
+                    System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken);
+                    System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken);
+                }
+            }
+
+            public class Worker : Microsoft.Extensions.Hosting.IHostedService
+            {
+                private readonly System.Threading.PeriodicTimer timer =
+                    new System.Threading.PeriodicTimer(System.TimeSpan.FromSeconds(1));
+
+                public System.Threading.Tasks.Task StartAsync(System.Threading.CancellationToken cancellationToken) =>
+                    Run(cancellationToken);
+
+                public System.Threading.Tasks.Task StopAsync(System.Threading.CancellationToken cancellationToken) =>
+                    System.Threading.Tasks.Task.CompletedTask;
+
+                private async System.Threading.Tasks.Task Run(System.Threading.CancellationToken cancellationToken)
+                {
+                    try
+                    {
+                        while (await timer.WaitForNextTickAsync(cancellationToken))
+                        {
+                            System.Console.WriteLine("Tick");
+                        }
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Timer stopped");
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void CancellationShouldNotBeSuppressed_CompliantInsideCancellationControlledLoop() =>
         builder.AddSnippet(
             """

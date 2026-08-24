@@ -75,6 +75,44 @@ public sealed class WholeContractShouldNotBeLogged : SonarDiagnosticAnalyzer
         GpSemanticContractDetector contracts) =>
         model.GetTypeInfo(expression).Type is INamedTypeSymbol { TypeKind: TypeKind.Class or TypeKind.Struct } named
         && contracts.IsContract(named)
+        && !GpJunoTypes.DerivesFrom(named, "System.Exception")
+        && !IsScalarIdentifierValueObject(named)
             ? named
             : null;
+
+    private static bool IsScalarIdentifierValueObject(INamedTypeSymbol type)
+    {
+        if (!type.Name.EndsWith("Id", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        for (var current = type.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current is { IsGenericType: true, TypeArguments.Length: 1 }
+                && IsLoggableScalar(current.TypeArguments[0])
+                && current.GetMembers("Value").OfType<IPropertySymbol>().Any(x =>
+                    !x.IsStatic
+                    && x.DeclaredAccessibility == Accessibility.Public
+                    && x.Type.Equals(current.TypeArguments[0])))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsLoggableScalar(ITypeSymbol type) =>
+        type.SpecialType is SpecialType.System_String
+            or SpecialType.System_Byte
+            or SpecialType.System_SByte
+            or SpecialType.System_Int16
+            or SpecialType.System_UInt16
+            or SpecialType.System_Int32
+            or SpecialType.System_UInt32
+            or SpecialType.System_Int64
+            or SpecialType.System_UInt64
+            or SpecialType.System_Decimal
+        || type.ToDisplayString() == "System.Guid";
 }

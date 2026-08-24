@@ -38,6 +38,7 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
             || DistinguishesTimeoutFromCancellation(context.Model, catchClause.Filter)
             || HandlesRequestedCancellation(context.Model, catchClause.Filter)
             || IsGracefulCancellationBoundary(context.Model, catchClause)
+            || HandlesLocallyOwnedTimeout(context.Model, catchClause)
             || !IsKnownToSuppressCancellation(context.Model, catchClause.Block))
         {
             return;
@@ -75,6 +76,21 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
             return true;
         }
 
+        if (GpJunoTypes.Implements(method.ContainingType, "Microsoft.Extensions.Hosting.IHostedService")
+            && (method.Name == "StopAsync"
+                || catchClause.Parent is TryStatementSyntax hostedTry
+                   && hostedTry.Block.DescendantNodes(DoesNotEnterNestedFunction)
+                       .OfType<InvocationExpressionSyntax>()
+                       .Any(x => model.GetSymbolInfo(x).Symbol is IMethodSymbol
+                       {
+                           Name: "WaitForNextTickAsync",
+                           ContainingType: { } containingType,
+                       }
+                       && containingType.ToDisplayString() == "System.Threading.PeriodicTimer")))
+        {
+            return true;
+        }
+
         return catchClause.Ancestors()
             .TakeWhile(x => x.Kind() is not (SyntaxKind.MethodDeclaration or SyntaxKindEx.LocalFunctionStatement))
             .OfType<WhileStatementSyntax>()
@@ -82,6 +98,60 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
             || TryContainsCancellationControlledLoop(model, catchClause)
             || IsAsyncStreamConsumptionBoundary(model, catchClause, method);
     }
+
+    private static bool HandlesLocallyOwnedTimeout(SemanticModel model, CatchClauseSyntax catchClause)
+    {
+        if (model.GetEnclosingSymbol(catchClause.SpanStart) is not IMethodSymbol method
+            || method.Parameters.Any(IsCancellationToken)
+            || catchClause.Parent is not TryStatementSyntax tryStatement)
+        {
+            return false;
+        }
+
+        foreach (var declarator in tryStatement.Block.DescendantNodes(DoesNotEnterNestedFunction).OfType<VariableDeclaratorSyntax>())
+        {
+            if (model.GetDeclaredSymbol(declarator) is not ILocalSymbol local
+                || local.Type.ToDisplayString() != "System.Threading.CancellationTokenSource"
+                || !HasLocalTimeout(model, tryStatement.Block, declarator, local)
+                || !UsesLocalToken(model, tryStatement.Block, local))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasLocalTimeout(SemanticModel model, BlockSyntax block, VariableDeclaratorSyntax declarator, ILocalSymbol local)
+    {
+        if (declarator.Initializer?.Value.RemoveParentheses() is ObjectCreationExpressionSyntax creation
+            && creation.ArgumentList?.Arguments.Count > 0)
+        {
+            return true;
+        }
+
+        return block.DescendantNodes(DoesNotEnterNestedFunction)
+            .OfType<InvocationExpressionSyntax>()
+            .Any(x => model.GetSymbolInfo(x).Symbol is IMethodSymbol
+                      {
+                          Name: "CancelAfter",
+                          ContainingType: { } containingType,
+                      }
+                      && containingType.ToDisplayString() == "System.Threading.CancellationTokenSource"
+                      && x.Expression is MemberAccessExpressionSyntax { Expression: { } receiver }
+                      && SymbolEquals(model, receiver, local));
+    }
+
+    private static bool UsesLocalToken(SemanticModel model, BlockSyntax block, ILocalSymbol local) =>
+        block.DescendantNodes(DoesNotEnterNestedFunction)
+            .OfType<MemberAccessExpressionSyntax>()
+            .Any(x => x.Name.Identifier.ValueText == "Token" && SymbolEquals(model, x.Expression, local));
+
+    private static bool SymbolEquals(SemanticModel model, ExpressionSyntax expression, ISymbol expected) =>
+        model.GetSymbolInfo(expression.RemoveParentheses()).Symbol is { } actual
+        && actual.Equals(expected);
 
     private static bool TryContainsCancellationControlledLoop(SemanticModel model, CatchClauseSyntax catchClause) =>
         catchClause.Parent is TryStatementSyntax tryStatement

@@ -25,12 +25,26 @@ public class WholeContractShouldNotBeLoggedTest
             public static class LoggerExtensions
             {
                 public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                public static void LogError(this ILogger logger, System.Exception exception, string message) { }
             }
         }
 
         namespace Contracts
         {
             public sealed record OrderAccepted(System.Guid OrderId, string Status);
+
+            public sealed class OfferException : System.Exception { }
+
+            public abstract class StronglyTypedValue<T>
+            {
+                protected StronglyTypedValue(T value) => Value = value;
+                public T Value { get; }
+            }
+
+            public sealed class OrderId : StronglyTypedValue<System.Guid>
+            {
+                public OrderId(System.Guid value) : base(value) { }
+            }
         }
         """;
 
@@ -48,6 +62,24 @@ public class WholeContractShouldNotBeLoggedTest
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void WholeContractShouldNotBeLogged_CompliantForExceptionAndScalarIdentifier() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderConsumer
+            {
+                private readonly Microsoft.Extensions.Logging.ILogger _logger;
+
+                public void Handle(Contracts.OfferException exception, Contracts.OrderId orderId)
+                {
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogError(_logger, exception, "Offer failed");
+                    Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "Order {OrderId}", orderId);
+                }
+            }
+            """)
+            .VerifyNoIssues();
 
     // Individual fields are what the rule steers towards.
     [TestMethod]

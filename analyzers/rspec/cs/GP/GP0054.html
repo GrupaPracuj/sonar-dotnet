@@ -36,6 +36,10 @@ suppressed caller signal. Graceful shutdown at a <code>BackgroundService.Execute
 <code>!token.IsCancellationRequested</code>, and an explicit <code>when (token.IsCancellationRequested)</code> handler are also not reported. The same
 applies when the catch belongs to a try that contains such a cancellation-controlled loop, as in a spinner that displays cancellation and cleans up
 after <code>Task.Delay(token)</code> ends the loop.</p>
+<p>The lifecycle boundary of an <code>IHostedService</code> is also excluded: cancellation in <code>StopAsync</code> means the host no longer waits
+for graceful shutdown, while a <code>PeriodicTimer</code> helper ends normally when its owned timer token is cancelled. A method with no caller token
+may likewise handle a timeout created by its own local <code>CancellationTokenSource</code> when that source has an explicit timeout and its token is
+the one used inside the protected operation.</p>
 <p>Consuming an async stream is another graceful boundary when the method has no caller cancellation token: an
 <code>OperationCanceledException</code> catch around an <code>await foreach</code> is not reported when the containing async method returns no success
 data (<code>Task</code>, <code>ValueTask</code>, or <code>void</code>). Methods accepting a <code>CancellationToken</code> or returning a result remain

@@ -17,7 +17,10 @@
 
     public interface IActionResult { }
 
-    public class ProblemDetails { }
+    public class ProblemDetails
+    {
+        public int? Status { get; set; }
+    }
 
     public abstract class ControllerBase
     {
@@ -93,6 +96,15 @@ public sealed class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
     public Microsoft.AspNetCore.Mvc.IActionResult StandardProblem() =>
         BadRequest(new Microsoft.AspNetCore.Mvc.ProblemDetails());
 
+    public Microsoft.AspNetCore.Mvc.IActionResult MatchingProblemStatus() =>
+        BadRequest(new Microsoft.AspNetCore.Mvc.ProblemDetails { Status = 400 });
+
+    public Microsoft.AspNetCore.Mvc.IActionResult MismatchedProblemStatus() =>
+        BadRequest(new Microsoft.AspNetCore.Mvc.ProblemDetails { Status = 422 }); // Noncompliant {{ProblemDetails.Status is 422, but this response returns HTTP 400; keep them consistent.}}
+
+    public Microsoft.AspNetCore.Mvc.IActionResult MismatchedExplicitProblemStatus() =>
+        StatusCode(422, new Microsoft.AspNetCore.Mvc.ProblemDetails { Status = 400 }); // Noncompliant {{ProblemDetails.Status is 400, but this response returns HTTP 422; keep them consistent.}}
+
     public Microsoft.AspNetCore.Mvc.IActionResult DerivedProblem() =>
         NotFound(new CustomProblemDetails());
 
@@ -157,6 +169,11 @@ public static class Endpoints
             app,
             "/orders/problem",
             () => Microsoft.AspNetCore.Http.Results.BadRequest(new CustomProblemDetails()));
+
+        Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(
+            app,
+            "/orders/problem-mismatch",
+            () => Microsoft.AspNetCore.Http.Results.BadRequest(new Microsoft.AspNetCore.Mvc.ProblemDetails { Status = 404 })); // Noncompliant
 
         Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapPost(
             app,

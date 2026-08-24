@@ -17,6 +17,12 @@ public class OrdersController : ControllerBase
         return Ok(order); // Noncompliant {{Method 'AddOrder' looks like it creates a resource - return 201 (Created/CreatedAtAction) instead of 200 (Ok).}}
     }
 
+    [HttpPost("{id:guid}")]
+    public IActionResult AddResponse(Guid id, object response)
+    {
+        return Ok(response); // Compliant - this POST is an action on an existing resource, not a collection create
+    }
+
     [HttpPost]
     public IActionResult InsertOrder(object order)
     {

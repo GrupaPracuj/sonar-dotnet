@@ -14,12 +14,14 @@ public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnaly
     internal const string RuleId = "GP0110";
 
     private const string MessageFormat = "Use ProblemDetails for the response body of status {0} instead of '{1}'.";
+    private const string StatusMismatchMessageFormat = "ProblemDetails.Status is {0}, but this response returns HTTP {1}; keep them consistent.";
     private const string ProblemDetailsType = "Microsoft.AspNetCore.Mvc.ProblemDetails";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly DiagnosticDescriptor StatusMismatchRule = DescriptorFactory.Create(RuleId, StatusMismatchMessageFormat);
     private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete", "MapMethods"];
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule, StatusMismatchRule);
 
     protected override void Initialize(SonarAnalysisContext context)
     {
@@ -79,11 +81,23 @@ public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnaly
             var statusCode = ErrorStatusCode(context.Model, invocation);
             if (statusCode is >= 400 and <= 599
                 && ResponsePayload(context.Model, invocation) is { } payload
-                && context.Model.GetTypeInfo(payload).Type is { } payloadType
-                && !IsProblemDetails(payloadType))
+                && context.Model.GetTypeInfo(payload).Type is { } payloadType)
             {
-                context.ReportIssue(Rule, invocation, statusCode.Value.ToString(), TypeDescription(payloadType));
-                reportedStatuses.Add(statusCode.Value);
+                if (!IsProblemDetails(payloadType))
+                {
+                    context.ReportIssue(Rule, invocation, statusCode.Value.ToString(), TypeDescription(payloadType));
+                    reportedStatuses.Add(statusCode.Value);
+                }
+                else if (ExplicitProblemStatus(context.Model, payload) is { } problemStatus
+                         && problemStatus != statusCode.Value)
+                {
+                    context.ReportIssue(
+                        StatusMismatchRule,
+                        invocation,
+                        problemStatus.ToString(),
+                        statusCode.Value.ToString());
+                    reportedStatuses.Add(statusCode.Value);
+                }
             }
         }
 
@@ -158,6 +172,32 @@ public sealed class ErrorResponsesShouldUseProblemDetails : SonarDiagnosticAnaly
         }
 
         return false;
+    }
+
+    private static int? ExplicitProblemStatus(SemanticModel model, ExpressionSyntax payload)
+    {
+        var initializer = ObjectCreationFactory.TryCreate(payload.RemoveParentheses())?.Initializer;
+
+        if (initializer is null)
+        {
+            return null;
+        }
+
+        foreach (var assignment in initializer.Expressions.OfType<AssignmentExpressionSyntax>())
+        {
+            if (model.GetSymbolInfo(assignment.Left).Symbol is IPropertySymbol
+                {
+                    Name: "Status",
+                    ContainingType: { } containingType,
+                }
+                && IsProblemDetails(containingType)
+                && model.GetConstantValue(assignment.Right) is { HasValue: true, Value: int status })
+            {
+                return status;
+            }
+        }
+
+        return null;
     }
 
     private static string TypeDescription(ITypeSymbol type) =>

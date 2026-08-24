@@ -41,7 +41,31 @@ public sealed class CreateEndpointsShouldReturnCreated : SonarDiagnosticAnalyzer
         method.IsControllerActionMethod
         && method.GetAttributes().Select(x => x.AttributeClass?.Name).Any(x => x is "HttpPost" or "HttpPostAttribute")
         && CreationVerbs.Contains(GpIdentifierWords.LeadingWord(method.Name))
+        && !IsAddActionOnExistingResource(method)
         && !IsDryRunMethod(method);
+
+    private static bool IsAddActionOnExistingResource(IMethodSymbol method)
+    {
+        if (GpIdentifierWords.LeadingWord(method.Name) != "Add")
+        {
+            return false;
+        }
+
+        return method.GetAttributes()
+            .Where(x => x.AttributeClass?.Name is "HttpPost" or "HttpPostAttribute")
+            .SelectMany(x => x.ConstructorArguments)
+            .Select(x => x.Value as string)
+            .Any(IsSingleRouteParameter);
+    }
+
+    private static bool IsSingleRouteParameter(string route)
+    {
+        route = route?.Trim('/');
+        return route is { Length: > 2 }
+               && route[0] == '{'
+               && route[route.Length - 1] == '}'
+               && route.IndexOf('/') < 0;
+    }
 
     private static bool IsDryRunMethod(IMethodSymbol method)
     {
