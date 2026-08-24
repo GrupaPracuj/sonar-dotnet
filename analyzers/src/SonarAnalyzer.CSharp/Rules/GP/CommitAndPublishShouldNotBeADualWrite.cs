@@ -15,9 +15,11 @@ public sealed class CommitAndPublishShouldNotBeADualWrite : ParametrizedDiagnost
 {
     internal const string RuleId = "GP0048";
 
-    private const string MessageFormat = "This publish follows a database commit with no outbox - if it fails, the data has changed and nobody was told.";
+    private const string PublishAfterCommitMessage = "This publish follows a database commit with no outbox - if it fails, the data has changed and nobody was told.";
+    private const string PublishBeforeCommitMessage = "This publish precedes a database commit with no outbox - if the commit fails, consumers were told about data that does not exist.";
 
-    private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly DiagnosticDescriptor PublishAfterCommitRule = DescriptorFactory.Create(RuleId, PublishAfterCommitMessage);
+    private static readonly DiagnosticDescriptor PublishBeforeCommitRule = DescriptorFactory.Create(RuleId, PublishBeforeCommitMessage);
 
     private static readonly HashSet<string> CommitMethods = new(StringComparer.Ordinal)
     {
@@ -34,7 +36,8 @@ public sealed class CommitAndPublishShouldNotBeADualWrite : ParametrizedDiagnost
         "Send",
     };
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+        ImmutableArray.Create(PublishAfterCommitRule, PublishBeforeCommitRule);
 
     [RuleParameter("outboxTypes", PropertyType.String, "Comma-separated types marking an approved outbox; a method inside such a type is not reported", "")]
     public string OutboxTypes { get; set; } = string.Empty;
@@ -69,9 +72,18 @@ public sealed class CommitAndPublishShouldNotBeADualWrite : ParametrizedDiagnost
             .ToArray();
         foreach (var publish in invocations.Where(x => IsPublish(x.Symbol)))
         {
-            if (InvocationSite(cfg, publish.Invocation) is { } publishSite && commitSites.Any(x => CanReach(x, publishSite)))
+            if (InvocationSite(cfg, publish.Invocation) is not { } publishSite)
             {
-                context.ReportIssue(Rule, publish.Invocation);
+                continue;
+            }
+
+            if (commitSites.Any(x => CanReach(x, publishSite)))
+            {
+                context.ReportIssue(PublishAfterCommitRule, publish.Invocation);
+            }
+            else if (commitSites.Any(x => CanReach(publishSite, x)))
+            {
+                context.ReportIssue(PublishBeforeCommitRule, publish.Invocation);
             }
         }
     }

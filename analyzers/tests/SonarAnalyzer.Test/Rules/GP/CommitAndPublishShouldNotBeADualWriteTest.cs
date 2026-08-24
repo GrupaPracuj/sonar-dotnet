@@ -64,9 +64,8 @@ public class CommitAndPublishShouldNotBeADualWriteTest
             """)
             .Verify();
 
-    // A publish before the commit is GP0008's case, so the two rules never report the same statement.
     [TestMethod]
-    public void CommitAndPublishShouldNotBeADualWrite_CompliantForPublishBeforeCommit() =>
+    public void CommitAndPublishShouldNotBeADualWrite_NoncompliantForPublishBeforeCommit() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -77,12 +76,35 @@ public class CommitAndPublishShouldNotBeADualWriteTest
 
                 public async System.Threading.Tasks.Task Accept(System.Threading.CancellationToken cancellationToken)
                 {
-                    await _publisher.Publish(new OrderAccepted(), cancellationToken);
+                    await _publisher.Publish(new OrderAccepted(), cancellationToken); // Noncompliant {{This publish precedes a database commit with no outbox - if the commit fails, consumers were told about data that does not exist.}}
                     await _context.SaveChangesAsync(cancellationToken);
                 }
             }
             """)
-            .VerifyNoIssues();
+            .Verify();
+
+    [TestMethod]
+    public void CommitAndPublishShouldNotBeADualWrite_NoncompliantBeforeCommitAcrossControlFlow() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrderService
+            {
+                private readonly ShopDbContext _context;
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public async System.Threading.Tasks.Task Accept(bool save, System.Threading.CancellationToken cancellationToken)
+                {
+                    await _publisher.Publish(new OrderAccepted(), cancellationToken); // Noncompliant
+
+                    if (save)
+                    {
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+                }
+            }
+            """)
+            .Verify();
 
     [TestMethod]
     public void CommitAndPublishShouldNotBeADualWrite_NoncompliantAcrossControlFlow() =>

@@ -52,9 +52,9 @@ Recommendations, not decisions. The reasoning is spelled out so that overruling 
 
 | | |
 | --- | --- |
-| **Shipped** | `GP0120` static clock · `GP0121` DELETE target followed by SELECT · `GP0122` indexed NVARCHAR(MAX) |
+| **Shipped** | `GP0120` static clock · `GP0121` DELETE target followed by SELECT · `GP0122` indexed NVARCHAR(MAX) · bidirectional explicit dual writes in `GP0048` |
 | **Rejected** | interpolated query text into a company query API · `NOLOCK` inside a view |
-| **Open** | publish before persist · row limiter with no `ORDER BY` · Dapper `splitOn` · `ToDictionary` · optional positional member on a record |
+| **Open** | row limiter with no `ORDER BY` · Dapper `splitOn` · `ToDictionary` · optional positional member on a record |
 
 ### The calibration lesson — read this before implementing another candidate
 
@@ -75,8 +75,8 @@ worded. Concretely:
   in its own section.
 - *Dapper `splitOn`* narrows well: check only that the mapped type's `Id` property has a matching column in its
   segment, and drop the broader "alias matches no property" half.
-- *Publish before persist* narrows to step 1 only — make `GP0048` bidirectional. Step 2 (seeing through repository
-  indirection) is where the judgement lives; leave it out.
+- *Publish before persist* was narrowed to step 1 only: `GP0048` is now bidirectional for an explicit commit in the
+  same method. Step 2 (seeing through repository indirection) remains deliberately unsupported.
 - *`ToDictionary`* and *record equality* have no obvious narrow form. They may not survive, and that is a fine
   outcome; do not force them.
 
@@ -232,7 +232,11 @@ ship it scoped to non-`DataLake` schemas, or drop it.
 
 ---
 
-## Candidate — A publish that precedes the write it announces
+## GP0048 extension — A publish that precedes the write it announces
+
+**The precise part is shipped:** GP0048 now reports `publish → SaveChanges/Commit` when both operations are explicit
+and reachable in the same method. It deliberately does not follow repository calls, so the motivating Wierzbiak case remains a documented false
+negative rather than introducing heuristic interprocedural analysis.
 
 **Confidence: high. Value: high. One confirmed instance.**
 
