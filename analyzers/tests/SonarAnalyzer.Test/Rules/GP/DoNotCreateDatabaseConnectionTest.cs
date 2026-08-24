@@ -64,11 +64,14 @@ public class DoNotCreateDatabaseConnectionTest
                 public CommandDefinition(
                     string commandText,
                     object parameters = null,
-                    System.Data.IDbTransaction transaction = null) { }
+                    System.Data.IDbTransaction transaction = null,
+                    System.Threading.CancellationToken cancellationToken = default) { }
             }
 
             public static class SqlMapper
             {
+                public sealed class GridReader { }
+
                 public static void AddTypeHandler<T>(object handler) { }
                 public static void AddTypeMap(System.Type type, System.Data.DbType dbType) { }
                 public static void PurgeQueryCache() { }
@@ -93,6 +96,30 @@ public class DoNotCreateDatabaseConnectionTest
                     System.Data.IDbTransaction transaction = null,
                     int? commandTimeout = null,
                     System.Data.CommandType? commandType = null) => null;
+
+                public static System.Threading.Tasks.Task<int> ExecuteAsync(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
+
+                public static System.Threading.Tasks.Task<System.Collections.Generic.IEnumerable<T>> QueryAsync<T>(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
+
+                public static System.Threading.Tasks.Task<T> QuerySingleAsync<T>(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
+
+                public static System.Threading.Tasks.Task<T> QuerySingleOrDefaultAsync<T>(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
+
+                public static System.Threading.Tasks.Task<GridReader> QueryMultipleAsync(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
+
+                public static System.Threading.Tasks.Task<T> ExecuteScalarAsync<T>(
+                    this System.Data.IDbConnection connection,
+                    CommandDefinition command) => null;
             }
         }
         """;
@@ -107,7 +134,7 @@ public class DoNotCreateDatabaseConnectionTest
                 private readonly string _connectionString;
 
                 public System.Data.Common.DbConnection Open() =>
-                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'SqlConnection' directly.}}
+                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Preserve the Juno connection and transaction context by using IDbExecute or Dapper on a connection created by IAdoConnectionFactory, passing the active transaction.}}
             }
             """)
             .Verify();
@@ -125,7 +152,7 @@ public class DoNotCreateDatabaseConnectionTest
             public class OrderRepository
             {
                 public System.Data.Common.DbConnection Open(ProviderFactory factory) =>
-                    factory.CreateConnection(); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'ProviderFactory.CreateConnection' directly.}}
+                    factory.CreateConnection(); // Noncompliant
             }
             """)
             .Verify();
@@ -155,7 +182,7 @@ public class DoNotCreateDatabaseConnectionTest
                 public System.Collections.Generic.IEnumerable<int> Execute(
                     System.Data.IDbConnection connection,
                     System.Data.IDbTransaction dbTransaction = null) =>
-                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant {{Pass the IDbExecute transaction to this Dapper operation.}}
+                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant {{Pass the active transaction to this Dapper operation.}}
             }
             """)
             .Verify();
@@ -351,7 +378,7 @@ public class DoNotCreateDatabaseConnectionTest
                 public class ConnectionFactory
                 {
                     public System.Data.Common.DbConnection Open(ProviderFactory factory) =>
-                        factory.CreateConnection(); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'ProviderFactory.CreateConnection' directly.}}
+                        factory.CreateConnection(); // Noncompliant
                 }
             }
             """)
@@ -365,7 +392,7 @@ public class DoNotCreateDatabaseConnectionTest
             public class OrderRepository
             {
                 public System.Collections.Generic.IEnumerable<int> Load(System.Data.IDbConnection connection) =>
-                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'Dapper.Query' directly.}}
+                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant
             }
             """)
             .Verify();
@@ -384,6 +411,193 @@ public class DoNotCreateDatabaseConnectionTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void DoNotCreateDatabaseConnection_CompliantForFactoryDapperMethods() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class OrderRepository
+            {
+                private readonly GP.Juno.Ado.IAdoConnectionFactory connectionFactory;
+
+                public OrderRepository(GP.Juno.Ado.IAdoConnectionFactory connectionFactory) =>
+                    this.connectionFactory = connectionFactory;
+
+                public async System.Threading.Tasks.Task Load(System.Threading.CancellationToken token)
+                {
+                    await using var connection = connectionFactory.CreateConnection();
+
+                    _ = await Dapper.SqlMapper.QueryAsync<int>(connection, new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+                    _ = await Dapper.SqlMapper.QuerySingleAsync<int>(connection, new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+                    _ = await Dapper.SqlMapper.QuerySingleOrDefaultAsync<int>(connection, new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+                    _ = await Dapper.SqlMapper.QueryMultipleAsync(connection, new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+                    _ = await Dapper.SqlMapper.ExecuteAsync(connection, new Dapper.CommandDefinition("UPDATE T SET X = 1", cancellationToken: token));
+                    _ = await Dapper.SqlMapper.ExecuteScalarAsync<int>(connection, new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_CompliantForFactoryDapperWithTransaction() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class OrderRepository
+            {
+                private readonly GP.Juno.Ado.IAdoConnectionFactory connectionFactory;
+
+                public OrderRepository(GP.Juno.Ado.IAdoConnectionFactory connectionFactory) =>
+                    this.connectionFactory = connectionFactory;
+
+                public async System.Threading.Tasks.Task Save(System.Threading.CancellationToken token)
+                {
+                    await using var connection = connectionFactory.CreateConnection();
+                    await connection.OpenAsync(token);
+                    await using var transaction = await connection.BeginTransactionAsync(token);
+
+                    var inline = await Dapper.SqlMapper.ExecuteAsync(connection,
+                        new Dapper.CommandDefinition("UPDATE T SET X = 1", transaction: transaction, cancellationToken: token));
+
+                    var command = new Dapper.CommandDefinition(
+                        "SELECT 1", transaction: transaction, cancellationToken: token);
+                    _ = await Dapper.SqlMapper.QuerySingleAsync<int>(connection, command);
+
+                    Dapper.CommandDefinition targetTyped = new(
+                        "SELECT 1", transaction: transaction, cancellationToken: token);
+                    _ = await Dapper.SqlMapper.ExecuteScalarAsync<int>(connection, targetTyped);
+
+                    await transaction.CommitAsync(token);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_ReportsMissingTransactionOrCancellation() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class OrderRepository
+            {
+                private readonly GP.Juno.Ado.IAdoConnectionFactory connectionFactory;
+
+                public OrderRepository(GP.Juno.Ado.IAdoConnectionFactory connectionFactory) =>
+                    this.connectionFactory = connectionFactory;
+
+                public async System.Threading.Tasks.Task Save(System.Threading.CancellationToken token)
+                {
+                    await using var connection = connectionFactory.CreateConnection();
+                    await connection.OpenAsync(token);
+                    await using var transaction = await connection.BeginTransactionAsync(token);
+
+                    _ = await Dapper.SqlMapper.ExecuteAsync(connection, // Noncompliant {{Pass the active transaction to this Dapper operation.}}
+                        new Dapper.CommandDefinition("UPDATE T SET X = 1", cancellationToken: token));
+
+                    await transaction.CommitAsync(token);
+
+                    _ = await Dapper.SqlMapper.QuerySingleAsync<int>(connection, // Noncompliant {{Pass the CancellationToken through Dapper CommandDefinition.}}
+                        new Dapper.CommandDefinition("SELECT 1"));
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_ReportsDifferentTransactionOrConnection() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class OrderRepository
+            {
+                private readonly GP.Juno.Ado.IAdoConnectionFactory connectionFactory;
+
+                public OrderRepository(GP.Juno.Ado.IAdoConnectionFactory connectionFactory) =>
+                    this.connectionFactory = connectionFactory;
+
+                public async System.Threading.Tasks.Task Save(
+                    System.Data.IDbTransaction differentTransaction,
+                    System.Threading.CancellationToken token)
+                {
+                    await using var connection = connectionFactory.CreateConnection();
+                    await connection.OpenAsync(token);
+                    await using var transaction = await connection.BeginTransactionAsync(token);
+
+                    _ = await Dapper.SqlMapper.ExecuteAsync(connection, // Noncompliant
+                        new Dapper.CommandDefinition(
+                            "UPDATE T SET X = 1",
+                            transaction: differentTransaction,
+                            cancellationToken: token));
+
+                    await using var otherConnection = connectionFactory.CreateConnection();
+                    _ = await Dapper.SqlMapper.ExecuteAsync(otherConnection, // Noncompliant
+                        new Dapper.CommandDefinition(
+                            "UPDATE T SET X = 2",
+                            transaction: transaction,
+                            cancellationToken: token));
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_CompliantForConnectionAndTransactionHelper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class OrderSql
+            {
+                public static System.Threading.Tasks.Task<int> Save(
+                    System.Data.IDbConnection connection,
+                    System.Data.IDbTransaction transaction,
+                    System.Threading.CancellationToken token) =>
+                    Dapper.SqlMapper.ExecuteAsync(connection,
+                        new Dapper.CommandDefinition(
+                            "UPDATE T SET X = 1",
+                            transaction: transaction,
+                            cancellationToken: token));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_CompliantForConnectionAndCancellationHelper() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class OrderSql
+            {
+                public static System.Threading.Tasks.Task<int> Load(
+                    System.Data.IDbConnection connection,
+                    System.Threading.CancellationToken token) =>
+                    Dapper.SqlMapper.QuerySingleAsync<int>(
+                        connection,
+                        new Dapper.CommandDefinition("SELECT 1", cancellationToken: token));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotCreateDatabaseConnection_DoesNotDuplicateManualConnectionDiagnostic() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class OrderRepository
+            {
+                public async System.Threading.Tasks.Task<int> Save(
+                    string connectionString,
+                    System.Threading.CancellationToken token)
+                {
+                    await using var connection =
+                        new Microsoft.Data.SqlClient.SqlConnection(connectionString); // Noncompliant
+
+                    return await Dapper.SqlMapper.ExecuteAsync(connection,
+                        new Dapper.CommandDefinition("UPDATE T SET X = 1", cancellationToken: token));
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DoNotCreateDatabaseConnection_NoncompliantForDapperInsideTransactionalService() =>
         builder.AddSnippet(
             Stubs + """
@@ -391,7 +605,7 @@ public class DoNotCreateDatabaseConnectionTest
             public class TransactionalOrderService : GP.Juno.Abstractions.Ado.ITransactional
             {
                 public System.Collections.Generic.IEnumerable<int> Load(System.Data.IDbConnection connection) =>
-                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant {{Perform database access through Juno IDbExecute instead of using 'Dapper.Query' directly.}}
+                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant
             }
             """)
             .Verify();

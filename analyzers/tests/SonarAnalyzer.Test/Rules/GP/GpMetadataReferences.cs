@@ -21,6 +21,9 @@ internal static class GpMetadataReferences
     public static MetadataReference MicrosoftAspNetCoreAuthorization { get; } =
         AspNetCoreSibling("Microsoft.AspNetCore.Authorization.dll");
 
+    public static MetadataReference MicrosoftAspNetCoreMetadata { get; } =
+        AspNetCoreSibling("Microsoft.AspNetCore.Metadata.dll");
+
     private static MetadataReference AspNetCoreSibling(string assemblyName)
     {
         var known = (PortableExecutableReference)AspNetCoreMetadataReference.MicrosoftAspNetCoreMvcCore;

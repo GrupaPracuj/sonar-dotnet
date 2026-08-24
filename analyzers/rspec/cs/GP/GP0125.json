@@ -1,0 +1,25 @@
+{
+  "title": "Declared successful HTTP response statuses should be returned by an action path",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CONVENTIONAL"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "asp.net",
+    "api",
+    "openapi"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0125",
+  "sqKey": "GP0125",
+  "scope": "Main"
+}

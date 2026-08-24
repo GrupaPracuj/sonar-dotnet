@@ -1,0 +1,29 @@
+<p>Successful response metadata should describe statuses that an API action can actually return.</p>
+<h2>Why is this an issue?</h2>
+<p>Declaring a response such as <code>201 Created</code> without any corresponding action path misleads OpenAPI consumers. Generated clients and
+tests may implement behavior that the endpoint cannot provide, while the stale declaration hides a change in the endpoint contract.</p>
+<p>The rule compares method-level 2xx and 3xx response metadata with explicit MVC or Minimal API result factories returned by the action. It reports a
+status only when every returned expression is understood. Unknown helpers and dynamic status codes suppress the rule to avoid guessing. Controller-level
+metadata and API conventions are not reported. Error statuses are deliberately excluded because filters, middleware and exception handlers can produce
+them outside the action body.</p>
+<h2>How to fix it</h2>
+<p>Return the declared status from the appropriate action path, or remove the stale <code>ProducesResponseType</code> declaration.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre>
+[ProducesResponseType(typeof(OrderResponse), StatusCodes.Status201Created)] // Noncompliant
+[ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+public IActionResult Create(CreateOrder request)
+{
+    return Ok(CreateOrder(request));
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre>
+[ProducesResponseType(typeof(OrderResponse), StatusCodes.Status201Created)]
+public IActionResult Create(CreateOrder request)
+{
+    var order = CreateOrder(request);
+    return CreatedAtAction(nameof(Get), new { id = order.Id }, order);
+}
+</pre>

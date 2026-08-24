@@ -6,6 +6,8 @@
  * repository for the terms that apply.
  */
 
+using System.Runtime.CompilerServices;
+
 namespace SonarAnalyzer.CSharp.Rules;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -17,11 +19,14 @@ public sealed class AuthorizedActionShouldDeclareAuthResponses : SonarDiagnostic
 
     private const string AllowAnonymousAttribute = "Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute";
     private const string AuthorizeAttribute = "Microsoft.AspNetCore.Authorization.AuthorizeAttribute";
+    private const string AuthorizeFilterType = "Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter";
+    private const string FilterCollectionType = "Microsoft.AspNetCore.Mvc.Filters.FilterCollection";
 
     private const int Unauthorized = 401;
     private const int Forbidden = 403;
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
+    private static readonly ConditionalWeakTable<Compilation, Lazy<bool?>> GlobalAuthorizationCache = new();
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
 
@@ -35,7 +40,7 @@ public sealed class AuthorizedActionShouldDeclareAuthResponses : SonarDiagnostic
             || !GpOpenApiMetadata.IsOpenApiAction(method)
             || GpOpenApiMetadata.IsIgnored(method)
             || GpOpenApiMetadata.UsesApiConvention(method)
-            || EffectiveAuthorization(method) is not { } authorize)
+            || EffectiveAuthorization(method, context.Compilation) is not { } restrictsBeyondAuthentication)
         {
             return;
         }
@@ -45,7 +50,7 @@ public sealed class AuthorizedActionShouldDeclareAuthResponses : SonarDiagnostic
             .WhereNotNull()
             .ToHashSet();
 
-        var missing = RequiredStatusCodes(authorize).Where(x => !documented.Contains(x)).ToArray();
+        var missing = RequiredStatusCodes(restrictsBeyondAuthentication).Where(x => !documented.Contains(x)).ToArray();
         if (missing.Length > 0)
         {
             context.ReportIssue(Rule, declaration.Identifier, Describe(missing));
@@ -56,25 +61,66 @@ public sealed class AuthorizedActionShouldDeclareAuthResponses : SonarDiagnostic
     // short-circuits authorization entirely - so such an action can never answer 401 or 403 for these attributes.
     // A bare [Authorize] only rejects unauthenticated callers (401); an authenticated one always passes it. Naming a
     // policy or a role adds a requirement an authenticated caller can fail, which is what produces 403.
-    private static AttributeData EffectiveAuthorization(IMethodSymbol method)
+    private static bool? EffectiveAuthorization(IMethodSymbol method, Compilation compilation)
     {
         if (HasAttribute(method, AllowAnonymousAttribute) || HasAttribute(method.ContainingType, AllowAnonymousAttribute))
         {
             return null;
         }
 
-        return Attributes(method, AuthorizeAttribute).Concat(Attributes(method.ContainingType, AuthorizeAttribute))
+        var authorize = Attributes(method, AuthorizeAttribute).Concat(Attributes(method.ContainingType, AuthorizeAttribute))
             .OrderByDescending(RestrictsBeyondAuthentication)
             .FirstOrDefault();
+        return authorize is null
+            ? GlobalAuthorizationCache.GetValue(
+                compilation,
+                x => new Lazy<bool?>(() => GlobalAuthorization(x), LazyThreadSafetyMode.ExecutionAndPublication)).Value
+            : RestrictsBeyondAuthentication(authorize);
     }
 
-    private static IEnumerable<int> RequiredStatusCodes(AttributeData authorize)
+    private static IEnumerable<int> RequiredStatusCodes(bool restrictsBeyondAuthentication)
     {
         yield return Unauthorized;
-        if (RestrictsBeyondAuthentication(authorize))
+        if (restrictsBeyondAuthentication)
         {
             yield return Forbidden;
         }
+    }
+
+    private static bool? GlobalAuthorization(Compilation compilation)
+    {
+        var found = false;
+        var restricted = false;
+        foreach (var tree in compilation.SyntaxTrees.Where(x => !x.IsGenerated(CSharpGeneratedCodeRecognizer.Instance)))
+        {
+            var model = compilation.GetSemanticModel(tree);
+            foreach (var creationSyntax in tree.GetRoot().DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
+            {
+                if (model.GetTypeInfo(creationSyntax).Type?.ToDisplayString() != AuthorizeFilterType
+                    || creationSyntax.FirstAncestorOrSelf<InvocationExpressionSyntax>() is not
+                    {
+                        Expression: MemberAccessExpressionSyntax
+                        {
+                            Expression: { } filters,
+                            Name.Identifier.ValueText: "Add",
+                        },
+                    }
+                    || model.GetTypeInfo(filters).Type?.ToDisplayString() != FilterCollectionType)
+                {
+                    continue;
+                }
+
+                found = true;
+                if (creationSyntax.ArgumentList?.Arguments
+                        .Select(x => model.GetConstantValue(x.Expression))
+                        .Any(x => x is { HasValue: true, Value: string { Length: > 0 } }) == true)
+                {
+                    restricted = true;
+                }
+            }
+        }
+
+        return found ? restricted : null;
     }
 
     private static bool RestrictsBeyondAuthentication(AttributeData authorize) =>

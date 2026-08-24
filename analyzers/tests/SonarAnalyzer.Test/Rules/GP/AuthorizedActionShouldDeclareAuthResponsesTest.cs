@@ -22,6 +22,7 @@ public class AuthorizedActionShouldDeclareAuthResponsesTest
             AspNetCoreMetadataReference.MicrosoftAspNetCoreMvcCore,
             AspNetCoreMetadataReference.MicrosoftAspNetCoreMvcViewFeatures,
             GpMetadataReferences.MicrosoftAspNetCoreAuthorization,
+            GpMetadataReferences.MicrosoftAspNetCoreMetadata,
         ]);
 
     [TestMethod]
@@ -117,6 +118,59 @@ public class AuthorizedActionShouldDeclareAuthResponsesTest
                 [Authorize(Policy = "Ignored")]
                 [ProducesResponseType(StatusCodes.Status200OK)]
                 public IActionResult AnonymousWins() => Ok();
+            }
+            """).Verify();
+
+    [TestMethod]
+    public void AuthorizedActionShouldDeclareAuthResponses_ControllerLevelConstantPolicy() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.AspNetCore.Authorization;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Mvc;
+
+            internal static class PolicyNames
+            {
+                internal const string ReaderAccess = nameof(ReaderAccess);
+            }
+
+            [ApiController]
+            [Authorize(PolicyNames.ReaderAccess)]
+            public class BookLoanController : ControllerBase
+            {
+                [HttpPost("book-loans")]
+                [ProducesResponseType(StatusCodes.Status201Created)]
+                [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+                public IActionResult BorrowBook() => Ok(); // Noncompliant {{Declare the 403 response this authorized action can return.}}
+            }
+            """).Verify();
+
+    [TestMethod]
+    public void AuthorizedActionShouldDeclareAuthResponses_GlobalAuthorizeFilter() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.AspNetCore.Authorization;
+            using Microsoft.AspNetCore.Http;
+            using Microsoft.AspNetCore.Mvc;
+            using Microsoft.AspNetCore.Mvc.Authorization;
+
+            public static class MvcSetup
+            {
+                public static void Configure(MvcOptions options) =>
+                    options.Filters.Add(new AuthorizeFilter("BasicAccess"));
+            }
+
+            [ApiController]
+            public class CatalogController : ControllerBase
+            {
+                [HttpGet("books")]
+                [ProducesResponseType(StatusCodes.Status200OK)]
+                public IActionResult Books() => Ok(); // Noncompliant {{Declare the 401 and 403 responses this authorized action can return.}}
+
+                [HttpGet("public")]
+                [AllowAnonymous]
+                [ProducesResponseType(StatusCodes.Status200OK)]
+                public IActionResult Public() => Ok();
             }
             """).Verify();
 

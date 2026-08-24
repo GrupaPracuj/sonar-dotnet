@@ -1,0 +1,23 @@
+{
+  "title": "Nullable numeric conversions should handle null explicitly",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "CLEAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "5min"
+  },
+  "tags": [
+    "gp",
+    "pitfall"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0124",
+  "sqKey": "GP0124",
+  "scope": "Main"
+}

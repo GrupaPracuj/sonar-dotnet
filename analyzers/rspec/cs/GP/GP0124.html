@@ -1,0 +1,22 @@
+<p>Converting a nullable integral value with <code>Convert.ToInt32</code> or <code>Convert.ToInt64</code> should handle
+<code>null</code> explicitly.</p>
+<h2>Why is this an issue?</h2>
+<p>These methods bind a nullable argument to an overload that accepts <code>object</code>. When the nullable has no value,
+boxing produces <code>null</code>, and <code>Convert</code> silently returns zero. A missing identifier can therefore become
+the valid-looking identifier <code>0</code> instead of remaining absent or causing the intended validation failure.</p>
+<p>The rule reports only nullable integral values passed directly to <code>System.Convert.ToInt32</code> or
+<code>System.Convert.ToInt64</code>. It does not infer identifier semantics or prescribe whether the application should use
+zero, reject the value, or preserve nullability.</p>
+<h2>How to fix it</h2>
+<p>State the null policy before conversion. Use <code>?? 0</code> when zero is intentional, access <code>Value</code> when
+absence is invalid, or keep the result nullable.</p>
+<h3>Noncompliant code example</h3>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+int ToId(int? sourceId) =>
+    Convert.ToInt32(sourceId); // Noncompliant
+</pre>
+<h3>Compliant solution</h3>
+<pre data-diff-id="1" data-diff-type="compliant">
+int ToId(int? sourceId) =>
+    Convert.ToInt32(sourceId ?? 0);
+</pre>
