@@ -1,4 +1,4 @@
-﻿<p>Configuration should be bound to a typed configuration class, not read value by value through a string key.</p>
+<p>Configuration should be bound to a typed configuration class, not read value by value through a string key.</p>
 <h2>Why is this an issue?</h2>
 <p>A key read inline is invisible to everything except the line that reads it. Nothing lists what the service needs in order to start, nothing validates
 it, and a missing or misspelled key does not fail at start-up - it produces <code>null</code> or a default at whatever moment that code path first runs,

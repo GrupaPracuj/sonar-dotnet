@@ -23,6 +23,7 @@ owns is a line somebody has to resolve by hand at every future sync, forever.
 | `analyzers/tests/SonarAnalyzer.Test/Rules/GP/` | one test class per analyzer |
 | `analyzers/tests/SonarAnalyzer.Test/TestCases/GP/` | test-case corpora for those tests |
 | `sonar-csharp-plugin/src/main/java/org/sonar/plugins/csharp/Gp*.java` | rules definition, `GpRoslynRules`, and the **"GP way"** built-in quality profile |
+| `scripts/validate-rule-metadata.ps1` | rspec metadata gate, run by `build-gp-csharp-plugin.bat` before anything is built |
 
 Add new work here. A new rule needs an analyzer, an rspec `.json` + `.html`, and a test — nothing outside these paths.
 
@@ -73,11 +74,14 @@ A concrete example of adapting the right way: upstream turned helpers such as `I
   floods an existing codebase with true-but-low-value findings is not worth shipping.
 - Before adding a rule, check whether an `S`-rule already covers it — and read that rule's *implementation*, not just
   its title. Titles undersell scope, and duplicates have slipped through on title alone.
-- Rule ids are sequential and never reused. Highest so far is **GP0119**, so the next free id is **GP0120**; gaps are
+- Rule ids are sequential and never reused. Highest so far is **GP0128**, so the next free id is **GP0129**; gaps are
   removed rules and stay empty.
 - Decide by Roslyn semantics, not by identifier spelling, whenever the two can disagree.
 - Every rule needs an rspec `.json` (`sqKey`, `scope` must be `Main` or `Tests` — never `All`) and an `.html` with the
   standard *Why is this an issue / How to fix it / Noncompliant* sections.
+- Rspec metadata is validated against the plugin API enums by `scripts/validate-rule-metadata.ps1`, which the build runs
+  first. Note that `code.impacts` only accepts `MAINTAINABILITY`, `RELIABILITY` and `SECURITY` — there is no
+  `PERFORMANCE` quality, and an invalid value stops SonarQube during startup rather than just disabling the rule.
 - Known and accepted false negatives are documented in place with a `// FN: reason` comment.
 - All `.cs` files are UTF-8 **with BOM** and LF line endings (`.editorconfig`, `.gitattributes`). GP files carry the
   Grupa Pracuj licence header; upstream files keep theirs untouched.

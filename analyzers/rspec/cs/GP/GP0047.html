@@ -1,4 +1,4 @@
-﻿<p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
+<p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
 <h2>Why is this an issue?</h2>
 <p>Juno owns service discovery. Naming a service - <code>Service("orders")</code> on the Juno HTTP client - resolves the address, applies the configured
 retry and timeout policy, and records the call. Reaching for <code>IConsulClient</code> gets you an address and nothing else, so everything Juno layers on

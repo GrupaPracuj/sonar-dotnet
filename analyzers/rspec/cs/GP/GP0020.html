@@ -1,4 +1,4 @@
-﻿<p>Every REST API action should explicitly state whether it requires authorization. Classic MVC controllers are checked when sibling actions
+<p>Every REST API action should explicitly state whether it requires authorization. Classic MVC controllers are checked when sibling actions
 establish a per-action <code>[Authorize]</code> convention.</p>
 <h2>Why is this an issue?</h2>
 <p>When some actions in a controller carry <code>[Authorize]</code> and others don't, the missing declaration is ambiguous: it might be an
