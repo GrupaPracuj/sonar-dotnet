@@ -1,0 +1,30 @@
+<p>A CORS policy that allows credentials should accept only explicitly trusted origins.</p>
+<h2>Why is this an issue?</h2>
+<p><code>SetIsOriginAllowed(_ =&gt; true)</code> accepts every requesting origin. Combining it with <code>AllowCredentials()</code> lets an
+untrusted website send authenticated cross-origin requests with the victim's cookies or HTTP authentication and read the response.</p>
+<p>The standard <code>AllowAnyOrigin()</code> API makes this unsafe combination visible and ASP.NET Core rejects it. An always-true custom predicate
+bypasses that safeguard while creating the same effective policy.</p>
+<h2>How to fix it</h2>
+<p>Configure the policy with <code>WithOrigins(...)</code> and load a bounded allowlist of trusted origins from configuration. If credentials are not
+required, remove <code>AllowCredentials()</code>.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+policy.SetIsOriginAllowed(_ =&gt; true) // Noncompliant {{Restrict credentialed CORS requests to explicit trusted origins.}}
+      .AllowCredentials();
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+policy.WithOrigins("https://trusted.example")
+      .AllowCredentials();
+</pre>
+<h3>Exceptions</h3>
+<p>The rule reports only a single fluent chain containing both <code>AllowCredentials()</code> and a
+<code>SetIsOriginAllowed(...)</code> predicate that Roslyn proves always returns <code>true</code>. Separate statements are not correlated because
+they may execute on different control-flow paths. Dynamic predicates and lookalike APIs are not inferred.</p>
+<h2>Resources</h2>
+<ul>
+  <li>OWASP - <a href="https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny">CORS OriginHeaderScrutiny</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/security/cors">Enable Cross-Origin Requests (CORS) in ASP.NET Core</a></li>
+  <li>CWE-942 - <a href="https://cwe.mitre.org/data/definitions/942.html">Permissive Cross-domain Policy with Untrusted Domains</a></li>
+</ul>

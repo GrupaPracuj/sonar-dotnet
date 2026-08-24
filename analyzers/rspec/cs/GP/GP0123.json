@@ -1,0 +1,31 @@
+{
+  "title": "Credentialed CORS policies should restrict allowed origins",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "COMPLETE"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "15min"
+  },
+  "tags": [
+    "gp",
+    "security",
+    "cors",
+    "cwe"
+  ],
+  "defaultSeverity": "Blocker",
+  "ruleSpecification": "GP-0123",
+  "sqKey": "GP0123",
+  "scope": "Main",
+  "quickfix": "unknown",
+  "securityStandards": {
+    "CWE": [
+      942
+    ]
+  }
+}
