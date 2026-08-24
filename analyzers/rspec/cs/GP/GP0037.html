@@ -1,10 +1,8 @@
-<p>Email should be sent through Juno's email sender, not with <code>System.Net.Mail.SmtpClient</code> or
-<code>System.Web.Mail.SmtpMail</code>.</p>
+<p>Email should be sent through the application's approved email delivery abstraction, not with
+<code>System.Net.Mail.SmtpClient</code> or <code>System.Web.Mail.SmtpMail</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>Juno provides an email-sending abstraction with the templating, request tracking and configured relay that GP services rely on. Reaching for
-<code>SmtpClient</code> means a second, undocumented delivery path: a hard-coded relay host, no template handling, and nothing recorded about what was
-sent.</p>
-<p>Independently of the GP convention, Microsoft advises against the type for new code:</p>
+<p>Reaching for <code>SmtpClient</code> creates a second, undocumented delivery path that commonly hard-codes a relay host and bypasses centralized
+configuration, observability and delivery policies. Microsoft also advises against the type for new code:</p>
 <blockquote>
   We don't recommend that you use the <code>SmtpClient</code> class for new development because <code>SmtpClient</code> doesn't support many modern
   protocols.
@@ -16,8 +14,8 @@ using var client = new SmtpClient("smtp.internal");
 client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
 </pre>
 <h2>How to fix it</h2>
-<p>Send the message through Juno's email sender, describing it with the email/template info types rather than assembling an SMTP conversation
-yourself.</p>
+<p>Send the message through the email abstraction approved for the application. Its implementation can use the organization's delivery service or a
+maintained SMTP library such as MailKit without exposing SMTP transport details to application code.</p>
 <p>The rule reports send calls on directly constructed and injected SMTP clients.</p>
 <p>Writing messages to <code>SmtpDeliveryMethod.SpecifiedPickupDirectory</code> is excluded because it stores files locally rather than delivering
 email over SMTP. The approved relay adapter assembly is also excluded; its name is configurable with <code>allowedAssemblyNames</code> and defaults
@@ -27,14 +25,14 @@ to <code>GP.Postman.Sender</code>.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public void NotifyUser(User user, string subject, string body)
 {
-    using var client = new SmtpClient("smtp.internal"); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+    using var client = new SmtpClient("smtp.internal"); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
     client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public Task NotifyUser(User user, string templateName, CancellationToken cancellationToken) =&gt;
-    _emailSender.Send(new TemplateBasedEmailInfo(user.Email, templateName), cancellationToken);
+public Task NotifyUser(User user, string subject, string body, CancellationToken cancellationToken) =&gt;
+    _emailSender.SendAsync(new EmailMessage(user.Email, subject, body), cancellationToken);
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

@@ -13,7 +13,7 @@ public sealed class DoNotSendEmailWithSmtpClient : ParametrizedDiagnosticAnalyze
 {
     internal const string RuleId = "GP0037";
 
-    private const string MessageFormat = "Send email through Juno's email sender instead of '{0}'.";
+    private const string MessageFormat = "Use the approved email delivery abstraction instead of obsolete '{0}'.";
     private const string DefaultAllowedAssemblyNames = "GP.Postman.Sender";
     private const string SmtpDeliveryMethodType = "System.Net.Mail.SmtpDeliveryMethod";
 

@@ -51,7 +51,7 @@ public class DoNotSendEmailWithSmtpClientTest
             public class Notifier
             {
                 public void Notify(string body) =>
-                    new System.Net.Mail.SmtpClient("smtp.internal").Send(body); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+                    new System.Net.Mail.SmtpClient("smtp.internal").Send(body); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
             }
             """)
             .Verify();
@@ -66,7 +66,7 @@ public class DoNotSendEmailWithSmtpClientTest
                 public void Notify(string body)
                 {
                     var client = new System.Net.Mail.SmtpClient("smtp.internal");
-                    client.Send(body); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+                    client.Send(body); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
                 }
             }
             """)
@@ -80,7 +80,7 @@ public class DoNotSendEmailWithSmtpClientTest
             public class Notifier
             {
                 public void Notify(string body) =>
-                    (new System.Net.Mail.SmtpClient("smtp.internal")).Send(body); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+                    (new System.Net.Mail.SmtpClient("smtp.internal")).Send(body); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
             }
             """)
             .Verify();
@@ -218,7 +218,7 @@ public class DoNotSendEmailWithSmtpClientTest
                 private readonly System.Net.Mail.SmtpClient _client;
 
                 public System.Threading.Tasks.Task Notify(string body) =>
-                    _client.SendMailAsync(body); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpClient'.}}
+                    _client.SendMailAsync(body); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
             }
             """)
             .Verify();
@@ -231,7 +231,7 @@ public class DoNotSendEmailWithSmtpClientTest
             public class Notifier
             {
                 public void Notify(string body) =>
-                    System.Web.Mail.SmtpMail.Send(body); // Noncompliant {{Send email through Juno's email sender instead of 'SmtpMail'.}}
+                    System.Web.Mail.SmtpMail.Send(body); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpMail'.}}
             }
             """)
             .Verify();
