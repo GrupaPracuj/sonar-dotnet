@@ -15,7 +15,7 @@
   "tags": [
     "gp",
     "http",
-    "aspnet"
+    "asp.net"
   ],
   "defaultSeverity": "Major",
   "ruleSpecification": "GP-0094",

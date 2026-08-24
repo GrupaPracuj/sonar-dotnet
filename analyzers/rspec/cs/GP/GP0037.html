@@ -25,7 +25,7 @@ to <code>GP.Postman.Sender</code>.</p>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public void NotifyUser(User user, string subject, string body)
 {
-    using var client = new SmtpClient("smtp.internal"); // Noncompliant {{Use the approved email delivery abstraction instead of obsolete 'SmtpClient'.}}
+    using var client = new SmtpClient("smtp.internal"); // Noncompliant {{Use the approved email delivery abstraction instead of the obsolete 'SmtpClient'.}}
     client.Send(new MailMessage("noreply@gp.pl", user.Email, subject, body));
 }
 </pre>

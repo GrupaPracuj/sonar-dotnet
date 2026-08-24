@@ -1,5 +1,5 @@
 {
-  "title": "A database commit and a message publish should not be a dual write",
+  "title": "Database commits and message publishing should not form a dual write",
   "type": "BUG",
   "code": {
     "impacts": {
