@@ -44,6 +44,64 @@ it. Confidence is about *whether the rule is worth shipping*, not about whether 
 
 ---
 
+## Where this stands, and what to do next
+
+Recommendations, not decisions. The reasoning is spelled out so that overruling them is cheap.
+
+### Triage as of `57057984e`
+
+| | |
+| --- | --- |
+| **Shipped** | `GP0120` static clock · `GP0121` DELETE target followed by SELECT · `GP0122` indexed NVARCHAR(MAX) |
+| **Rejected** | interpolated query text into a company query API · `NOLOCK` inside a view |
+| **Open** | publish before persist · row limiter with no `ORDER BY` · Dapper `splitOn` · `ToDictionary` · optional positional member on a record |
+
+### The calibration lesson — read this before implementing another candidate
+
+Both shipped rules were **narrowed** from what this document proposed, and in the same direction:
+
+- `GP0121` ships as *DELETE target accidentally followed by SELECT*, not as *DELETE/UPDATE with no WHERE*. The
+  narrower rule catches all 21 evidence sites and cannot argue with a deliberate full-table delete.
+- `GP0122` ships as *indexed column typed NVARCHAR(MAX)*, not as *identifier column typed NVARCHAR(MAX)*. The
+  narrower rule decides by an actual index in the compilation rather than by an `Id` suffix in a name.
+
+In both cases the proposal reached for the general principle and the implementation took the specific, verifiable
+shape underneath it. That is the calibration this document was missing: **the bar is not "is the principle right",
+it is "is there a sub-case that needs no judgement at all".** The five open candidates were written before that was
+clear and should each be re-read for the narrowest form that still covers the evidence, rather than implemented as
+worded. Concretely:
+
+- *Row limiter with no `ORDER BY`* is already close to that form; its weak point is statement scoping, called out
+  in its own section.
+- *Dapper `splitOn`* narrows well: check only that the mapped type's `Id` property has a matching column in its
+  segment, and drop the broader "alias matches no property" half.
+- *Publish before persist* narrows to step 1 only — make `GP0048` bidirectional. Step 2 (seeing through repository
+  indirection) is where the judgement lives; leave it out.
+- *`ToDictionary`* and *record equality* have no obvious narrow form. They may not survive, and that is a fine
+  outcome; do not force them.
+
+### What the two rejections mean for the code
+
+Rejecting a rule does not retire the defect it was found through.
+
+The interpolated-query rejection matters most: the live SOQL injection in `GP.Plunger`
+([#623](https://github.com/GrupaPracuj/GP.Plunger/issues/623), three sites, values arriving from MassTransit
+message fields) now has **no analyser backstop at all** — `S2077` cannot see that sink, which is why the candidate
+existed. The code fix is the whole mitigation, so that issue should not sit. Same for the `NOLOCK`-in-view
+rejection, though nothing is broken there today, only unreviewable.
+
+### Not recommended
+
+Writing more candidates before the open five are resolved. The reading sweep that produced them is roughly two
+orders of magnitude more productive per line than the pattern scan, and ~215 000 production lines are still unread,
+so continuing it would certainly find more — and would widen a queue that has five unresolved entries and two
+freshly rejected ones. Better to finish triaging what is here.
+
+If the sweep does resume, `scratchpad/PROGRESS.md` and `scratchpad/FINDINGS.md` in the session that produced this
+carry the per-repo state; the ordered worklist is 95 repositories by descending production diff size, with
+`GP.Odra` stopped at roughly line 2 050 of 7 855.
+
+---
 ## Rejected candidate — Query text built by interpolation and passed to a company query API
 
 **Confidence: high. Value: high (security).**
