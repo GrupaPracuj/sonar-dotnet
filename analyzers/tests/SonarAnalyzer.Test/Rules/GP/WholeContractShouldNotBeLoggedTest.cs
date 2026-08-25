@@ -49,6 +49,31 @@ public class WholeContractShouldNotBeLoggedTest
         """;
 
     [TestMethod]
+    // A service that logs through its own extension on ILogger was invisible: only LoggerExtensions and Serilog were
+    // recognised, so the containing type of the call matched nothing.
+    public void WholeContractShouldNotBeLogged_NoncompliantForProjectOwnLoggerExtension() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace Company.Logging
+            {
+                public static class LoggerCustomExtensions
+                {
+                    public static void LogPayload(this Microsoft.Extensions.Logging.ILogger logger, string message, object payload) { }
+                }
+
+                public static class Handler
+                {
+                    public static void Handle(
+                        Microsoft.Extensions.Logging.ILogger logger,
+                        Contracts.OrderAccepted accepted) =>
+                        logger.LogPayload("received", accepted); // Noncompliant {{Do not log the whole contract 'OrderAccepted' - log the fields the diagnosis needs.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void WholeContractShouldNotBeLogged_NoncompliantForContractArgument() =>
         builder.AddSnippet(
             Stubs + """

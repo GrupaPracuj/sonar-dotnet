@@ -42,7 +42,14 @@ public sealed class ClaimsAuthorizationShouldNotUseIdentityClaims : SonarDiagnos
         "Surname"
     };
 
-    private static readonly string[] AuthorizationDecisionWords = { "Access", "Authorize", "Authorized", "Authorization", "Permission" };
+    // The precision here comes from the member returning bool while reading an identity claim - a vocabulary of five
+    // words was the bottleneck, not the safeguard, so a decision spelled CanEdit or IsOwner was invisible. Still a
+    // heuristic: closing it properly would mean following the bool to the guard that denies access.
+    private static readonly string[] AuthorizationDecisionWords =
+    {
+        "Access", "Authorize", "Authorized", "Authorization", "Permission", "Permitted",
+        "Can", "May", "Allow", "Allowed", "Owner", "Owns", "Grant", "Granted", "Denied", "Forbidden",
+    };
 
     private static readonly HashSet<string> JunoAlternativePermissionMethods = new(StringComparer.Ordinal)
     {

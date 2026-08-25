@@ -20,6 +20,62 @@ public class DoNotSwallowAuthorizationExceptionTest
         ;
 
     [TestMethod]
+    // The access check used to be matched against a shortlist of two names, so a claims read and GP.Juno's own claim
+    // helpers slipped past even though the sibling rules already recognise both.
+    public void DoNotSwallowAuthorizationException_NoncompliantForClaimsRead() =>
+        builder.AddSnippet(
+            """
+            using System.Security.Claims;
+
+            public class Service
+            {
+                public string OwnerOf(ClaimsPrincipal user)
+                {
+                    try
+                    {
+                        return user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    }
+                    catch (System.InvalidOperationException) // Noncompliant {{Do not silently swallow an exception around an access check - at least log the failure.}}
+                    {
+                    }
+
+                    return null;
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DoNotSwallowAuthorizationException_NoncompliantForJunoClaimHelper() =>
+        builder.AddSnippet(
+            """
+            namespace GP.Juno.Security
+            {
+                public static class ClaimPrincipalExtensions
+                {
+                    public static bool HasUserClaim(this System.Security.Claims.ClaimsPrincipal principal) => true;
+                }
+            }
+
+            public class Service
+            {
+                public bool HasAccess(System.Security.Claims.ClaimsPrincipal user)
+                {
+                    try
+                    {
+                        return GP.Juno.Security.ClaimPrincipalExtensions.HasUserClaim(user);
+                    }
+                    catch (System.InvalidOperationException) // Noncompliant {{Do not silently swallow an exception around an access check - at least log the failure.}}
+                    {
+                    }
+
+                    return false;
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void DoNotSwallowAuthorizationException_NoncompliantForIsInRole() =>
         builder.AddSnippet(
             """

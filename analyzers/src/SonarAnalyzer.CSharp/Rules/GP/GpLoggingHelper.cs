@@ -10,6 +10,8 @@ namespace SonarAnalyzer.CSharp.Rules;
 
 internal static class GpLoggingHelper
 {
+    private const string MicrosoftLogger = "Microsoft.Extensions.Logging.ILogger";
+
     private static readonly HashSet<string> LoggingContainingTypes = new(StringComparer.Ordinal)
     {
         "Microsoft.Extensions.Logging.LoggerExtensions", // ILogger.LogInformation/LogWarning/... are extension methods declared here.
@@ -17,9 +19,24 @@ internal static class GpLoggingHelper
         "Serilog.ILogger",
     };
 
+    // A list of type names only ever covers the loggers we thought of. Anything declared on ILogger, or taking one as
+    // the receiver of an extension method, is a logging call by construction - which is how LoggerExtensions itself is
+    // shaped, and how a project that adds its own Log(...) overload shapes it too. Without this, a service logging
+    // through its own extension is invisible to every rule here.
     internal static bool IsLoggingCall(SemanticModel model, InvocationExpressionSyntax invocation) =>
         model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
-        && LoggingContainingTypes.Contains(method.ContainingType?.ToDisplayString() ?? string.Empty);
+        && (LoggingContainingTypes.Contains(method.ContainingType?.ToDisplayString() ?? string.Empty)
+            || IsMicrosoftLogger(method.ContainingType)
+            || IsLoggerExtension(method));
+
+    private static bool IsLoggerExtension(IMethodSymbol method) =>
+        (method.ReducedFrom ?? method) is { IsExtensionMethod: true, Parameters: { Length: > 0 } parameters }
+        && IsMicrosoftLogger(parameters[0].Type);
+
+    private static bool IsMicrosoftLogger(ITypeSymbol type) =>
+        type is not null
+        && (type.OriginalDefinition.ToDisplayString() is MicrosoftLogger or MicrosoftLogger + "<TCategoryName>"
+            || type.AllInterfaces.Any(x => x.OriginalDefinition.ToDisplayString() is MicrosoftLogger or MicrosoftLogger + "<TCategoryName>"));
 
     // For a plain identifier/member argument, the candidate is its own name (e.g. "password" in LogInformation(password)).
     // For a message template literal, every {PlaceholderName} is a candidate, since that name is what a structured

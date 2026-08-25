@@ -35,8 +35,7 @@ public sealed class UniqueConstraintCatchShouldCoverSingleOperation : SonarDiagn
             || catchClause.Declaration is not { } declaration
             || context.Model.GetDeclaredSymbol(declaration) is not ILocalSymbol exception
             || !SqlExceptionTypes.Contains(exception.Type.ToDisplayString())
-            || catchClause.Filter?.FilterExpression is not { } filter
-            || !IsUniqueConstraintFilter(context.Model, filter, exception))
+            || !DiscriminatesUniqueConstraint(context.Model, catchClause, exception))
         {
             return;
         }
@@ -46,6 +45,21 @@ public sealed class UniqueConstraintCatchShouldCoverSingleOperation : SonarDiagn
         {
             context.ReportIssue(Rule, catchClause.CatchKeyword, operations.ToString());
         }
+    }
+
+    // A when filter is one way to single the violation out; testing ex.Number inside the catch is just as common and
+    // means the same thing. Requiring the filter left that half of real code unreported.
+    private static bool DiscriminatesUniqueConstraint(SemanticModel model, CatchClauseSyntax catchClause, ILocalSymbol exception)
+    {
+        if (catchClause.Filter?.FilterExpression is { } filter)
+        {
+            return IsUniqueConstraintFilter(model, filter, exception);
+        }
+
+        return catchClause.Block is { } block
+               && block.DescendantNodes()
+                   .OfType<IfStatementSyntax>()
+                   .Any(x => IsUniqueConstraintFilter(model, x.Condition, exception));
     }
 
     private static bool IsUniqueConstraintFilter(SemanticModel model, ExpressionSyntax filter, ILocalSymbol exception) =>

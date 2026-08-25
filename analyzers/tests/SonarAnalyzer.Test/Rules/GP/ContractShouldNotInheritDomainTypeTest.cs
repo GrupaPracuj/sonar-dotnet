@@ -34,6 +34,27 @@ public class ContractShouldNotInheritDomainTypeTest
         public class BaseContract { }
         """;
 
+    [DataTestMethod]
+    // The base-type path used to be off unless a project set entityBaseTypes, which left only EF attributes and DbSet
+    // membership - both needing the entity in the same compilation as the contract.
+    [DataRow("Entity")]
+    [DataRow("EntityBase")]
+    [DataRow("AggregateRoot")]
+    [DataRow("AggregateRootBase")]
+    [DataRow("DomainEntity")]
+    public void ContractShouldNotInheritDomainType_NoncompliantForDefaultEntityBaseTypes(string baseType) =>
+        builder.AddSnippet(
+            (Stubs + """
+
+            public class BASE { }
+
+            namespace Contracts
+            {
+                public sealed class OrderAccepted : global::BASE { } // Noncompliant {{'BASE' is a domain type - a contract that inherits it publishes the whole entity.}}
+            }
+            """).Replace("BASE", baseType))
+            .Verify();
+
     [TestMethod]
     public void ContractShouldNotInheritDomainType_NoncompliantForEntityBase() =>
         builder.AddSnippet(

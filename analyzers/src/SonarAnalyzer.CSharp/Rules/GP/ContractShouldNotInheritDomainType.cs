@@ -15,12 +15,17 @@ public sealed class ContractShouldNotInheritDomainType : ParametrizedDiagnosticA
 
     private const string MessageFormat = "'{0}' is a domain type - a contract that inherits it publishes the whole entity.";
 
+    // Left empty, the base-type path was dead and the rule fell back to EF attributes or DbSet membership,
+    // both of which need the entity in the same compilation as the contract. These are the names the
+    // pattern is normally spelled with; a project that names its base differently overrides the parameter.
+    private const string DefaultEntityBaseTypes = "Entity,EntityBase,AggregateRoot,AggregateRootBase,DomainEntity";
+
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
-    [RuleParameter("entityBaseTypes", PropertyType.String, "Comma-separated base types whose descendants are entities, e.g. Entity,AggregateRoot", "")]
-    public string EntityBaseTypes { get; set; } = string.Empty;
+    [RuleParameter("entityBaseTypes", PropertyType.String, "Comma-separated base types whose descendants are entities", DefaultEntityBaseTypes)]
+    public string EntityBaseTypes { get; set; } = DefaultEntityBaseTypes;
 
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>

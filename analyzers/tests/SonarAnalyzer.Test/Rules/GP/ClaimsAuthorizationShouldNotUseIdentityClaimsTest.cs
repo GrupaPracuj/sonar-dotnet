@@ -19,6 +19,28 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 #endif
         ;
 
+    [DataTestMethod]
+    // The decision used to be recognised only when its name carried one of five words, so these spellings - all
+    // bool-returning members reading an identity claim - were missed.
+    [DataRow("CanEdit")]
+    [DataRow("MayView")]
+    [DataRow("IsOwner")]
+    [DataRow("IsAllowed")]
+    [DataRow("OwnsDocument")]
+    [DataRow("IsGranted")]
+    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForCommonDecisionNames(string member) =>
+        builder.AddSnippet(
+            ("""
+            using System.Security.Claims;
+
+            public class Service
+            {
+                public bool MEMBER(ClaimsPrincipal user, string ownerEmail) =>
+                    user.FindFirst(ClaimTypes.Email)?.Value == ownerEmail; // Noncompliant {{Do not base access control on identity claim 'Email'.}}
+            }
+            """).Replace("MEMBER", member))
+            .Verify();
+
     [TestMethod]
     public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsStatusCode200() =>
         builder.AddSnippet(

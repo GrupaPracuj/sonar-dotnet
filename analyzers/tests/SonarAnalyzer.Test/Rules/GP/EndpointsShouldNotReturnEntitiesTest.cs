@@ -224,9 +224,9 @@ public class EndpointsShouldNotReturnEntitiesTest
     private const string ConfiguredEntityStubs =
         Stubs + """
 
-        public abstract class AggregateRoot { }
+        public abstract class PersistentObject { }
 
-        public sealed class Invoice : AggregateRoot { }
+        public sealed class Invoice : PersistentObject { }
 
         public class InvoicesController : Microsoft.AspNetCore.Mvc.ControllerBase
         {
@@ -235,10 +235,34 @@ public class EndpointsShouldNotReturnEntitiesTest
         }
         """;
 
+    [DataTestMethod]
+    // The default list covers how this pattern is normally spelled, so these need no configuration. Left empty, as it
+    // was, the base-type path was dead and only an EF attribute or a DbSet in the same compilation could reach them.
+    [DataRow("Entity")]
+    [DataRow("EntityBase")]
+    [DataRow("AggregateRoot")]
+    [DataRow("AggregateRootBase")]
+    [DataRow("DomainEntity")]
+    public void EndpointsShouldNotReturnEntities_NoncompliantForDefaultEntityBaseTypes(string baseType) =>
+        builder.AddSnippet(
+            (Stubs + """
+
+            public abstract class BASE { }
+
+            public sealed class Invoice : BASE { }
+
+            public class InvoicesController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Invoice Get(int id) => null; // Noncompliant {{'Invoice' is a database entity - return a response contract instead.}}
+            }
+            """).Replace("BASE", baseType))
+            .Verify();
+
     // Paired with the test below: the entity carries none of the default signals, so the parameter is what makes the difference.
     [TestMethod]
     public void EndpointsShouldNotReturnEntities_NoncompliantForConfiguredEntityBaseType() =>
-        CreateBuilder(entityBaseTypes: "AggregateRoot")
+        CreateBuilder(entityBaseTypes: "PersistentObject")
             .AddSnippet(ConfiguredEntityStubs)
             .Verify();
 

@@ -61,6 +61,28 @@ public sealed class CatalogRepository(GP.Juno.Abstractions.Ado.ITransactional tr
         }
     }
 
+    // The same defect written without a filter: requiring the when clause left this half unreported.
+    public async System.Threading.Tasks.Task BroadCatchTestingNumberInBody()
+    {
+        try
+        {
+            await GP.Juno.Ado.TransactionalExtensions.RunInTransaction(transactional, async transaction =>
+            {
+                await GP.Juno.Abstractions.Ado.TransactionExtensions.Execute(
+                    transaction,
+                    new InsertBookOperation());
+                await transaction.Execute(new InsertAuthorsOperation());
+            });
+        }
+        catch (Microsoft.Data.SqlClient.SqlException exception) // Noncompliant {{Catch this unique-constraint violation around one database operation; this try scope executes 2.}}
+        {
+            if (exception.Number is 2601 or 2627)
+            {
+                throw;
+            }
+        }
+    }
+
     public async System.Threading.Tasks.Task BroadCatchUsingHelper()
     {
         try

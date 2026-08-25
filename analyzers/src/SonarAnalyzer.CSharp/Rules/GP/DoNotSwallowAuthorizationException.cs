@@ -17,7 +17,6 @@ public sealed class DoNotSwallowAuthorizationException : SonarDiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
-    private static readonly HashSet<string> AccessCheckMethods = new(StringComparer.Ordinal) { "HasClaim", "IsInRole" };
     private static readonly HashSet<string> LoggingMethods = new(StringComparer.Ordinal)
     {
         "Log",
@@ -146,10 +145,11 @@ public sealed class DoNotSwallowAuthorizationException : SonarDiagnosticAnalyzer
         catchClause.Filter is null
         && (catchClause.Declaration?.Type is not { } type || model.GetTypeInfo(type).Type.Is(KnownType.System_Exception));
 
+    // Decided by what the call resolves to, not by a shortlist of two names: the claims API, GP.Juno's own claim
+    // helpers and IAuthorizationService all count, and an unrelated method that happens to be called HasClaim does
+    // not.
     private static bool ContainsAccessCheck(SemanticModel model, SyntaxNode node) =>
         node.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .Any(x => x.Expression is MemberAccessExpressionSyntax { Name.Identifier.ValueText: var name }
-                      && AccessCheckMethods.Contains(name)
-                      && GpPrincipalApi.IsAccessCheck(model, x));
+            .Any(x => GpPrincipalApi.IsAuthorizationWork(model, x));
 }

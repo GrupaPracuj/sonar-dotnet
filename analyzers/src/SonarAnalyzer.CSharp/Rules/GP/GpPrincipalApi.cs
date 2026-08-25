@@ -24,6 +24,42 @@ internal static class GpPrincipalApi
     internal static bool IsIdentityType(ITypeSymbol type) =>
         GpJunoTypes.Implements(type, IdentityInterface);
 
+    private const string AuthorizationServiceInterface = "Microsoft.AspNetCore.Authorization.IAuthorizationService";
+
+    private static readonly HashSet<string> ClaimReadNames = new(StringComparer.Ordinal)
+    {
+        "HasClaim",
+        "FindFirst",
+        "FindFirstValue",
+        "FindAll",
+    };
+
+    // Wider than IsAccessCheck, which asks whether a single call is the check being branched on. This asks the looser
+    // question "was authorization being done here at all", for rules that carry the weight of the finding elsewhere -
+    // GP0021 also requires the exception to be swallowed. Claim helpers are accepted by name only inside GP.Juno, so
+    // an unrelated method that happens to share a name is not mistaken for one.
+    internal static bool IsAuthorizationWork(SemanticModel model, InvocationExpressionSyntax invocation) =>
+        IsAccessCheck(model, invocation)
+        || (model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ContainingType: { } containingType } method
+            && (IsAuthorizationServiceCall(containingType, method)
+                || (ClaimReadNames.Contains(method.Name) && IsClaimsApiType(containingType))
+                || (IsJunoClaimHelperName(method.Name) && IsJunoNamespace(method))));
+
+    private static bool IsAuthorizationServiceCall(ITypeSymbol containingType, IMethodSymbol method) =>
+        method.Name is "AuthorizeAsync" or "Authorize"
+        && GpJunoTypes.Implements(containingType, AuthorizationServiceInterface);
+
+    private static bool IsJunoClaimHelperName(string name) =>
+        (name.StartsWith("Has", StringComparison.Ordinal) || name.StartsWith("Find", StringComparison.Ordinal))
+        && name.EndsWith("Claim", StringComparison.Ordinal);
+
+    private static bool IsJunoNamespace(IMethodSymbol method) =>
+        Displays(method.ContainingNamespace) || Displays(method.ContainingType?.ContainingNamespace);
+
+    private static bool Displays(INamespaceSymbol namespaceSymbol) =>
+        namespaceSymbol?.ToDisplayString() is { } name
+        && (name == "GP.Juno" || name.StartsWith("GP.Juno.", StringComparison.Ordinal));
+
     // The two ways an access check is spelled: IsInRole(role) on a principal, or HasClaim(...) on the claims API.
     internal static bool IsAccessCheck(SemanticModel model, InvocationExpressionSyntax invocation) =>
         model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ContainingType: { } containingType } method

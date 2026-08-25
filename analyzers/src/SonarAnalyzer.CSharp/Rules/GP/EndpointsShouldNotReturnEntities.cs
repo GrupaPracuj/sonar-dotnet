@@ -15,6 +15,11 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
 
     private const string EntityMessageFormat = "'{0}' is a database entity - return a response contract instead.";
 
+    // Left empty, the base-type path was dead and the rule fell back to EF attributes or DbSet membership,
+    // both of which need the entity in the same compilation as the contract. These are the names the
+    // pattern is normally spelled with; a project that names its base differently overrides the parameter.
+    private const string DefaultEntityBaseTypes = "Entity,EntityBase,AggregateRoot,AggregateRootBase,DomainEntity";
+
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, EntityMessageFormat);
     private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete"];
     private static readonly HashSet<string> MvcResultMethods = new(StringComparer.Ordinal)
@@ -36,8 +41,8 @@ public sealed class EndpointsShouldNotReturnEntities : ParametrizedDiagnosticAna
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
-    [RuleParameter("entityBaseTypes", PropertyType.String, "Comma-separated base types whose descendants are entities, e.g. Entity,AggregateRoot", "")]
-    public string EntityBaseTypes { get; set; } = string.Empty;
+    [RuleParameter("entityBaseTypes", PropertyType.String, "Comma-separated base types whose descendants are entities", DefaultEntityBaseTypes)]
+    public string EntityBaseTypes { get; set; } = DefaultEntityBaseTypes;
 
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>
