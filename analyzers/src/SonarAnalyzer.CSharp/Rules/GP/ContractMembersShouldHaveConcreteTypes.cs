@@ -96,7 +96,7 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
 
         if (named.TypeKind == TypeKind.Interface)
         {
-            if (!IsAllowedInterface(named))
+            if (!IsAllowedInterface(named) && !IsInterfaceContract(member))
             {
                 context.ReportIssue(InterfaceRule, identifier, identifier.ValueText, named.Name);
             }
@@ -106,6 +106,13 @@ public sealed class ContractMembersShouldHaveConcreteTypes : ParametrizedDiagnos
             context.ReportIssue(AbstractRule, identifier, identifier.ValueText, named.Name);
         }
     }
+
+    // A contract declared as an interface is materialised by the bus - MassTransit builds an implementation from the
+    // interface, nested interface members included, and publishers fill it in with an anonymous object. There is no
+    // concrete type for the author to name, so asking for one is asking for something the style does not have. A
+    // concrete contract is a different matter: there the deserializer really has nothing to pick.
+    private static bool IsInterfaceContract(ISymbol member) =>
+        member.ContainingType?.TypeKind == TypeKind.Interface;
 
     private bool IsAllowedInterface(INamedTypeSymbol type)
     {

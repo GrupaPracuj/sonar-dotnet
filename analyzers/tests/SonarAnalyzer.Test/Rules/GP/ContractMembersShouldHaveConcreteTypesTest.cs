@@ -41,6 +41,37 @@ public class ContractMembersShouldHaveConcreteTypesTest
         """;
 
     [TestMethod]
+    // The MassTransit style: the contract is an interface, the bus builds the implementation from it, and a publisher
+    // fills it in with an anonymous object. Mirrors ISendMultiStepRegisterEmailCommand from GP.Smerfetka.
+    public void ContractMembersShouldHaveConcreteTypes_CompliantForInterfaceMemberOnInterfaceContract() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface ISendMultiStepRegisterEmailCommand
+            {
+                System.Guid ProcessId { get; }
+                IPaymentMethod Payment { get; }
+            }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    // The exemption is about interface contracts only: an abstract class still has no wire representation the bus can
+    // invent, so it stays reported even there.
+    public void ContractMembersShouldHaveConcreteTypes_NoncompliantForAbstractMemberOnInterfaceContract() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface IOrderAccepted
+            {
+                PricingStrategy Pricing { get; } // Noncompliant {{'Pricing' is declared as the abstract type 'PricingStrategy', so a consumer cannot tell what to deserialize it into.}}
+            }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
     public void ContractMembersShouldHaveConcreteTypes_NoncompliantForInterface() =>
         builder.AddSnippet(
             Stubs + """

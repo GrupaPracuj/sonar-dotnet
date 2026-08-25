@@ -33,6 +33,10 @@ these, so the ambiguity this rule is about does not arise. The lazy sequence int
 defers execution is a separate defect with a separate fix. Additional interfaces can be allowed through the <code>allowedInterfaces</code> parameter.</p>
 <p>A type carrying polymorphic configuration - <code>[JsonDerivedType]</code>, <code>[JsonPolymorphic]</code>, <code>[JsonConverter]</code> or
 <code>[KnownType]</code> - is not reported: the decision has been made and written down.</p>
+<p>A contract declared as an interface is exempt from the interface check. In that style the bus builds the
+implementation from the interface, nested interface members included, and a publisher fills it in with an anonymous
+object - there is no concrete type for the author to name. An abstract class stays reported even there, because
+nothing can invent its wire representation.</p>
 <h2>How to fix it</h2>
 <p>Declare the concrete type the contract actually carries. Where the payload genuinely varies, either flatten the variants into one type with a
 discriminating enum, or configure polymorphism explicitly with <code>[JsonDerivedType]</code> and a stable discriminator string that both sides agree
