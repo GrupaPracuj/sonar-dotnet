@@ -11,38 +11,16 @@ using CS = SonarAnalyzer.CSharp.Rules;
 namespace SonarAnalyzer.Test.Rules.GP;
 
 [TestClass]
-public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
+public class MissingClaimShouldNotGrantAccessTest
 {
-    private readonly VerifierBuilder builder = new VerifierBuilder<CS.ClaimsAuthorizationShouldNotUseIdentityClaims>()
+    private readonly VerifierBuilder builder = new VerifierBuilder<CS.MissingClaimShouldNotGrantAccess>()
 #if NET
         .AddReferences(new[] { CoreMetadataReference.SystemSecurityClaims })
 #endif
         ;
 
-    [DataTestMethod]
-    // The decision used to be recognised only when its name carried one of five words, so these spellings - all
-    // bool-returning members reading an identity claim - were missed.
-    [DataRow("CanEdit")]
-    [DataRow("MayView")]
-    [DataRow("IsOwner")]
-    [DataRow("IsAllowed")]
-    [DataRow("OwnsDocument")]
-    [DataRow("IsGranted")]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForCommonDecisionNames(string member) =>
-        builder.AddSnippet(
-            ("""
-            using System.Security.Claims;
-
-            public class Service
-            {
-                public bool MEMBER(ClaimsPrincipal user, string ownerEmail) =>
-                    user.FindFirst(ClaimTypes.Email)?.Value == ownerEmail; // Noncompliant {{Do not base access control on identity claim 'Email'.}}
-            }
-            """).Replace("MEMBER", member))
-            .Verify();
-
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsStatusCode200() =>
+    public void MissingClaimShouldNotGrantAccess_MissingClaimReturnsStatusCode200() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -76,7 +54,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .Verify();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsSuccessfulMvcResponse() =>
+    public void MissingClaimShouldNotGrantAccess_MissingClaimReturnsSuccessfulMvcResponse() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -110,7 +88,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .Verify();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimInElseGrantsAccess() =>
+    public void MissingClaimShouldNotGrantAccess_MissingClaimInElseGrantsAccess() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -146,7 +124,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .Verify();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimIsDenied() =>
+    public void MissingClaimShouldNotGrantAccess_MissingClaimIsDenied() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -180,7 +158,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NegationWithoutAccessDecision() =>
+    public void MissingClaimShouldNotGrantAccess_NegationWithoutAccessDecision() =>
         builder.AddSnippet(
             """
             public class User : System.Security.Claims.ClaimsPrincipal
@@ -197,7 +175,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_MissingClaimReturnsMinimalApiSuccess() =>
+    public void MissingClaimShouldNotGrantAccess_MissingClaimReturnsMinimalApiSuccess() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Http
@@ -232,7 +210,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .Verify();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_LookalikeSuccessMethodIsNotAccessGrant() =>
+    public void MissingClaimShouldNotGrantAccess_LookalikeSuccessMethodIsNotAccessGrant() =>
         builder.AddSnippet(
             """
             public class User : System.Security.Claims.ClaimsPrincipal
@@ -260,7 +238,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
     // HasClaim(string) is an existence check by construction - there is no value to compare, so it is never
     // flagged regardless of claim name.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForHasClaimExistenceCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForHasClaimExistenceCheck() =>
         builder.AddSnippet(
             """
             public static class ClaimTypes
@@ -287,7 +265,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
     // HasClaim(predicate) is only flagged when the predicate also compares the claim's Value - matching only on
     // Type is still an existence check, just expressed differently.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForHasClaimPredicateExistenceCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForHasClaimPredicateExistenceCheck() =>
         builder.AddSnippet(
             """
             using System;
@@ -312,32 +290,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForHasClaimPredicateValueComparison() =>
-        builder.AddSnippet(
-            """
-            using System;
-
-            public class Claim
-            {
-                public string Type { get; set; }
-                public string Value { get; set; }
-            }
-
-            public class User : System.Security.Claims.ClaimsPrincipal
-            {
-                public bool HasClaim(Func<Claim, bool> predicate) => true;
-            }
-
-            public class Access
-            {
-                public bool HasAccess(User user) =>
-                    user.HasClaim(c => c.Type == "sub" && c.Value == "12345"); // Noncompliant {{Do not base access control on identity claim 'sub'.}}
-            }
-            """)
-            .Verify();
-
-    [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantWhenValueBelongsToAnotherObject() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantWhenValueBelongsToAnotherObject() =>
         builder.AddSnippet(
             """
             using System;
@@ -367,7 +320,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForIdentityReadOutsideAuthorizationDecision() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForIdentityReadOutsideAuthorizationDecision() =>
         builder.AddSnippet(
             """
             public class Claim
@@ -392,7 +345,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForLookalikeHasClaimGuard() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForLookalikeHasClaimGuard() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -426,24 +379,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_IdentityClaimInAuthorizePolicy() =>
-        builder.AddSnippet(
-            """
-            using System;
-
-            public class AuthorizeAttribute : Attribute
-            {
-                public string Policy { get; set; }
-            }
-
-            [Authorize(Policy = "sub")] // Noncompliant {{Do not base access control on identity claim 'sub'.}}
-            public class Endpoint { }
-            """)
-            .Verify();
-
-    // FindFirst(...) != null only checks whether the claim is present - not a value comparison.
-    [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoOrCalledByApi_HasClaimPredicateExistenceCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForJunoOrCalledByApi_HasClaimPredicateExistenceCheck() =>
         builder.AddSnippet(
             """
             using System;
@@ -481,7 +417,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoAddUserActivitiesAlternative_FindFirstExistenceCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForJunoAddUserActivitiesAlternative_FindFirstExistenceCheck() =>
         builder.AddSnippet(
             """
             using System;
@@ -509,36 +445,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForJunoAddUserActivitiesAlternative_FindFirstValueComparison() =>
-        builder.AddSnippet(
-            """
-            using System;
-            using System.Security.Claims;
-            using GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection;
-
-            public interface IServiceCollection { }
-
-            namespace GP.Juno.Hosting.AspNetCore.Security.UserActivities.DependencyInjection
-            {
-                public static class AlternativePermissionExtensions
-                {
-                    public static IServiceCollection AddUserActivitiesAlternative(this IServiceCollection services, Func<ClaimsPrincipal, bool> alternativePermission) => services;
-                }
-            }
-
-            public class Startup
-            {
-                public void ConfigureServices(IServiceCollection services)
-                {
-                    services.AddUserActivitiesAlternative(user => user.FindFirst(ClaimTypes.NameIdentifier).Value == "some-hardcoded-id"); // Noncompliant {{Do not base access control on identity claim 'NameIdentifier'.}}
-                }
-            }
-            """)
-            .Verify();
-
-    // Has*Claim() returns a bool: it is inherently an existence check and is out of scope for this rule.
-    [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoHasUserClaim() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForJunoHasUserClaim() =>
         builder.AddSnippet(
             """
             namespace GP.Juno.Security
@@ -558,7 +465,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoMissingApplicationClaimGrantsAccess() =>
+    public void MissingClaimShouldNotGrantAccess_JunoMissingApplicationClaimGrantsAccess() =>
         builder.AddSnippet(
             """
             namespace Microsoft.AspNetCore.Mvc
@@ -596,7 +503,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // Option<Claim>.HasValue checks whether the claim was found at all - not its Value - so this stays compliant.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForJunoFindUserGroupClaimHasValue() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForJunoFindUserGroupClaimHasValue() =>
         builder.AddSnippet(
             """
             public class Claim { }
@@ -620,34 +527,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForJunoFindUserGroupClaimValue() =>
-        builder.AddSnippet(
-            """
-            public class Claim
-            {
-                public string Value { get; set; }
-            }
-
-            namespace GP.Juno.Security.UserContexts
-            {
-                public class ClaimsPrincipal
-                {
-                    public Claim FindUserGroupClaim() => null;
-                }
-            }
-
-            public class Access
-            {
-                public bool HasAccess(GP.Juno.Security.UserContexts.ClaimsPrincipal user) =>
-                    user.FindUserGroupClaim().Value == "some-group-id"; // Noncompliant {{Do not base access control on identity claim 'userGroup'.}}
-            }
-            """)
-            .Verify();
-
-    // "company" is an accepted authorization dimension in this organization (e.g. gating access to company-scoped
-    // resources on a multi-tenant platform), not an identity leak, so HasCompanyClaim is not reported.
-    [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_JunoHasCompanyClaim() =>
+    public void MissingClaimShouldNotGrantAccess_JunoHasCompanyClaim() =>
         builder.AddSnippet(
             """
             using System.Collections.Generic;
@@ -672,7 +552,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // The name alone does not imply a fixed claim type - only the GP.Juno helpers do.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForUnrelatedMethodWithJunoName() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForUnrelatedMethodWithJunoName() =>
         builder.AddSnippet(
             """
             public class ClaimsPrincipal
@@ -691,7 +571,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // HasClaim(ClaimTypes.Email) is still just an existence check - same treatment as HasClaim("sub").
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForQualifiedClaimTypesExistenceCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForQualifiedClaimTypesExistenceCheck() =>
         builder.AddSnippet(
             """
             namespace System.Security.Claims
@@ -718,25 +598,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
     // The shape the rule description uses as its canonical example: a boolean access check that compares the value of
     // an identity claim read through ClaimsPrincipal.FindFirst.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_NoncompliantForFindFirstValueInBooleanAccessCheck() =>
-        builder.AddSnippet(
-            """
-            using System.Security.Claims;
-
-            public class Access
-            {
-                public bool HasAccess(ClaimsPrincipal user) =>
-                    user.FindFirst("sub").Value == "a3f1c9d2"; // Noncompliant {{Do not base access control on identity claim 'sub'.}}
-
-                public bool IsAuthorized(ClaimsPrincipal user) =>
-                    user.FindFirst(ClaimTypes.Email)?.Value == "admin@example.com"; // Noncompliant {{Do not base access control on identity claim 'Email'.}}
-            }
-            """)
-            .Verify();
-
-    // Presence, not value: FindFirst(...) != null stays an existence check wherever it appears.
-    [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForFindFirstPresenceCheckInBooleanAccessCheck() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForFindFirstPresenceCheckInBooleanAccessCheck() =>
         builder.AddSnippet(
             """
             using System.Security.Claims;
@@ -751,7 +613,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // A non-identity claim is exactly what the rule recommends deciding on, so comparing its value is compliant.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForNonIdentityClaimValueComparison() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForNonIdentityClaimValueComparison() =>
         builder.AddSnippet(
             """
             using System.Security.Claims;
@@ -766,7 +628,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // FindFirst on an unrelated type is not a claim lookup, even inside a boolean access check.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForLookalikeFindFirstOnUnrelatedType() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForLookalikeFindFirstOnUnrelatedType() =>
         builder.AddSnippet(
             """
             public class Subscription
@@ -789,7 +651,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
 
     // Reading the same claim for a non-authorization purpose is not an access-control decision.
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_CompliantForFindFirstValueOutsideAuthorizationDecision() =>
+    public void MissingClaimShouldNotGrantAccess_CompliantForFindFirstValueOutsideAuthorizationDecision() =>
         builder.AddSnippet(
             """
             using System.Security.Claims;
@@ -806,7 +668,7 @@ public class ClaimsAuthorizationShouldNotUseIdentityClaimsTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ClaimsAuthorizationShouldNotUseIdentityClaims_Compliant() =>
+    public void MissingClaimShouldNotGrantAccess_Compliant() =>
         builder.AddSnippet(
             """
             using System;
