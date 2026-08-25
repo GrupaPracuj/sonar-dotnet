@@ -6,8 +6,6 @@
  * repository for the terms that apply.
  */
 
-using System.Text.RegularExpressions;
-
 namespace SonarAnalyzer.CSharp.Rules;
 
 internal enum GpQueryBound
@@ -67,81 +65,11 @@ internal static class GpDatabaseCallHelper
         "Where",
     };
 
-    private static readonly Regex SqlLimit = new(
-        @"\bTOP\s*(?:\(\s*)?(?:@\w+|\d+)|\bLIMIT\s+(?:@\w+|\d+)|\bFETCH\s+(?:FIRST|NEXT)\s+(?:@\w+|\d+)",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex SingleAggregate = new(
-        @"^\s*SELECT\s+(?:DISTINCT\s+)?(?:COUNT|SUM|AVG|MIN|MAX)\s*\(",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
     internal static bool IsDatabaseCall(SemanticModel model, InvocationExpressionSyntax invocation, IMethodSymbol method) =>
         IsDapper(method)
         || (IsEfExecution(method)
             && EfQueryBound(model, invocation, method) != GpQueryBound.Unknown)
         || IsJunoExecute(model, invocation, method);
-
-    internal static bool IsDapperCollectionQuery(IMethodSymbol method) =>
-        IsDapper(method) && method.Name is "Query" or "QueryAsync" or "QueryUnbufferedAsync";
-
-    internal static bool TryGetDapperSql(
-        SemanticModel model,
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol method,
-        out string sql)
-    {
-        sql = null;
-        var mappings = new CSharpMethodParameterLookup(invocation, method).GetAllArgumentParameterMappings().ToArray();
-        if (HasNonTextCommandType(model, mappings))
-        {
-            return false;
-        }
-
-        var expression = mappings
-            .Where(x => x.Symbol.Name is "sql" or "commandText")
-            .Select(x => x.Node?.Expression)
-            .FirstOrDefault(x => x is not null);
-        if (expression is null)
-        {
-            var command = mappings
-                .Where(x => x.Symbol.Type.Is(KnownType.Dapper_CommandDefinition))
-                .Select(x => x.Node?.Expression)
-                .FirstOrDefault(x => x is not null);
-            if (CommandCreation(model, command) is not { ArgumentList: { } arguments } creation
-                || creation.MethodSymbol(model) is not { } constructor)
-            {
-                return false;
-            }
-
-            var constructorMappings = new CSharpMethodParameterLookup(arguments, constructor).GetAllArgumentParameterMappings().ToArray();
-            if (HasNonTextCommandType(model, constructorMappings))
-            {
-                return false;
-            }
-            expression = constructorMappings
-                .Where(x => x.Symbol.Name is "commandText" or "sql")
-                .Select(x => x.Node?.Expression)
-                .FirstOrDefault(x => x is not null);
-        }
-
-        if (expression is not null
-            && model.GetConstantValue(expression) is { HasValue: true, Value: string constantSql })
-        {
-            sql = constantSql;
-            return true;
-        }
-        return false;
-    }
-
-    internal static bool IsResultSetBounded(string sql) =>
-        SqlLimit.IsMatch(sql)
-        || (SingleAggregate.IsMatch(sql) && sql.IndexOf("GROUP BY", StringComparison.OrdinalIgnoreCase) < 0);
-
-    internal static bool IsEfCollectionMaterializer(IMethodSymbol method)
-    {
-        var name = RemoveAsyncSuffix(method.Name);
-        return IsEfMethod(method) && name is "ToArray" or "ToDictionary" or "ToHashSet" or "ToList";
-    }
 
     internal static GpQueryBound EfQueryBound(
         SemanticModel model,
@@ -227,34 +155,6 @@ internal static class GpDatabaseCallHelper
         type is not null
         && type.AllInterfaces.Prepend(type)
             .Any(x => x.Name == "IDbExecute" && x.ContainingNamespace?.ToDisplayString() == JunoDbExecuteNamespace);
-
-    private static bool HasNonTextCommandType(
-        SemanticModel model,
-        IEnumerable<NodeAndSymbol<ArgumentSyntax, IParameterSymbol>> mappings) =>
-        mappings.Where(x => x.Symbol.Name == "commandType" && x.Node?.Expression is not null)
-            .Select(x => model.GetConstantValue(x.Node.Expression))
-            .Any(x => x is not { HasValue: true, Value: null } and not { HasValue: true, Value: 1 });
-
-    private static IObjectCreation CommandCreation(SemanticModel model, ExpressionSyntax expression)
-    {
-        if (expression is null)
-        {
-            return null;
-        }
-        if (ObjectCreationFactory.TryCreate(expression) is { } creation)
-        {
-            return creation;
-        }
-        return model.GetSymbolInfo(expression).Symbol is ILocalSymbol local
-            ? local.DeclaringSyntaxReferences
-                .Select(x => x.GetSyntax())
-                .OfType<VariableDeclaratorSyntax>()
-                .Select(x => x.Initializer?.Value)
-                .Select(ObjectCreationFactory.TryCreate)
-                .WhereNotNull()
-                .SingleOrDefault()
-            : null;
-    }
 
     private static bool IsDbSet(ITypeSymbol type) =>
         type is INamedTypeSymbol named
