@@ -1,5 +1,5 @@
 {
-  "title": "Database connections should come from Juno",
+  "title": "Database connections should be created through Juno",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {

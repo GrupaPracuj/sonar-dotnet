@@ -70,6 +70,8 @@ public class ConfigurationShouldBeBoundToTypedClassTest
 
         namespace Microsoft.AspNetCore.Builder
         {
+            public interface IApplicationBuilder { }
+
             public class WebApplicationBuilder
             {
                 public Microsoft.Extensions.Configuration.IConfiguration Configuration { get; }
@@ -82,6 +84,37 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             public string BaseUrl { get; set; }
         }
         """;
+
+    [TestMethod]
+    // Mirrors W3CLoggingInjectionExtensions from GP.Scrooge: one private helper reached from both halves of the
+    // composition root. The IServiceCollection caller was already accepted; the IApplicationBuilder one was not, and
+    // because every call site has to qualify, the helper was reported.
+    public void ConfigurationShouldBeBoundToTypedClass_CompliantForHelperUsedFromPipelineSetup() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public static class W3CLoggingInjectionExtensions
+            {
+                public static Microsoft.Extensions.DependencyInjection.IServiceCollection AddW3CLogging(
+                    this Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+                    Microsoft.Extensions.Configuration.IConfiguration configuration) =>
+                    IsEnabled(configuration) ? services : services;
+
+                public static void UseW3CLogging(
+                    this Microsoft.AspNetCore.Builder.IApplicationBuilder app,
+                    Microsoft.Extensions.Configuration.IConfiguration configuration)
+                {
+                    if (!IsEnabled(configuration))
+                    {
+                        return;
+                    }
+                }
+
+                private static bool IsEnabled(Microsoft.Extensions.Configuration.IConfiguration configuration) =>
+                    configuration.GetSection("w3CLogging")["enabled"] == "true";
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void ConfigurationShouldBeBoundToTypedClass_NoncompliantForIndexer() =>

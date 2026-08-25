@@ -51,6 +51,45 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
         }
         """;
 
+    [DataTestMethod]
+    // Natural keys, taken from contracts this rule used to report: an event about an email address is identified by
+    // the address, and a replication by the GUID of the data being replicated.
+    [DataRow("string EmailAddress, string SenderEmail")]
+    [DataRow("string Email")]
+    [DataRow("string UserEmail")]
+    [DataRow("string Login")]
+    [DataRow("string Username")]
+    [DataRow("System.Guid FileDataGuid")]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantWithNaturalKey(string members) =>
+        builder.AddSnippet(
+            Stubs + $$"""
+
+            public sealed record EmailAddressBlocked({{members}}, System.DateTimeOffset OccurredAt);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<EmailAddressBlocked>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    // A name that merely mentions a category is not an identifier, so the suffix list must not swallow it.
+    public void PublishedEventShouldCarryBusinessIdentifier_NoncompliantForCategoryNameOnly() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record EmailBounced(string BounceCategoryName, System.DateTimeOffset OccurredAt);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<EmailBounced>(); // Noncompliant {{'EmailBounced' carries no business identifier, so a consumer cannot tell what it is about.}}
+            }
+            """)
+            .Verify();
+
     [TestMethod]
     public void PublishedEventShouldCarryBusinessIdentifier_NoncompliantWithoutIdentifier() =>
         builder.AddSnippet(

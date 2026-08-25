@@ -8,13 +8,13 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public IActionResult CreateOrder(object order)
     {
-        return Ok(order); // Noncompliant {{POST action 'CreateOrder' is named for creation - return 201 Created, for example with CreatedAtAction, instead of 200 Ok.}}
+        return Ok(order); // Noncompliant {{POST action 'CreateOrder' is named for creation - return 201 Created instead of 200 Ok.}}
     }
 
     [HttpPost]
     public IActionResult AddOrder(object order)
     {
-        return Ok(order); // Noncompliant {{POST action 'AddOrder' is named for creation - return 201 Created, for example with CreatedAtAction, instead of 200 Ok.}}
+        return Ok(order); // Noncompliant {{POST action 'AddOrder' is named for creation - return 201 Created instead of 200 Ok.}}
     }
 
     [HttpPost("{id:guid}")]

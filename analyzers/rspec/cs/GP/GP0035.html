@@ -1,24 +1,16 @@
-<p>A database connection should come from Juno, either supplied to an <code>IDbExecute</code> or created by
-<code>IAdoConnectionFactory.CreateConnection()</code>.</p>
+<p>A database connection should be created by Juno: either supplied to an <code>IDbExecute</code>, or obtained from
+<code>IAdoConnectionFactory.CreateConnection()</code>. The two are equivalent as far as this rule is concerned.</p>
 <h2>Why is this an issue?</h2>
-<p>Constructing the connection yourself means supplying the connection string yourself, which is the actual problem: the address, credentials, failover
-target and pooling settings stop coming from the service's configured data source and start coming from whatever string is in scope at that point. It
-also bypasses the transaction accessor, so the new connection is invisible to any Juno transaction that is already open - work you believe is
-transactional silently is not.</p>
+<p>Constructing the connection yourself means supplying the connection string yourself, and that is the actual problem: the address, credentials,
+failover target and pooling settings stop coming from the service's configured data source and start coming from whatever string happened to be in
+scope at that point. Such a connection is also invisible to a Juno transaction that is already open, so work you believe is transactional is not.</p>
 <pre>
-public async Task&lt;Order&gt; Find(int id)
-{
-    using var connection = new SqlConnection(_connectionString);
-    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
-}
+using var connection = new SqlConnection(_connectionString);
 </pre>
-<p>Both supported shapes are equivalent as far as this rule is concerned. An <code>IDbExecute</code> lets Juno run the work with the ambient
-transaction supplied; <code>IAdoConnectionFactory</code> hands back a connection you use directly, typically with Dapper.</p>
-<p>The rule reports only where a connection is obtained: a constructed <code>DbConnection</code>, or one taken from a
-<code>DbProviderFactory</code>. Code that merely receives a connection is not reported - it offers no evidence about where the connection came from,
-and it is not where the fix belongs. What such code then does with the connection is the subject of GP0129 and GP0130.</p>
+<p>Only the act of creating a connection is reported, in the two forms it takes: constructing a <code>DbConnection</code>, and taking one from a
+<code>DbProviderFactory</code>. Code that merely receives a connection is not reported - it did not create it, and it is not where the fix belongs.</p>
 <h2>How to fix it</h2>
-<p>Express the work as an <code>IDbExecute</code>, or create the connection through <code>IAdoConnectionFactory</code>.</p>
+<p>Obtain the connection from <code>IAdoConnectionFactory</code>, or express the work as an <code>IDbExecute</code> and let Juno supply one.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -30,25 +22,15 @@ public async Task&lt;Order&gt; Find(int id)
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public async Task&lt;Order&gt; Find(int id, CancellationToken token)
+public async Task&lt;Order&gt; Find(int id)
 {
     await using var connection = connectionFactory.CreateConnection();
-    return await connection.QuerySingleAsync&lt;Order&gt;(
-        new CommandDefinition("select * from Orders where Id = @id", new { id }, cancellationToken: token));
+    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 }
 </pre>
-<h2>Rule history</h2>
-<ul>
-  <li>2026-08: direct Dapper on an <code>IAdoConnectionFactory</code> connection became a supported alternative to
-  <code>IDbExecute</code>.</li>
-  <li>2026-08: the transaction and cancellation requirements this rule used to carry moved to GP0129 and GP0130, so each has its own description and examples.</li>
-  <li>2026-08: narrowed to connection-obtaining sites. Dapper operations on a connection received as a parameter are no longer reported, which
-  removed a large class of false positives on data-access methods whose connection is supplied by a runner.</li>
-</ul>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
   <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows both shapes this rule points at:
-  <code>IAdoConnectionFactory</code> for a connection you use directly, and <code>IDbExecute</code> for work Juno runs with the ambient transaction
-  supplied.</li>
+  <code>IAdoConnectionFactory</code> for a connection you use directly, and <code>IDbExecute</code> for work Juno runs.</li>
 </ul>

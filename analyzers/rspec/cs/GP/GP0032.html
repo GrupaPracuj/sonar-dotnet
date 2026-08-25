@@ -1,4 +1,24 @@
-<p>A controller should use application abstractions rather than depend directly on infrastructure types.</p>
+<p>Transport code - a controller, or any runtime type in an <code>*.Api</code> assembly - should depend on application abstractions rather than on
+infrastructure types directly.</p>
+<h2>What counts as an infrastructure type</h2>
+<p>In a controller, all of these:</p>
+<ul>
+  <li><code>DbContext</code> - EF Core's <code>Microsoft.EntityFrameworkCore.DbContext</code> or EF6's <code>System.Data.Entity.DbContext</code>, and
+  anything deriving from either</li>
+  <li><code>DbConnection</code> - <code>System.Data.Common.DbConnection</code> and anything deriving from it, such as <code>SqlConnection</code></li>
+  <li><code>HttpClient</code></li>
+  <li>a type implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code></li>
+</ul>
+<p>In a non-controller type inside an assembly whose name ends with <code>.Api</code>, the list is narrower: only <code>DbContext</code> and
+<code>DbConnection</code>. Such an assembly is also not the place to implement a persistence operation, so a class there implementing
+<code>IDbExecute</code> or <code>ITransactional</code> is reported on its own declaration.</p>
+<p>Types are resolved semantically. A name such as <code>OrderService</code> is never used as evidence, and a wrapper around
+<code>DbContext</code> is not reported for its name alone.</p>
+<h2>Where the rule looks</h2>
+<p>The three ways infrastructure reaches transport code: a field, a constructor parameter - including a primary constructor - or a local variable.
+Action method parameters are excluded, because model binding is a separate concern. A type appearing only as a type argument is not a declaration
+either, so DI registration such as <code>services.AddDbContext&lt;ShopDbContext&gt;()</code> is left alone: wiring an implementation up is the
+composition root's job.</p>
 <h2>Why is this an issue?</h2>
 <p>A controller belongs to the layer that handles HTTP: bind the request, call something, turn the result into a response. Microsoft's layering guidance
 draws the line explicitly:</p>
@@ -14,23 +34,6 @@ draws the line explicitly:</p>
 and the two drift apart - one remembers the <code>IsDeleted</code> filter or the <code>Include</code>, the other does not. Testing the endpoint now
 means standing up a context, so the logic worth testing is reachable only through a database. And a change to the model has to be chased through every
 controller that happened to query it.</p>
-<pre>
-[ApiController]
-public class OrdersController : ControllerBase
-{
-    private readonly ShopDbContext _context;
-
-    [HttpGet("{id}")]
-    public async Task&lt;IActionResult&gt; Get(int id) =&gt;
-        Ok(await _context.Orders.FirstOrDefaultAsync(x =&gt; x.Id == id));
-}
-</pre>
-<p>This rule reports a <code>DbContext</code>, database connection, <code>HttpClient</code>, <code>IDbExecute</code> or
-<code>ITransactional</code> implementation reaching a controller as a field, constructor parameter or local variable. Types are resolved semantically;
-names such as <code>OrderService</code> are not used as evidence.</p>
-<p>In an assembly whose name ends with <code>.Api</code>, the rule also reports persistence operations and direct
-<code>DbContext</code>/<code>DbConnection</code> dependencies in non-controller runtime types. DI registration such as
-<code>AddDbContext&lt;T&gt;</code> remains allowed because registering an implementation is a composition-root responsibility.</p>
 <h2>How to fix it</h2>
 <p>Move the query behind a service or repository that the controller depends on through an interface, and let the controller call that. The query then
 lives in one place, can be tested without a database, and the controller is left with the HTTP concerns that are actually its job.</p>
@@ -40,7 +43,7 @@ lives in one place, can be tested without a database, and the controller is left
 [ApiController]
 public class OrdersController : ControllerBase
 {
-    private readonly ShopDbContext _context; // Noncompliant {{Do not use infrastructure type 'ShopDbContext' directly in a controller - depend on an application abstraction instead.}}
+    private readonly ShopDbContext _context; // Noncompliant: a DbContext reaching a controller as a field
 
     public OrdersController(ShopDbContext context) =&gt;
         _context = context;

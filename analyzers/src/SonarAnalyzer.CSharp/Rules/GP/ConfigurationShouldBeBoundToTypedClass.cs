@@ -17,6 +17,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
 
     private const string ConfigurationInterface = "Microsoft.Extensions.Configuration.IConfiguration";
     private const string ServiceCollectionInterface = "Microsoft.Extensions.DependencyInjection.IServiceCollection";
+    private const string ApplicationBuilderInterface = "Microsoft.AspNetCore.Builder.IApplicationBuilder";
+    private const string EndpointRouteBuilderInterface = "Microsoft.AspNetCore.Routing.IEndpointRouteBuilder";
     private const string WebApplicationBuilderType = "Microsoft.AspNetCore.Builder.WebApplicationBuilder";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
@@ -75,6 +77,13 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
     private static bool IsServiceCollection(ITypeSymbol type) =>
         type?.ToDisplayString() == ServiceCollectionInterface;
 
+    // Registering services and building the request pipeline are two halves of the same composition root. A method
+    // that takes or returns IApplicationBuilder or IEndpointRouteBuilder - WebApplication implements both - is
+    // configuring the host, not running application logic.
+    private static bool IsPipelineBuilder(ITypeSymbol type) =>
+        GpJunoTypes.Implements(type, ApplicationBuilderInterface)
+        || GpJunoTypes.Implements(type, EndpointRouteBuilderInterface);
+
     private static bool IsCompositionRootContext(Compilation compilation, SyntaxNode context, HashSet<IMethodSymbol> visiting)
     {
         if (context is GlobalStatementSyntax)
@@ -100,6 +109,8 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
         IsTopLevelLocalFunction(method)
         || IsServiceCollection(method.ReturnType)
         || method.Parameters.Any(x => IsServiceCollection(x.Type))
+        || IsPipelineBuilder(method.ReturnType)
+        || method.Parameters.Any(x => IsPipelineBuilder(x.Type))
         || UsesWebApplicationBuilderServices(compilation, method);
 
     private static bool IsPrivateSetupHelperUsedOnlyFromCompositionRoot(Compilation compilation, IMethodSymbol method, HashSet<IMethodSymbol> visiting)

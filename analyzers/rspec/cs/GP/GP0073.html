@@ -12,9 +12,12 @@ public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOf
 
 appConfig.Publishes&lt;PaymentReceived&gt;();
 </pre>
-<p>A member counts as a business identifier when its name ends with <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code> or
-<code>Key</code> - configurable through <code>identifierSuffixes</code> - and is not one of the transport metadata names. The identifier may live inside a
-nested payload object when that is how the contract is shaped, for example <code>Source.FileId</code>.</p>
+<p>A member counts as a business identifier when its name ends with one of the accepted suffixes and is not one of the transport metadata names.
+Two kinds are accepted by default. Surrogate keys: <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code>,
+<code>Key</code>, <code>Guid</code>, <code>Uuid</code>. Natural keys, which a domain event is just as often identified by:
+<code>Email</code>, <code>EmailAddress</code>, <code>Login</code>, <code>Username</code>. The list is configurable through
+<code>identifierSuffixes</code>. The identifier may live inside a nested payload object when that is how the contract is shaped, for example
+<code>Source.FileId</code>.</p>
 <h3>Exceptions</h3>
 <p>Commands, including legacy <code>*Command</code> types dispatched through a publish API, are outside this event rule. Scheduling and forwarding
 envelopes that carry a nested message are commands as well.</p>

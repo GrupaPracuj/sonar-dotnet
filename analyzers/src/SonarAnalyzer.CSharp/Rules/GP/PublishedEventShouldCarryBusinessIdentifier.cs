@@ -15,7 +15,10 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
 
     private const string MessageFormat = "'{0}' carries no business identifier, so a consumer cannot tell what it is about.";
 
-    private const string DefaultIdentifierSuffixes = "Id,Number,Reference,Code,Key";
+    // Surrogate keys first, then the natural keys a domain event is just as often identified by: an address, a
+    // login, a raw GUID. Without them the rule asks for an Id that the contract has no reason to carry.
+    private const string DefaultIdentifierSuffixes =
+        "Id,Number,Reference,Code,Key,Guid,Uuid,Email,EmailAddress,Login,Username";
     private const int MaxNestedContractDepth = 5;
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
