@@ -391,6 +391,36 @@ public class JunoDataAccessConventionsTest
             .Verify();
 
     [TestMethod]
+    public void JunoDataAccessConventions_CompliantForFactoryConnectionWithPagedQueryMultiple() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class SqlCatalogFinder
+            {
+                private readonly GP.Juno.Ado.IAdoConnectionFactory connectionFactory;
+
+                public SqlCatalogFinder(GP.Juno.Ado.IAdoConnectionFactory connectionFactory) =>
+                    this.connectionFactory = connectionFactory;
+
+                public async System.Threading.Tasks.Task<int> FindAsync(
+                    int offset,
+                    int limit,
+                    System.Threading.CancellationToken cancellationToken)
+                {
+                    await using var connection = connectionFactory.CreateConnection();
+                    var results = await Dapper.SqlMapper.QueryMultipleAsync(
+                        connection,
+                        new Dapper.CommandDefinition(
+                            "SELECT COUNT(*) FROM T; SELECT Id FROM T ORDER BY Id OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;",
+                            new { Offset = offset, Limit = limit },
+                            cancellationToken: cancellationToken));
+                    return results is null ? 0 : 1;
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void JunoDataAccessConventions_CompliantForProjectLocalExecuteContract() =>
         builder.AddSnippet(
             Stubs + """
