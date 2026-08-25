@@ -14,10 +14,9 @@ public async Task&lt;Order&gt; Find(int id)
 </pre>
 <p>Both supported shapes are equivalent as far as this rule is concerned. An <code>IDbExecute</code> lets Juno run the work with the ambient
 transaction supplied; <code>IAdoConnectionFactory</code> hands back a connection you use directly, typically with Dapper.</p>
-<p>The rule reports a constructed <code>DbConnection</code>, a connection obtained from a <code>DbProviderFactory</code>, and a Dapper operation whose
-connection cannot be traced back to one of the two supported shapes. It targets Dapper <code>Query*</code> and <code>Execute*</code> operations;
-configuration and utility APIs such as <code>SqlMapper.AddTypeHandler</code>, <code>AddTypeMap</code>, <code>PurgeQueryCache</code> and
-<code>AsTableValuedParameter</code> do not access a database and are not reported.</p>
+<p>The rule reports only where a connection is obtained: a constructed <code>DbConnection</code>, or one taken from a
+<code>DbProviderFactory</code>. Code that merely receives a connection is not reported - it offers no evidence about where the connection came from,
+and it is not where the fix belongs. What such code then does with the connection is the subject of GP0129 and GP0130.</p>
 <h2>How to fix it</h2>
 <p>Express the work as an <code>IDbExecute</code>, or create the connection through <code>IAdoConnectionFactory</code>.</p>
 <h3>Code examples</h3>
@@ -43,6 +42,8 @@ public async Task&lt;Order&gt; Find(int id, CancellationToken token)
   <li>2026-08: direct Dapper on an <code>IAdoConnectionFactory</code> connection became a supported alternative to
   <code>IDbExecute</code>.</li>
   <li>2026-08: the transaction and cancellation requirements this rule used to carry moved to GP0129 and GP0130, so each has its own description and examples.</li>
+  <li>2026-08: narrowed to connection-obtaining sites. Dapper operations on a connection received as a parameter are no longer reported, which
+  removed a large class of false positives on data-access methods whose connection is supplied by a runner.</li>
 </ul>
 <h2>Resources</h2>
 <h3>Documentation</h3>

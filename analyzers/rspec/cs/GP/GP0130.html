@@ -5,8 +5,11 @@ aborted, a timeout fires, the host shuts down - the query keeps running and hold
 abandoned queries accumulate and exhaust the connection pool, which turns one slow client into a service-wide outage.</p>
 <p>Passing <code>CancellationToken.None</code> or <code>default</code> has the same effect as passing nothing and is reported as well. A command built
 elsewhere and handed to the operation is not inspected, because the token may already be inside it.</p>
-<p>The rule applies to Dapper operations on a connection created by <code>IAdoConnectionFactory</code>. Work expressed as an <code>IDbExecute</code> is
-out of scope: there Juno owns the command's lifetime.</p>
+<p>The rule applies to Dapper operations on a connection created by <code>IAdoConnectionFactory</code>. Work expressed as an <code>IDbExecute</code>,
+or as any method a runner hands both the connection and the transaction, is out of scope: there the runner owns the command's lifetime.</p>
+<p>Nothing is reported unless a <code>CancellationToken</code> is actually in scope - a parameter of the method, or of an enclosing method when the
+call sits in a lambda or local function. A method that receives no token cannot pass one on, and its signature may be fixed by the interface it
+implements, so asking would be advice it could not act on.</p>
 <h2>How to fix it</h2>
 <p>Build a <code>CommandDefinition</code> and give it the token the method received.</p>
 <h3>Code examples</h3>

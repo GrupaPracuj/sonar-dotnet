@@ -63,8 +63,8 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
 
     private static void AnalyzeDapper(SonarSyntaxNodeReportingContext context, InvocationExpressionSyntax invocation, IMethodSymbol method)
     {
-        if (context.Model.GetEnclosingSymbol(invocation.SpanStart)?.ContainingType is { } containingType
-            && ControllersShouldNotUseInfrastructureDirectly.IsDbExecute(containingType))
+        var dapperConnection = DapperConnection(invocation, method);
+        if (IsRunnerSupplied(context, invocation, dapperConnection))
         {
             if (AvailableTransactionParameter(context.Model, invocation) is { } transaction
                 && PassesTransaction(context.Model, invocation, method, transaction) == false)
@@ -74,9 +74,8 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
             return;
         }
 
-        if (DapperConnection(invocation, method) is not { } connection)
+        if (dapperConnection is not { } connection)
         {
-            context.ReportIssue(ConnectionRule, invocation);
             return;
         }
 
@@ -90,12 +89,9 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
         var helperTransaction = HelperTransaction(context.Model, invocation, connection);
         if (origin is not (ConnectionOrigin.AdoFactory or ConnectionOrigin.HelperParameter))
         {
-            context.ReportIssue(ConnectionRule, invocation);
-            return;
-        }
-        if (origin == ConnectionOrigin.HelperParameter && !IsAdoHelper(context.Model, invocation, connection))
-        {
-            context.ReportIssue(ConnectionRule, invocation);
+            // The connection was handed to this code, not obtained by it. GP0035 reports where a connection is
+            // created; a consumer offers no evidence either way, and telling it to use IAdoConnectionFactory
+            // would be advice it cannot act on.
             return;
         }
 
@@ -115,11 +111,22 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
             return;
         }
 
-        if (!PassesCancellationThroughCommand(context.Model, invocation, method))
+        // Only worth reporting when there is a token to pass. A data access method that receives none cannot act on
+        // this advice - its signature may even be fixed by the interface it implements.
+        if (AvailableCancellationToken(context.Model, invocation) is not null
+            && !PassesCancellationThroughCommand(context.Model, invocation, method))
         {
             context.ReportIssue(CancellationRule, invocation);
         }
     }
+
+    // A runner hands the method both the connection and the ambient transaction. GP.Juno's IDbExecute is one such
+    // runner, but a project can declare its own interface with the same contract, and the shape is what matters:
+    // where the connection came from is the runner's business, so only the transaction is checked here.
+    private static bool IsRunnerSupplied(SonarSyntaxNodeReportingContext context, SyntaxNode node, ExpressionSyntax connection) =>
+        (context.Model.GetEnclosingSymbol(node.SpanStart)?.ContainingType is { } containingType
+         && ControllersShouldNotUseInfrastructureDirectly.IsDbExecute(containingType))
+        || (connection is not null && HelperTransaction(context.Model, node, connection) is not null);
 
     private static bool IsDapperDatabaseOperation(IMethodSymbol method) =>
         (method.ContainingType.Is(KnownType.Dapper_SqlMapper)
@@ -127,13 +134,20 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
         && (method.Name.StartsWith("Query", StringComparison.Ordinal)
             || method.Name.StartsWith("Execute", StringComparison.Ordinal));
 
-    private static IParameterSymbol AvailableTransactionParameter(SemanticModel model, SyntaxNode node)
+    private static IParameterSymbol AvailableTransactionParameter(SemanticModel model, SyntaxNode node) =>
+        EnclosingParameter(model, node, IsDbTransaction);
+
+    private static IParameterSymbol AvailableCancellationToken(SemanticModel model, SyntaxNode node) =>
+        EnclosingParameter(model, node, IsCancellationToken);
+
+    // Walks out through lambdas and local functions as well, so a token taken by the outer method still counts.
+    private static IParameterSymbol EnclosingParameter(SemanticModel model, SyntaxNode node, Func<ITypeSymbol, bool> isWanted)
     {
         for (var symbol = model.GetEnclosingSymbol(node.SpanStart); symbol is IMethodSymbol method; symbol = method.ContainingSymbol)
         {
-            if (method.Parameters.FirstOrDefault(x => IsDbTransaction(x.Type)) is { } transaction)
+            if (method.Parameters.FirstOrDefault(x => isWanted(x.Type)) is { } parameter)
             {
-                return transaction;
+                return parameter;
             }
         }
 
@@ -151,12 +165,6 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
 
         return method.Parameters.FirstOrDefault(x => IsDbTransaction(x.Type));
     }
-
-    private static bool IsAdoHelper(SemanticModel model, SyntaxNode node, ExpressionSyntax connection) =>
-        model.GetSymbolInfo(connection.RemoveParentheses()).Symbol is IParameterSymbol connectionParameter
-        && model.GetEnclosingSymbol(node.SpanStart) is IMethodSymbol method
-        && method.Parameters.Contains(connectionParameter)
-        && method.Parameters.Any(x => IsCancellationToken(x.Type));
 
     private static bool? PassesTransaction(
         SemanticModel model,

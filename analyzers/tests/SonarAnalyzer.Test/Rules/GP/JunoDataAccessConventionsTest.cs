@@ -111,6 +111,12 @@ public class JunoDataAccessConventionsTest
 
                 public static System.Threading.Tasks.Task<T> QuerySingleOrDefaultAsync<T>(
                     this System.Data.IDbConnection connection,
+                    string sql,
+                    object param = null,
+                    System.Data.IDbTransaction transaction = null) => null;
+
+                public static System.Threading.Tasks.Task<T> QuerySingleOrDefaultAsync<T>(
+                    this System.Data.IDbConnection connection,
                     CommandDefinition command) => null;
 
                 public static System.Threading.Tasks.Task<GridReader> QueryMultipleAsync(
@@ -310,7 +316,7 @@ public class JunoDataAccessConventionsTest
                     System.Data.IDbTransaction dbTransaction = null)
                 {
                     System.Func<System.Collections.Generic.IEnumerable<int>> query =
-                        () => Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant
+                        () => Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant {{Pass the active transaction to this Dapper operation.}}
                     return query();
                 }
 
@@ -385,17 +391,73 @@ public class JunoDataAccessConventionsTest
             .Verify();
 
     [TestMethod]
-    public void JunoDataAccessConventions_NoncompliantForDapperOutsideDbExecute() =>
+    public void JunoDataAccessConventions_CompliantForProjectLocalExecuteContract() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace Project.Core.Db
+            {
+                // Structurally the same contract as Juno's IDbExecute under a project-local name: a runner supplies
+                // the connection and the ambient transaction, so where the connection came from is not this
+                // method's business.
+                public interface IExecute<T>
+                {
+                    System.Threading.Tasks.Task<T> Execute(
+                        System.Data.IDbConnection dbConnection,
+                        System.Data.IDbTransaction dbTransaction = null);
+                }
+
+                public class CurrentDatabaseTime : IExecute<System.DateTime>
+                {
+                    public System.Threading.Tasks.Task<System.DateTime> Execute(
+                        System.Data.IDbConnection dbConnection,
+                        System.Data.IDbTransaction dbTransaction = null) =>
+                        Dapper.SqlMapper.QuerySingleOrDefaultAsync<System.DateTime>(
+                            dbConnection, "SELECT GETUTCDATE()", transaction: dbTransaction);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void JunoDataAccessConventions_NoncompliantForProjectLocalExecuteOmittingTransaction() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace Project.Core.Db
+            {
+                public interface IExecute<T>
+                {
+                    System.Threading.Tasks.Task<T> Execute(
+                        System.Data.IDbConnection dbConnection,
+                        System.Data.IDbTransaction dbTransaction = null);
+                }
+
+                public class SaveOrder : IExecute<int>
+                {
+                    public System.Threading.Tasks.Task<int> Execute(
+                        System.Data.IDbConnection dbConnection,
+                        System.Data.IDbTransaction dbTransaction = null) =>
+                        Dapper.SqlMapper.ExecuteAsync(dbConnection, "UPDATE T SET X = 1"); // Noncompliant {{Pass the active transaction to this Dapper operation.}}
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    // The method receives the connection, so GP0035 has nothing to say about its provenance, and it takes no
+    // CancellationToken, so GP0130 has nothing it could ask for.
+    public void JunoDataAccessConventions_CompliantForDapperOnReceivedConnectionWithoutToken() =>
         builder.AddSnippet(
             Stubs + """
 
             public class OrderRepository
             {
                 public System.Collections.Generic.IEnumerable<int> Load(System.Data.IDbConnection connection) =>
-                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant
+                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1");
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void JunoDataAccessConventions_CompliantForDapperInsideDbExecute() =>
@@ -598,17 +660,17 @@ public class JunoDataAccessConventionsTest
             .Verify();
 
     [TestMethod]
-    public void JunoDataAccessConventions_NoncompliantForDapperInsideTransactionalService() =>
+    public void JunoDataAccessConventions_CompliantForDapperOnReceivedConnectionInTransactionalService() =>
         builder.AddSnippet(
             Stubs + """
 
             public class TransactionalOrderService : GP.Juno.Abstractions.Ado.ITransactional
             {
                 public System.Collections.Generic.IEnumerable<int> Load(System.Data.IDbConnection connection) =>
-                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1"); // Noncompliant
+                    Dapper.SqlMapper.Query<int>(connection, "SELECT 1");
             }
             """)
-            .Verify();
+            .VerifyNoIssues();
 
     [TestMethod]
     public void JunoDataAccessConventions_CompliantForDapperTypeHandlerRegistration() =>
