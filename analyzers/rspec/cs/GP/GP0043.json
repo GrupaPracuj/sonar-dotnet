@@ -1,5 +1,5 @@
 {
-  "title": "External API contracts should come from contract assemblies",
+  "title": "API contracts should come from contract assemblies",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
