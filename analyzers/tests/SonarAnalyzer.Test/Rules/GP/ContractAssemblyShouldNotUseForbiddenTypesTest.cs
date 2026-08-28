@@ -27,6 +27,46 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
         }
         """;
 
+    [TestMethod]
+    // The assembly is not a contract assembly, so scope comes from the type: this one is detected as a contract, and a
+    // persistence type reaching it is the same defect as in a dedicated contract assembly. Before the scope was
+    // widened, only *.Contracts assemblies were checked and this went unreported.
+    public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForContractOutsideContractAssembly() =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "SomethingElse" })
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+                Stubs + """
+
+                namespace Contracts
+                {
+                    public sealed class OrderAcceptedContract
+                    {
+                        public Microsoft.EntityFrameworkCore.DbContext Context { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
+                    }
+                }
+                """)
+            .Verify();
+
+    [TestMethod]
+    // A type that is not a contract, in an assembly that is not a contract assembly, is nobody's business here.
+    public void ContractAssemblyShouldNotUseForbiddenTypes_CompliantForNonContractOutsideContractAssembly() =>
+        new VerifierBuilder()
+            .AddAnalyzer(() => new CS.ContractAssemblyShouldNotUseForbiddenTypes { ContractAssemblyNames = "SomethingElse" })
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .AddSnippet(
+                Stubs + """
+
+                namespace Persistence
+                {
+                    public sealed class OrderRepository
+                    {
+                        public Microsoft.EntityFrameworkCore.DbContext Context { get; init; }
+                    }
+                }
+                """)
+            .VerifyNoIssues();
+
     // The verifier compiles snippets into project0, so tests that exercise the rule name that assembly explicitly.
     [TestMethod]
     public void ContractAssemblyShouldNotUseForbiddenTypes_NoncompliantForEntityFrameworkType() =>
@@ -36,7 +76,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
 
             public sealed class OrderAcceptedContract
             {
-                public Microsoft.EntityFrameworkCore.DbContext Context { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                public Microsoft.EntityFrameworkCore.DbContext Context { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
             }
             """)
             .Verify();
@@ -47,7 +87,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
             .AddSnippet(
             Stubs + """
 
-            public sealed record OrderAcceptedContract(MassTransit.ConsumeContext<string> Context); // Noncompliant@-0 {{'ConsumeContext' comes from 'MassTransit', which a contract assembly should not depend on.}}
+            public sealed record OrderAcceptedContract(MassTransit.ConsumeContext<string> Context); // Noncompliant@-0 {{'ConsumeContext' comes from 'MassTransit', which a contract must not depend on.}}
             """)
             .Verify();
 
@@ -60,7 +100,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
 
             public sealed class OrderAcceptedContract
             {
-                public System.Collections.Generic.IReadOnlyList<Microsoft.EntityFrameworkCore.DbContext> Contexts { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                public System.Collections.Generic.IReadOnlyList<Microsoft.EntityFrameworkCore.DbContext> Contexts { get; init; } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
             }
             """)
             .Verify();
@@ -73,7 +113,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
 
                 public sealed class ContractFactory
                 {
-                    public Microsoft.EntityFrameworkCore.DbContext Create() => null; // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                    public Microsoft.EntityFrameworkCore.DbContext Create() => null; // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
                 }
                 """)
             .Verify();
@@ -84,9 +124,9 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
             .AddSnippet(
                 Stubs + """
 
-                public class PersistedContract : Microsoft.EntityFrameworkCore.DbContext { } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                public class PersistedContract : Microsoft.EntityFrameworkCore.DbContext { } // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
 
-                public class ConsumingContract : MassTransit.IConsumer { } // Noncompliant {{'IConsumer' comes from 'MassTransit', which a contract assembly should not depend on.}}
+                public class ConsumingContract : MassTransit.IConsumer { } // Noncompliant {{'IConsumer' comes from 'MassTransit', which a contract must not depend on.}}
                 """)
             .Verify();
 
@@ -97,7 +137,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
                 Stubs + """
 
                 public sealed class ContractFactory<T>
-                    where T : Microsoft.EntityFrameworkCore.DbContext // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract assembly should not depend on.}}
+                    where T : Microsoft.EntityFrameworkCore.DbContext // Noncompliant {{'DbContext' comes from 'Microsoft.EntityFrameworkCore', which a contract must not depend on.}}
                 {
                 }
                 """)
@@ -160,7 +200,7 @@ public class ContractAssemblyShouldNotUseForbiddenTypesTest
 
             public sealed class OrderAcceptedContract
             {
-                public Shop.Internals.PricingEngine Pricing { get; init; } // Noncompliant {{'PricingEngine' comes from 'Shop.Internals', which a contract assembly should not depend on.}}
+                public Shop.Internals.PricingEngine Pricing { get; init; } // Noncompliant {{'PricingEngine' comes from 'Shop.Internals', which a contract must not depend on.}}
             }
             """)
             .Verify();

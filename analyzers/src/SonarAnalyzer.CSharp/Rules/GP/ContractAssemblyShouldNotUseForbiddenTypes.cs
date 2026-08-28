@@ -13,7 +13,7 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
 {
     internal const string RuleId = "GP0059";
 
-    private const string MessageFormat = "'{0}' comes from '{1}', which a contract assembly should not depend on.";
+    private const string MessageFormat = "'{0}' comes from '{1}', which a contract must not depend on.";
 
     private const string DefaultForbiddenNamespaces =
         "Microsoft.EntityFrameworkCore,System.Data.Entity,Microsoft.AspNetCore,MassTransit,RabbitMQ.Client,Consul,Dapper,Microsoft.Extensions.Hosting";
@@ -28,19 +28,22 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
     [RuleParameter("forbiddenNamespaces", PropertyType.String, "Comma-separated namespaces a contract assembly must not use", DefaultForbiddenNamespaces)]
     public string ForbiddenNamespaces { get; set; } = DefaultForbiddenNamespaces;
 
-    // Only worth wiring up at all when the assembly under analysis is a contract assembly, which is known once at
-    // compilation start.
+    // A contract assembly is a contract from end to end, so everything declared there is in scope. Elsewhere the
+    // scope is the individual type: plenty of contracts live outside a *.Contracts assembly, and a persistence type
+    // reaching one of those is the same defect.
     protected override void Initialize(SonarParametrizedAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>
         {
             var forbidden = GpEntityTypes.SplitParameter(ForbiddenNamespaces);
-            if (forbidden.Length == 0 || !IsContractAssembly(start.Compilation))
+            if (forbidden.Length == 0)
             {
                 return;
             }
 
+            var wholeAssembly = IsContractAssembly(start.Compilation);
+            var contracts = GpSemanticContractDetector.GetOrCreate(start.Compilation);
             start.RegisterNodeAction(
-                c => AnalyzeType(c, forbidden),
+                c => AnalyzeType(c, forbidden, wholeAssembly, contracts),
                 SyntaxKind.PropertyDeclaration,
                 SyntaxKind.FieldDeclaration,
                 SyntaxKind.Parameter,
@@ -57,9 +60,13 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
         return names.Length > 0 && Array.Exists(names, x => GpAssemblyNames.Matches(assemblyName, x));
     }
 
-    private static void AnalyzeType(SonarSyntaxNodeReportingContext context, string[] forbidden)
+    private static void AnalyzeType(SonarSyntaxNodeReportingContext context,
+                                    string[] forbidden,
+                                    bool wholeAssembly,
+                                    GpSemanticContractDetector contracts)
     {
         if (DeclaredType(context.Node) is not { } typeSyntax
+            || (!wholeAssembly && !IsInsideContract(context, contracts))
             || context.Model.GetTypeInfo(typeSyntax).Type is not { } type
             || ForbiddenType(type, forbidden) is not var (offending, forbiddenNamespace))
         {
@@ -69,6 +76,11 @@ public sealed class ContractAssemblyShouldNotUseForbiddenTypes : ParametrizedDia
         // Names the offending type, which may be a generic argument rather than the declared type itself.
         context.ReportIssue(Rule, typeSyntax, offending.Name, forbiddenNamespace);
     }
+
+    private static bool IsInsideContract(SonarSyntaxNodeReportingContext context, GpSemanticContractDetector contracts) =>
+        context.Node.FirstAncestorOrSelf<TypeDeclarationSyntax>() is { } declaration
+        && context.Model.GetDeclaredSymbol(declaration) is { } declaredType
+        && contracts.IsContract(declaredType);
 
     private static TypeSyntax DeclaredType(SyntaxNode node) =>
         node switch

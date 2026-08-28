@@ -1,4 +1,8 @@
-<p>An assembly that holds message contracts should not use forbidden ORM, web, transport or other infrastructure types.</p>
+<p>A contract should not use forbidden ORM, web, transport or other infrastructure types.</p>
+<p>Two scopes are checked. An assembly whose name marks it as a contract assembly is a contract from end to end,
+so everything declared there is in scope. Anywhere else the scope is the individual type: plenty of contracts are
+declared outside a dedicated assembly, and a persistence or transport type reaching one of those is the same
+defect. Inheritance is covered along with members, parameters, return types and generic constraints.</p>
 <h2>Why is this an issue?</h2>
 <p>Contracts are the one thing several independently deployed services agree on, which is why they are usually packaged on their own and referenced by
 everybody. The moment a contract assembly uses a type from Entity Framework, ASP.NET Core, MassTransit or another configured infrastructure namespace,
