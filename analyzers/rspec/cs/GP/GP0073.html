@@ -12,12 +12,16 @@ public sealed record PaymentReceived(decimal Amount, string Currency, DateTimeOf
 
 appConfig.Publishes&lt;PaymentReceived&gt;();
 </pre>
-<p>A member counts as a business identifier when its name ends with one of the accepted suffixes and is not one of the transport metadata names.
-Two kinds are accepted by default. Surrogate keys: <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code>,
-<code>Key</code>, <code>Guid</code>, <code>Uuid</code>. Natural keys, which a domain event is just as often identified by:
-<code>Email</code>, <code>EmailAddress</code>, <code>Login</code>, <code>Username</code>. The list is configurable through
-<code>identifierSuffixes</code>. The identifier may live inside a nested payload object when that is how the contract is shaped, for example
-<code>Source.FileId</code>.</p>
+<p>A member counts as a business identifier when one of the accepted names matches it and it is not one of the transport metadata names. Two kinds
+are accepted by default. Surrogate keys: <code>Id</code>, <code>Number</code>, <code>Reference</code>, <code>Code</code>, <code>Key</code>,
+<code>Guid</code>, <code>Uuid</code>. Natural keys, which a domain event is just as often identified by: <code>Email</code>,
+<code>EmailAddress</code>, <code>Login</code>, <code>Username</code>, <code>Nip</code>, <code>Pesel</code>, <code>Regon</code>, <code>Vat</code>.
+The list is configurable through <code>identifierSuffixes</code>.</p>
+<p>The match is case-insensitive and is made either against the end of the member name or against a whole word of it, where words are split on
+Pascal-case boundaries. That accepts <code>CustomerNIP</code>, whose identifier is not at the end in the expected casing, and
+<code>CodeValue</code>, whose identifier sits in front of a trailing <code>Value</code>. Because whole words are compared rather than substrings,
+<code>Identity</code> and <code>IdempotencyMarker</code> still contain no <code>Id</code>. The identifier may live inside a nested payload object
+when that is how the contract is shaped, for example <code>Source.FileId</code>.</p>
 <h3>Exceptions</h3>
 <p>Commands, including legacy <code>*Command</code> types dispatched through a publish API, are outside this event rule. Scheduling and forwarding
 envelopes that carry a nested message are commands as well.</p>

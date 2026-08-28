@@ -48,6 +48,8 @@ async Task&lt;List&lt;Order&gt;&gt; GetOrders(HttpClient client, IEnumerable&lt;
 are not reported. Calls through another project are deliberately not guessed.</p>
 <p>Only a direct call whose receiver or arguments reference a variable declared by the enclosing loop is reported. This is a deliberately narrow
 signal that the request changes for each element. Retry and polling loops that repeat the same request are not reported.</p>
+<p>A loop whose element is itself a collection is not reported: one request per batch is the remedy this rule steers towards, not the defect. A call
+nested one loop deeper, inside the batch, is still reported.</p>
 <p>A call made from a nested lambda, local function, or LINQ query clause is not attributed to the outer loop. Indirect dependencies through a
 temporary variable are also not followed; these limitations favor fewer false positives over complete detection.</p>
 <h2>Resources</h2>

@@ -11,6 +11,9 @@ _logger.LogInformation("New user registered with {Email}", email);
 <code>LogWarning</code>/<code>LogError</code>/<code>LogCritical</code>) and Serilog (<code>Log.*</code> / <code>ILogger.*</code>) are checked. For
 each argument, only its own name - or, for the message template, the name of each <code>{Placeholder}</code> - is inspected; the rule does not know
 whether logging this particular field is actually required for audit purposes in your context.</p>
+<p>An argument whose type derives from <code>System.Exception</code> is never reported, however it is named. A caught exception is routinely named
+after the operation that failed - <code>emailEx</code> for a failed mail send - and logging it is the right thing to do: the object carries a stack
+trace, not the address. Placeholders on the same call are still checked.</p>
 <p>The complete, case-insensitive list is <code>email</code>, <code>pesel</code>, <code>phone</code>, <code>iban</code>, <code>surname</code>,
 <code>firstName</code>, <code>lastName</code>, <code>birthDate</code>, <code>dateOfBirth</code> and <code>creditCard</code>. Up to three adjacent
 camel-case, Pascal-case or underscore-separated words are joined before matching, so <code>DateOfBirth</code>, <code>dateOfBirth</code> and

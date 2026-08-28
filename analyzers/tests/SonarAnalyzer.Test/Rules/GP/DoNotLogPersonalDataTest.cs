@@ -98,4 +98,44 @@ public class DoNotLogPersonalDataTest
             }
             """)
             .VerifyNoIssues();
+
+    // A caught exception is routinely named after the operation that failed, and logging it is the right thing to do:
+    // the object carries a stack trace, not the address. The placeholder on the same call is still reported.
+    [TestMethod]
+    public void DoNotLogPersonalData_CompliantForLoggedException() =>
+        builder.AddSnippet(
+            """
+            using System;
+            using Microsoft.Extensions.Logging;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogError(this ILogger logger, Exception exception, string message, params object[] args) { }
+                }
+            }
+
+            public class InvitationService
+            {
+                private readonly ILogger _logger;
+
+                public void Send(string formId)
+                {
+                    try
+                    {
+                        Deliver();
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError(emailEx, "Failed to send invitation for form {FormId}", formId);
+                    }
+                }
+
+                private static void Deliver() { }
+            }
+            """)
+            .VerifyNoIssues();
 }

@@ -5,6 +5,9 @@ entire request and can amplify a small request into a large database load.</p>
 <p>The rule follows calls within one compilation from MVC actions and inline Minimal API handlers. It reports Dapper, Entity Framework Core and Juno
 <code>IDbExecute</code> operations only when their arguments directly depend on a variable declared by the loop. Retry and polling loops whose request
 does not vary per iteration are not reported. Calls through another project are deliberately not guessed.</p>
+<p>A loop whose element is itself a collection is not reported either: one query per batch - from <code>Chunk</code>, from <code>GroupBy</code> or from
+a hand-rolled batcher yielding <code>List&lt;T&gt;</code> - is the remedy this rule steers towards, not the defect. A query nested one loop deeper,
+inside the batch, is still reported.</p>
 <h2>How to fix it</h2>
 <p>Collect the identifiers and issue one set-based query, use an appropriate bulk operation, or load the required data before entering the loop.</p>
 <h3>Code examples</h3>

@@ -465,4 +465,25 @@ public class ConfigurationShouldBeBoundToTypedClassTest
             }
             """)
             .VerifyNoIssues();
+
+    // A loader that news up its own ServiceCollection is composing the graph just as much as a Startup that receives
+    // one, so the value it reads while registering a framework service is not configuration leaking into runtime code.
+    [TestMethod]
+    public void ConfigurationShouldBeBoundToTypedClass_CompliantWhenMethodBuildsServiceCollection() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class ServiceCollection : Microsoft.Extensions.DependencyInjection.IServiceCollection { }
+
+            public class WorkflowsLoader
+            {
+                public string Load(Microsoft.Extensions.Configuration.IConfiguration config)
+                {
+                    var services = new ServiceCollection();
+                    return Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<string>(
+                        config, "DataProtection:ProtectionAppName");
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

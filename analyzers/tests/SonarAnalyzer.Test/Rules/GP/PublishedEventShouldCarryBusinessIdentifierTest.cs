@@ -322,4 +322,41 @@ public class PublishedEventShouldCarryBusinessIdentifierTest
         new VerifierBuilder()
             .AddAnalyzer(() => new CS.PublishedEventShouldCarryBusinessIdentifier { IdentifierSuffixes = identifierSuffixes })
             .WithOptions(LanguageOptions.CSharpLatest);
+
+    // "CustomerNIP" is a natural key the event is entirely identified by, and "CodeValue" ends in "Value" while the
+    // identifier sits in front of it. Matching the tail of the name alone accepted neither.
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_CompliantForIdentifierSegment() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record MembershipInvitationSent(string CustomerNIP);
+
+            public sealed record DiscountCodeConsumed(string CodeValue);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig
+                        .Publishes<MembershipInvitationSent>()
+                        .Publishes<DiscountCodeConsumed>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A segment is compared whole, so a name that merely contains the letters of a suffix is still no identifier.
+    [TestMethod]
+    public void PublishedEventShouldCarryBusinessIdentifier_NoncompliantForCoincidentalSubstring() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed record ProfileValidated(string Identity, string IdempotencyMarker);
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<ProfileValidated>(); // Noncompliant
+            }
+            """)
+            .Verify();
 }

@@ -32,11 +32,18 @@ public sealed class DoNotLogPersonalData : SonarDiagnosticAnalyzer
 
         foreach (var argument in argumentList.Arguments)
         {
-            if (GpLoggingHelper.CandidateNames(argument.Expression).FirstOrDefault(GpIdentifierWords.ContainsPiiWord) is { } name)
+            if (!IsException(context.Model, argument.Expression)
+                && GpLoggingHelper.CandidateNames(argument.Expression).FirstOrDefault(GpIdentifierWords.ContainsPiiWord) is { } name)
             {
                 context.ReportIssue(Rule, argument, name);
                 return; // one finding per logging call is enough
             }
         }
     }
+
+    // A caught exception is routinely named after the operation that failed - "emailEx" for a failed mail send - and
+    // logging it is the right thing to do: the object carries a stack trace, not the address. Only the name looked
+    // like personal data, so the type has to decide.
+    private static bool IsException(SemanticModel model, ExpressionSyntax expression) =>
+        GpJunoTypes.DerivesFrom(model.GetTypeInfo(expression).Type, "System.Exception");
 }

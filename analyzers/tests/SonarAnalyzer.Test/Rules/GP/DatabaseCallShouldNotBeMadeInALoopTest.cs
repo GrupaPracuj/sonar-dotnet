@@ -214,4 +214,77 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
             }
             """)
             .VerifyNoIssues();
+
+    // One query per batch is the remedy this rule steers towards, so the loop that implements it must stay silent.
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_CompliantWhenLoopIteratesBatches() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ItemsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public async Task Load(IDbConnection connection, IList<int> ids)
+                {
+                    foreach (var batch in Batches(ids))
+                    {
+                        await connection.QueryAsync<Item>("select * from Items where Id in @batch", new { batch });
+                    }
+                }
+
+                private static IEnumerable<List<int>> Batches(IList<int> items)
+                {
+                    yield return items.ToList();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // A string is enumerable over its characters, which must not read as a batch.
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_NoncompliantWhenLoopIteratesStrings() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ItemsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public async Task Load(IDbConnection connection, IEnumerable<string> names)
+                {
+                    foreach (var name in names)
+                    {
+                        await connection.QueryAsync<Item>("select * from Items where Name = @name", new { name }); // Noncompliant
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    // The batch exemption must not swallow a query nested one loop deeper, which is per element again.
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_NoncompliantInsideBatch() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ItemsController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public async Task Load(IDbConnection connection, IList<int> ids)
+                {
+                    foreach (var batch in Batches(ids))
+                    {
+                        foreach (var id in batch)
+                        {
+                            await connection.QueryAsync<Item>("select * from Items where Id = @id", new { id }); // Noncompliant
+                        }
+                    }
+                }
+
+                private static IEnumerable<List<int>> Batches(IList<int> items)
+                {
+                    yield return items.ToList();
+                }
+            }
+            """)
+            .Verify();
 }

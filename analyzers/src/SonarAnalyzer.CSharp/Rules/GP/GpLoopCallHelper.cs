@@ -24,7 +24,7 @@ internal static class GpLoopCallHelper
     internal static bool DependsOnDirectLoopVariable(InvocationExpressionSyntax invocation, SemanticModel model)
     {
         var loop = invocation.Ancestors().FirstOrDefault(x => LoopKinds.Contains(x.Kind()) || IsScopeBoundary(x));
-        if (loop is null || !LoopKinds.Contains(loop.Kind()))
+        if (loop is null || !LoopKinds.Contains(loop.Kind()) || IteratesBatches(loop, model))
         {
             return false;
         }
@@ -52,6 +52,16 @@ internal static class GpLoopCallHelper
             DoStatementSyntax x => x.Statement,
             _ => loop.ChildNodes().OfType<StatementSyntax>().LastOrDefault()
         };
+
+    // One call per batch is the remedy this rule steers towards, so a loop whose element is itself a collection -
+    // Chunk(), GroupBy() or a hand-rolled batcher yielding List<T> - must not be reported. Strings are enumerable
+    // over their characters, which would otherwise read as a batch.
+    private static bool IteratesBatches(SyntaxNode loop, SemanticModel model) =>
+        loop is ForEachStatementSyntax forEach
+        && model.GetForEachStatementInfo(forEach).ElementType is { } elementType
+        && elementType.SpecialType != SpecialType.System_String
+        && (elementType is IArrayTypeSymbol
+            || elementType.AllInterfaces.Any(x => x.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T));
 
     private static bool IsScopeBoundary(SyntaxNode node) =>
         node is AnonymousFunctionExpressionSyntax or MemberDeclarationSyntax or AccessorDeclarationSyntax

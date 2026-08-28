@@ -18,7 +18,7 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
     // Surrogate keys first, then the natural keys a domain event is just as often identified by: an address, a
     // login, a raw GUID. Without them the rule asks for an Id that the contract has no reason to carry.
     private const string DefaultIdentifierSuffixes =
-        "Id,Number,Reference,Code,Key,Guid,Uuid,Email,EmailAddress,Login,Username";
+        "Id,Number,Reference,Code,Key,Guid,Uuid,Email,EmailAddress,Login,Username,Nip,Pesel,Regon,Vat";
     private const int MaxNestedContractDepth = 5;
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
@@ -67,9 +67,34 @@ public sealed class PublishedEventShouldCarryBusinessIdentifier : ParametrizedDi
         context.ReportIssue(Rule, invocation, eventType.Name);
     }
 
+    // Matching the tail of the name only accepted the shapes we happened to list: "CustomerNIP" carries a natural
+    // key the event is entirely identified by, and "CodeValue" ends in "Value" while the identifier sits in front of
+    // it. Comparing whole PascalCase segments accepts both without accepting a coincidental substring - "Identity"
+    // and "IdempotencyToken" still hold no "Id" segment.
     private static bool IsBusinessIdentifier(string memberName, string[] suffixes) =>
         !TransportIdentifiers.Contains(memberName)
-        && Array.Exists(suffixes, x => memberName.EndsWith(x, StringComparison.Ordinal));
+        && (Array.Exists(suffixes, x => memberName.EndsWith(x, StringComparison.OrdinalIgnoreCase))
+            || NameSegments(memberName).Any(segment => Array.Exists(suffixes, x => segment.Equals(x, StringComparison.OrdinalIgnoreCase))));
+
+    // Splits "CustomerNIP" into Customer/NIP and "CodeValue" into Code/Value: a new segment starts at an upper-case
+    // letter that follows a lower-case one, or that ends a run of upper-case letters.
+    private static IEnumerable<string> NameSegments(string name)
+    {
+        var start = 0;
+        for (var i = 1; i <= name.Length; i++)
+        {
+            if (i == name.Length
+                || (char.IsUpper(name[i])
+                    && (!char.IsUpper(name[i - 1]) || (i + 1 < name.Length && char.IsLower(name[i + 1])))))
+            {
+                if (i > start)
+                {
+                    yield return name.Substring(start, i - start);
+                }
+                start = i;
+            }
+        }
+    }
 
     private static bool HasBusinessIdentifier(INamedTypeSymbol type, string[] suffixes) =>
         HasBusinessIdentifier(type, suffixes, 0, new HashSet<string>(StringComparer.Ordinal));

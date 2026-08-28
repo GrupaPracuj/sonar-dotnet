@@ -19,8 +19,8 @@ public class OrderService
 <p>Note that <code>IConfiguration</code> itself is not the problem and is not reported - it is how binding is done. Only reading a value out of it by
 key is.</p>
 <h3>Exceptions</h3>
-<p>A direct read inside a method that registers an <code>IServiceCollection</code>, including an <code>IHostBuilder.ConfigureServices</code> callback,
-is not reported. Such composition-root code is responsible for
+<p>A direct read inside a method that registers an <code>IServiceCollection</code> - whether it receives one, returns one or creates its own, and
+including an <code>IHostBuilder.ConfigureServices</code> callback - is not reported. Such composition-root code is responsible for
 turning configuration into concrete framework dependencies; reading one value there, for example an EF Core connection string, does not expose
 <code>IConfiguration</code> to runtime application services.</p>
 <p>The same exemption covers top-level <code>Program</code> bootstrapping, DI registration lambdas, and small private/local setup helpers that are used

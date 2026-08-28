@@ -111,7 +111,20 @@ public sealed class ConfigurationShouldBeBoundToTypedClass : SonarDiagnosticAnal
         || method.Parameters.Any(x => IsServiceCollection(x.Type))
         || IsPipelineBuilder(method.ReturnType)
         || method.Parameters.Any(x => IsPipelineBuilder(x.Type))
+        || DeclaresServiceCollection(compilation, method)
         || UsesWebApplicationBuilderServices(compilation, method);
+
+    // A loader that news up its own ServiceCollection is composing the graph just as much as a Startup that receives
+    // one, so reading a value while registering a framework service there is not configuration leaking into
+    // application code. Taking or returning the collection was not enough to recognise that shape.
+    private static bool DeclaresServiceCollection(Compilation compilation, IMethodSymbol method) =>
+        method.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .Any(x => x.DescendantNodes()
+                .OfType<VariableDeclarationSyntax>()
+                .Any(declaration => GpJunoTypes.Implements(
+                    compilation.GetSemanticModel(x.SyntaxTree).GetTypeInfo(declaration.Type).Type,
+                    ServiceCollectionInterface)));
 
     private static bool IsPrivateSetupHelperUsedOnlyFromCompositionRoot(Compilation compilation, IMethodSymbol method, HashSet<IMethodSymbol> visiting)
     {
