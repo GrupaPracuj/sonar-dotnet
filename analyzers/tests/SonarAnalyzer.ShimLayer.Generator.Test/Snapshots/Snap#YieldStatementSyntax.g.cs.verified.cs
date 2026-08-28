@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class YieldStatementSyntaxShimExtensions
 
     private static readonly Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<YieldStatementSyntax, AttributeListSyntax[], YieldStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<YieldStatementSyntax, AttributeListSyntax[], YieldStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<YieldStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<YieldStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<YieldStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<YieldStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, YieldStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, YieldStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>, YieldStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<YieldStatementSyntax, SyntaxList<AttributeListSyntax>, YieldStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(YieldStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public YieldStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public YieldStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken yieldKeyword, SyntaxToken returnOrBreakKeyword, ExpressionSyntax expression, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, yieldKeyword, returnOrBreakKeyword, expression, semicolonToken);
+        public YieldStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

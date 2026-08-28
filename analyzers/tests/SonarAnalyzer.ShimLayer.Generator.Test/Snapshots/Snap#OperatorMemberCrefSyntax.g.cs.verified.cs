@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,18 @@ public static partial class OperatorMemberCrefSyntaxShimExtensions
 
     private static readonly Func<OperatorMemberCrefSyntax, SyntaxToken> CheckedKeywordAccessor = AccessorFactory.CreateProperty<Func<OperatorMemberCrefSyntax, SyntaxToken>>(WrappedType, "CheckedKeyword");
 
+    private static readonly Func<OperatorMemberCrefSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<OperatorMemberCrefSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<OperatorMemberCrefSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<OperatorMemberCrefSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<OperatorMemberCrefSyntax, SyntaxToken, SyntaxToken, SyntaxToken, CrefParameterListSyntax, OperatorMemberCrefSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<OperatorMemberCrefSyntax, SyntaxToken, SyntaxToken, SyntaxToken, CrefParameterListSyntax, OperatorMemberCrefSyntax>>(WrappedType, "Update");
+    private static readonly Func<OperatorMemberCrefSyntax, SyntaxToken, OperatorMemberCrefSyntax> WithCheckedKeywordAccessor = AccessorFactory.CreateMethod<Func<OperatorMemberCrefSyntax, SyntaxToken, OperatorMemberCrefSyntax>>(WrappedType, "WithCheckedKeyword");
+
     extension(OperatorMemberCrefSyntax wrappedInstance)
     {
         public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public OperatorMemberCrefSyntax Update(SyntaxToken operatorKeyword, SyntaxToken checkedKeyword, SyntaxToken operatorToken, CrefParameterListSyntax parameters) => UpdateAccessor_Overload2(wrappedInstance, operatorKeyword, checkedKeyword, operatorToken, parameters);
+        public OperatorMemberCrefSyntax WithCheckedKeyword(SyntaxToken checkedKeyword) => WithCheckedKeywordAccessor(wrappedInstance, checkedKeyword);
     }
 }

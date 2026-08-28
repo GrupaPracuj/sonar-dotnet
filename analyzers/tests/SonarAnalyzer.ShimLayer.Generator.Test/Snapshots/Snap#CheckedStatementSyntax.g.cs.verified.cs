@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,22 @@ public static partial class CheckedStatementSyntaxShimExtensions
 
     private static readonly Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<CheckedStatementSyntax, AttributeListSyntax[], CheckedStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, AttributeListSyntax[], CheckedStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<CheckedStatementSyntax, AttributeListSyntax[], CheckedStatementSyntax> AddBlockAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, AttributeListSyntax[], CheckedStatementSyntax>>(WrappedType, "AddBlockAttributeLists");
+    private static readonly Func<CheckedStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<CheckedStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, BlockSyntax, CheckedStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, BlockSyntax, CheckedStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>, CheckedStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CheckedStatementSyntax, SyntaxList<AttributeListSyntax>, CheckedStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(CheckedStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public CheckedStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public CheckedStatementSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public CheckedStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken keyword, BlockSyntax block) => UpdateAccessor(wrappedInstance, attributeLists, keyword, block);
+        public CheckedStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -29,16 +24,22 @@ public static partial class NullableTypeSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(NullableTypeSyntax);
 
-    private static readonly Func<NullableTypeSyntax, Boolean> IsNintAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, Boolean>>(WrappedType, "IsNint");
-    private static readonly Func<NullableTypeSyntax, Boolean> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, Boolean>>(WrappedType, "IsNotNull");
-    private static readonly Func<NullableTypeSyntax, Boolean> IsNuintAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, Boolean>>(WrappedType, "IsNuint");
-    private static readonly Func<NullableTypeSyntax, Boolean> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, Boolean>>(WrappedType, "IsUnmanaged");
+    private static readonly Func<NullableTypeSyntax, bool> IsNintAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, bool>>(WrappedType, "IsNint");
+    private static readonly Func<NullableTypeSyntax, bool> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, bool>>(WrappedType, "IsNotNull");
+    private static readonly Func<NullableTypeSyntax, bool> IsNuintAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, bool>>(WrappedType, "IsNuint");
+    private static readonly Func<NullableTypeSyntax, bool> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<NullableTypeSyntax, bool>>(WrappedType, "IsUnmanaged");
+
+    private static readonly Func<NullableTypeSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<NullableTypeSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<NullableTypeSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<NullableTypeSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
 
     extension(NullableTypeSyntax wrappedInstance)
     {
-        public Boolean IsNint => (Boolean)IsNintAccessor(wrappedInstance);
-        public Boolean IsNotNull => (Boolean)IsNotNullAccessor(wrappedInstance);
-        public Boolean IsNuint => (Boolean)IsNuintAccessor(wrappedInstance);
-        public Boolean IsUnmanaged => (Boolean)IsUnmanagedAccessor(wrappedInstance);
+        public bool IsNint => (bool)IsNintAccessor(wrappedInstance);
+        public bool IsNotNull => (bool)IsNotNullAccessor(wrappedInstance);
+        public bool IsNuint => (bool)IsNuintAccessor(wrappedInstance);
+        public bool IsUnmanaged => (bool)IsUnmanagedAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
     }
 }

@@ -16,39 +16,30 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct IIncrementOrDecrementOperationWrapper : IOperationWrapper
+public readonly struct IIncrementOrDecrementOperationWrapper : IOperationWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.Operations.IIncrementOrDecrementOperation";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(IIncrementOrDecrementOperationWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IIncrementOrDecrementOperation");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly IOperation wrappedInstance;
 
     private static readonly Func<IOperation, IEnumerable<IOperation>> ChildrenAccessor = AccessorFactory.CreateProperty<Func<IOperation, IEnumerable<IOperation>>>(WrappedType, "Children");
     private static readonly Func<IOperation, ITypeSymbol> ConstrainedToTypeAccessor = AccessorFactory.CreateProperty<Func<IOperation, ITypeSymbol>>(WrappedType, "ConstrainedToType");
-    private static readonly Func<IOperation, Boolean> IsCheckedAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsChecked");
-    private static readonly Func<IOperation, Boolean> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsImplicit");
-    private static readonly Func<IOperation, Boolean> IsLiftedAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsLifted");
-    private static readonly Func<IOperation, Boolean> IsPostfixAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsPostfix");
-    private static readonly Func<IOperation, String> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, String>>(WrappedType, "Language");
+    private static readonly Func<IOperation, bool> IsCheckedAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsChecked");
+    private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
+    private static readonly Func<IOperation, bool> IsLiftedAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsLifted");
+    private static readonly Func<IOperation, bool> IsPostfixAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsPostfix");
+    private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
     private static readonly Func<IOperation, IMethodSymbol> OperatorMethodAccessor = AccessorFactory.CreateProperty<Func<IOperation, IMethodSymbol>>(WrappedType, "OperatorMethod");
     private static readonly Func<IOperation, IOperation> ParentAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Parent");
     private static readonly Func<IOperation, SemanticModel> SemanticModelAccessor = AccessorFactory.CreateProperty<Func<IOperation, SemanticModel>>(WrappedType, "SemanticModel");
     private static readonly Func<IOperation, IOperation> TargetAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Target");
 
+    private static readonly Action<IOperation, OperationVisitorWrapper> AcceptAccessor = AccessorFactory.CreateMethod<Action<IOperation, OperationVisitorWrapper>>(WrappedType, "Accept");
+
     private IIncrementOrDecrementOperationWrapper(IOperation wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public IOperation WrappedOperation => wrappedInstance;
 
     public IOperation WrappedInstance => wrappedInstance;
 
@@ -59,38 +50,38 @@ public readonly partial struct IIncrementOrDecrementOperationWrapper : IOperatio
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
     public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
-    public ITypeSymbol ConstrainedToType => (ITypeSymbol)ConstrainedToTypeAccessor(wrappedInstance);
-    public Boolean IsChecked => (Boolean)IsCheckedAccessor(wrappedInstance);
-    public Boolean IsImplicit => (Boolean)IsImplicitAccessor(wrappedInstance);
-    public Boolean IsLifted => (Boolean)IsLiftedAccessor(wrappedInstance);
-    public Boolean IsPostfix => (Boolean)IsPostfixAccessor(wrappedInstance);
-    public String Language => (String)LanguageAccessor(wrappedInstance);
-    public IMethodSymbol OperatorMethod => (IMethodSymbol)OperatorMethodAccessor(wrappedInstance);
+    public ITypeSymbol ConstrainedToType => ConstrainedToTypeAccessor(wrappedInstance);
+    public bool IsChecked => (bool)IsCheckedAccessor(wrappedInstance);
+    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
+    public bool IsLifted => (bool)IsLiftedAccessor(wrappedInstance);
+    public bool IsPostfix => (bool)IsPostfixAccessor(wrappedInstance);
+    public string Language => (string)LanguageAccessor(wrappedInstance);
+    public IMethodSymbol OperatorMethod => OperatorMethodAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
-    public SemanticModel SemanticModel => (SemanticModel)SemanticModelAccessor(wrappedInstance);
+    public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
     public IOperation Target => TargetAccessor(wrappedInstance);
 
-    [Obsolete("Use From instead")]
-    public static IIncrementOrDecrementOperationWrapper FromOperation(IOperation operation) =>
-        From(operation);
+    public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 
-    public static IIncrementOrDecrementOperationWrapper From(IOperation operation)
+    public static IIncrementOrDecrementOperationWrapper? FromOrDefault(IOperation instance) =>
+        IsInstance(instance) ? From(instance) : null;
+
+    public static IIncrementOrDecrementOperationWrapper From(IOperation instance)
     {
-        if (operation is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(operation))
+        else if (IsInstance(instance))
         {
-            return new IIncrementOrDecrementOperationWrapper(operation);
+            return new IIncrementOrDecrementOperationWrapper((IOperation)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{operation.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.Operations.IIncrementOrDecrementOperation'");
         }
     }
 
-    public static bool IsInstance(IOperation operation) =>
-        operation is not null && LightupHelpers.CanWrapOperation(operation, WrappedType);
-
+    public static bool IsInstance(IOperation instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 }

@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -32,9 +27,25 @@ public static partial class OperatorDeclarationSyntaxShimExtensions
     private static readonly Func<OperatorDeclarationSyntax, SyntaxToken> CheckedKeywordAccessor = AccessorFactory.CreateProperty<Func<OperatorDeclarationSyntax, SyntaxToken>>(WrappedType, "CheckedKeyword");
     private static readonly Func<OperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax> ExplicitInterfaceSpecifierAccessor = AccessorFactory.CreateProperty<Func<OperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax>>(WrappedType, "ExplicitInterfaceSpecifier");
 
+    private static readonly Func<OperatorDeclarationSyntax, AttributeListSyntax[], OperatorDeclarationSyntax> AddBodyAttributeListsAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, AttributeListSyntax[], OperatorDeclarationSyntax>>(WrappedType, "AddBodyAttributeLists");
+    private static readonly Func<OperatorDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<OperatorDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<OperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, TypeSyntax, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, OperatorDeclarationSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, TypeSyntax, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, OperatorDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<OperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, TypeSyntax, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, OperatorDeclarationSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, TypeSyntax, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, OperatorDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<OperatorDeclarationSyntax, SyntaxToken, OperatorDeclarationSyntax> WithCheckedKeywordAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, SyntaxToken, OperatorDeclarationSyntax>>(WrappedType, "WithCheckedKeyword");
+    private static readonly Func<OperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax, OperatorDeclarationSyntax> WithExplicitInterfaceSpecifierAccessor = AccessorFactory.CreateMethod<Func<OperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax, OperatorDeclarationSyntax>>(WrappedType, "WithExplicitInterfaceSpecifier");
+
     extension(OperatorDeclarationSyntax wrappedInstance)
     {
         public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
         public ExplicitInterfaceSpecifierSyntax ExplicitInterfaceSpecifier => ExplicitInterfaceSpecifierAccessor(wrappedInstance);
+
+        public OperatorDeclarationSyntax AddBodyAttributeLists(AttributeListSyntax[] items) => AddBodyAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public OperatorDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, TypeSyntax returnType, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken operatorKeyword, SyntaxToken operatorToken, ParameterListSyntax parameterList, BlockSyntax body, ArrowExpressionClauseSyntax expressionBody, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, modifiers, returnType, explicitInterfaceSpecifier, operatorKeyword, operatorToken, parameterList, body, expressionBody, semicolonToken);
+        public OperatorDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, TypeSyntax returnType, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken operatorKeyword, SyntaxToken checkedKeyword, SyntaxToken operatorToken, ParameterListSyntax parameterList, BlockSyntax body, ArrowExpressionClauseSyntax expressionBody, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, attributeLists, modifiers, returnType, explicitInterfaceSpecifier, operatorKeyword, checkedKeyword, operatorToken, parameterList, body, expressionBody, semicolonToken);
+        public OperatorDeclarationSyntax WithCheckedKeyword(SyntaxToken checkedKeyword) => WithCheckedKeywordAccessor(wrappedInstance, checkedKeyword);
+        public OperatorDeclarationSyntax WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier) => WithExplicitInterfaceSpecifierAccessor(wrappedInstance, explicitInterfaceSpecifier);
     }
 }

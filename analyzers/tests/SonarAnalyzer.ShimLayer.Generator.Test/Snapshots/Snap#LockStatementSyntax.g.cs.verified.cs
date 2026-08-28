@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class LockStatementSyntaxShimExtensions
 
     private static readonly Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<LockStatementSyntax, AttributeListSyntax[], LockStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LockStatementSyntax, AttributeListSyntax[], LockStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<LockStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<LockStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<LockStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<LockStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, LockStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, LockStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>, LockStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LockStatementSyntax, SyntaxList<AttributeListSyntax>, LockStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(LockStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public LockStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public LockStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken lockKeyword, SyntaxToken openParenToken, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => UpdateAccessor(wrappedInstance, attributeLists, lockKeyword, openParenToken, expression, closeParenToken, statement);
+        public LockStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

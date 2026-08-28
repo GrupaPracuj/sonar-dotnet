@@ -42,7 +42,6 @@ an explicit decision** — if a change seems to need a new entry, first look for
 | `pom.xml`, `sonar-*/pom.xml` | the `${revision}` version mechanism, GP artifact names/keys, the GP analyzer zip, the plugin size gate |
 | `scripts/set-version.ps1` | adapted to the `${revision}` mechanism |
 | `.gitmodules`, `.github/workflows/gp-csharp-linux-validation.yml`, `build-gp-csharp-plugin.bat` | our submodules and our CI/build entry points |
-| `analyzers/src/SonarAnalyzer.ShimLayer.Lightup/Sonar/IFieldSymbolExtensions.Sonar.cs` | `IsRequired()` lightup, used by the GP0089 code fix |
 
 ## Never revert upstream
 

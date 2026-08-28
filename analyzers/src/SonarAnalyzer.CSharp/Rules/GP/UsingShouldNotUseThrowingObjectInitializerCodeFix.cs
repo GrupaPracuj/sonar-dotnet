@@ -91,7 +91,7 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
     private static bool IsInitializerOnlyMember(ISymbol symbol) =>
         symbol switch
         {
-            IPropertySymbol property => property.IsRequired() || IsInitOnly(property),
+            IPropertySymbol property => property.IsRequired || IsInitOnly(property),
             IFieldSymbol field => IsRequired(field),
             _ => false,
         };
@@ -100,7 +100,7 @@ public sealed class UsingShouldNotUseThrowingObjectInitializerCodeFix : SonarCod
     // from metadata can only be recognized through IFieldSymbol.IsRequired. The syntax check stays as the fallback for
     // a source declaration when the running Roslyn is too old to expose that property at all.
     private static bool IsRequired(IFieldSymbol field) =>
-        field.IsRequired()
+        field.IsRequired
         || field.DeclaringSyntaxReferences
             .Select(x => x.GetSyntax().FirstAncestorOrSelf<FieldDeclarationSyntax>())
             .WhereNotNull()

@@ -17,40 +17,41 @@
 
 namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
-public sealed class ExtendStrategy : Strategy
+public class ExtendStrategy : MemberStrategy
 {
-    public IReadOnlyList<MemberDescriptor> Members { get; }
+    public override string ReturnTypeSnippet => Latest.Name;
 
-    public ExtendStrategy(Type latest, MemberDescriptor[] members) : base(latest) =>
-        Members = members.Where(x => !x.IsPassthrough).ToArray();
-
-    public override string ReturnTypeSnippet() =>
-        Latest.Name;
+    public ExtendStrategy(Type latest, MemberDescriptor[] members) : base(latest, members) { }
 
     public override string ToConversionSnippet(string from) =>
         from;
 
     protected override string GenerateCore(StrategyModel model)
     {
-        var properties = Members
-            .Select(x => x.Member is PropertyInfo pi && model[pi.PropertyType] is { IsSupported: true } returnType ? new PropertyWrapSnippet(this, x, returnType) : null)
-            .Where(x => x is not null)
-            .ToArray();
-        return properties.Any()
+        var wrap = WrapMembers(model);
+        return wrap.Properties.Any() || wrap.Methods.Any()
             ? $$"""
                 {{Preamble($"using {Latest.Namespace};")}}
                 public static partial class {{Latest.Name}}ShimExtensions
                 {
-                    private static readonly Type WrappedType = typeof({{CompiletimeTypeSnippet()}});
+                    private static readonly Type WrappedType = typeof({{CompiletimeTypeSnippet}});
 
-                {{JoinLines(properties.Select(x => x.AccessorDeclaration()))}}
+                {{JoinLines(wrap.Properties.Select(x => x.AccessorDeclaration()))}}
 
-                    extension({{CompiletimeTypeSnippet()}} wrappedInstance)
+                {{JoinLines(wrap.Methods.Select(x => x.AccessorDeclaration()))}}
+
+                    extension({{CompiletimeTypeSnippet}} wrappedInstance)
                     {
-                {{JoinLines(properties.Select(x => x.MemberDeclaration(8)))}}
+                {{JoinLines(wrap.Properties.Select(x => x.MemberDeclaration(8)))}}
+
+                {{JoinLines(wrap.Methods.Select(x => x.MemberDeclaration(8)))}}
+
+                {{AdditionalMembers(model)}}
                     }
                 }
                 """
             : null;
     }
+
+    protected virtual string AdditionalMembers(StrategyModel model) => null;
 }

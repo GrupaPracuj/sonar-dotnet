@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class GotoStatementSyntaxShimExtensions
 
     private static readonly Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<GotoStatementSyntax, AttributeListSyntax[], GotoStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<GotoStatementSyntax, AttributeListSyntax[], GotoStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<GotoStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<GotoStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<GotoStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<GotoStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, GotoStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, GotoStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>, GotoStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<GotoStatementSyntax, SyntaxList<AttributeListSyntax>, GotoStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(GotoStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public GotoStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public GotoStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken gotoKeyword, SyntaxToken caseOrDefaultKeyword, ExpressionSyntax expression, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, gotoKeyword, caseOrDefaultKeyword, expression, semicolonToken);
+        public GotoStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

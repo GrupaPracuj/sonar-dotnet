@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,18 @@ public static partial class ConversionOperatorMemberCrefSyntaxShimExtensions
 
     private static readonly Func<ConversionOperatorMemberCrefSyntax, SyntaxToken> CheckedKeywordAccessor = AccessorFactory.CreateProperty<Func<ConversionOperatorMemberCrefSyntax, SyntaxToken>>(WrappedType, "CheckedKeyword");
 
+    private static readonly Func<ConversionOperatorMemberCrefSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorMemberCrefSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ConversionOperatorMemberCrefSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorMemberCrefSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ConversionOperatorMemberCrefSyntax, SyntaxToken, SyntaxToken, SyntaxToken, TypeSyntax, CrefParameterListSyntax, ConversionOperatorMemberCrefSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<ConversionOperatorMemberCrefSyntax, SyntaxToken, SyntaxToken, SyntaxToken, TypeSyntax, CrefParameterListSyntax, ConversionOperatorMemberCrefSyntax>>(WrappedType, "Update");
+    private static readonly Func<ConversionOperatorMemberCrefSyntax, SyntaxToken, ConversionOperatorMemberCrefSyntax> WithCheckedKeywordAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorMemberCrefSyntax, SyntaxToken, ConversionOperatorMemberCrefSyntax>>(WrappedType, "WithCheckedKeyword");
+
     extension(ConversionOperatorMemberCrefSyntax wrappedInstance)
     {
         public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ConversionOperatorMemberCrefSyntax Update(SyntaxToken implicitOrExplicitKeyword, SyntaxToken operatorKeyword, SyntaxToken checkedKeyword, TypeSyntax type, CrefParameterListSyntax parameters) => UpdateAccessor_Overload2(wrappedInstance, implicitOrExplicitKeyword, operatorKeyword, checkedKeyword, type, parameters);
+        public ConversionOperatorMemberCrefSyntax WithCheckedKeyword(SyntaxToken checkedKeyword) => WithCheckedKeywordAccessor(wrappedInstance, checkedKeyword);
     }
 }

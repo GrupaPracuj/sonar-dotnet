@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class BlockSyntaxShimExtensions
 
     private static readonly Func<BlockSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<BlockSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<BlockSyntax, AttributeListSyntax[], BlockSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<BlockSyntax, AttributeListSyntax[], BlockSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<BlockSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<BlockSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<BlockSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<BlockSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<BlockSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxList<StatementSyntax>, SyntaxToken, BlockSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<BlockSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxList<StatementSyntax>, SyntaxToken, BlockSyntax>>(WrappedType, "Update");
+    private static readonly Func<BlockSyntax, SyntaxList<AttributeListSyntax>, BlockSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<BlockSyntax, SyntaxList<AttributeListSyntax>, BlockSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(BlockSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public BlockSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public BlockSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken openBraceToken, SyntaxList<StatementSyntax> statements, SyntaxToken closeBraceToken) => UpdateAccessor(wrappedInstance, attributeLists, openBraceToken, statements, closeBraceToken);
+        public BlockSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

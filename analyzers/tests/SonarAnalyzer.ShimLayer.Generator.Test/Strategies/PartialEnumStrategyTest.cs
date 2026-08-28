@@ -47,11 +47,6 @@ public class PartialEnumStrategyTest
              */
 
             using Microsoft.CodeAnalysis;
-            using Microsoft.CodeAnalysis.CSharp;
-            using Microsoft.CodeAnalysis.CSharp.Syntax;
-            using Microsoft.CodeAnalysis.Text;
-            using System;
-            using System.Collections.Immutable;
 
             namespace SonarAnalyzer.ShimLayer;
 

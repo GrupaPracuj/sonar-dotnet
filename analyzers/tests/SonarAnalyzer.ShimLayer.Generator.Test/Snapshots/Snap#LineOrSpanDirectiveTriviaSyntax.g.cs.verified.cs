@@ -16,83 +16,145 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct LineOrSpanDirectiveTriviaSyntaxWrapper : ISyntaxWrapper<DirectiveTriviaSyntax>
+public readonly struct LineOrSpanDirectiveTriviaSyntaxWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.LineOrSpanDirectiveTriviaSyntax";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(LineOrSpanDirectiveTriviaSyntaxWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.LineOrSpanDirectiveTriviaSyntax", "Microsoft.CodeAnalysis.CSharp.Syntax.LineDirectiveTriviaSyntax");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly DirectiveTriviaSyntax wrappedInstance;
 
     private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> FileAccessor = AccessorFactory.CreateProperty<Func<DirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "File");
     private static readonly Func<DirectiveTriviaSyntax, SyntaxToken> LineKeywordAccessor = AccessorFactory.CreateProperty<Func<DirectiveTriviaSyntax, SyntaxToken>>(WrappedType, "LineKeyword");
 
+    private static readonly Func<DirectiveTriviaSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax> WithEndOfDirectiveTokenAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax>>(WrappedType, "WithEndOfDirectiveToken");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax> WithFileAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax>>(WrappedType, "WithFile");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax> WithHashTokenAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax>>(WrappedType, "WithHashToken");
+    private static readonly Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax> WithLineKeywordAccessor = AccessorFactory.CreateMethod<Func<DirectiveTriviaSyntax, SyntaxToken, DirectiveTriviaSyntax>>(WrappedType, "WithLineKeyword");
+
     private LineOrSpanDirectiveTriviaSyntaxWrapper(DirectiveTriviaSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
-    [Obsolete("Use WrappedInstance instead")]
-    public DirectiveTriviaSyntax Node => wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public DirectiveTriviaSyntax SyntaxNode => wrappedInstance;
-
     public DirectiveTriviaSyntax WrappedInstance => wrappedInstance;
 
-    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
-    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
-    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
-    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public bool ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public bool ContainsSkippedText => wrappedInstance.ContainsSkippedText;
     public SyntaxToken DirectiveNameToken => wrappedInstance.DirectiveNameToken;
     public SyntaxToken EndOfDirectiveToken => wrappedInstance.EndOfDirectiveToken;
     public TextSpan FullSpan => wrappedInstance.FullSpan;
-    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
-    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
-    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public bool HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public bool HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public bool HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
     public SyntaxToken HashToken => wrappedInstance.HashToken;
-    public Boolean IsActive => wrappedInstance.IsActive;
-    public Boolean IsMissing => wrappedInstance.IsMissing;
-    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
-    public String Language => wrappedInstance.Language;
+    public bool IsActive => wrappedInstance.IsActive;
+    public bool IsMissing => wrappedInstance.IsMissing;
+    public bool IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public string Language => wrappedInstance.Language;
     public SyntaxNode Parent => wrappedInstance.Parent;
     public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
-    public Int32 RawKind => wrappedInstance.RawKind;
+    public int RawKind => wrappedInstance.RawKind;
     public TextSpan Span => wrappedInstance.Span;
-    public Int32 SpanStart => wrappedInstance.SpanStart;
+    public int SpanStart => wrappedInstance.SpanStart;
 
     public SyntaxToken File => (SyntaxToken)FileAccessor(wrappedInstance);
     public SyntaxToken LineKeyword => (SyntaxToken)LineKeywordAccessor(wrappedInstance);
 
-    public static explicit operator LineOrSpanDirectiveTriviaSyntaxWrapper(SyntaxNode node) =>
-        From(node);
+    public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
+    public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
+    public IEnumerable<SyntaxNode> AncestorsAndSelf(bool ascendOutOfTrivia) => wrappedInstance.AncestorsAndSelf(ascendOutOfTrivia);
+    public IEnumerable<SyntaxNode> ChildNodes() => wrappedInstance.ChildNodes();
+    public ChildSyntaxList ChildNodesAndTokens() => wrappedInstance.ChildNodesAndTokens();
+    public SyntaxNodeOrToken ChildThatContainsPosition(int position) => wrappedInstance.ChildThatContainsPosition(position);
+    public IEnumerable<SyntaxToken> ChildTokens() => wrappedInstance.ChildTokens();
+    public bool Contains(SyntaxNode node) => wrappedInstance.Contains(node);
+    public IEnumerable<SyntaxNode> DescendantNodes(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodes(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodes(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodes(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodesAndSelf(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndSelf(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodesAndSelf(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndSelf(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokens(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokens(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokens(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokens(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokensAndSelf(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokensAndSelf(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokensAndSelf(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokensAndSelf(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxToken> DescendantTokens(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTokens(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxToken> DescendantTokens(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTokens(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxTrivia> DescendantTrivia(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTrivia(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxTrivia> DescendantTrivia(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTrivia(descendIntoChildren, descendIntoTrivia);
+    public SyntaxNode FindNode(TextSpan span, bool findInsideTrivia, bool getInnermostNodeForTie) => wrappedInstance.FindNode(span, findInsideTrivia, getInnermostNodeForTie);
+    public SyntaxToken FindToken(int position, bool findInsideTrivia) => wrappedInstance.FindToken(position, findInsideTrivia);
+    public SyntaxTrivia FindTrivia(int position, bool findInsideTrivia) => wrappedInstance.FindTrivia(position, findInsideTrivia);
+    public SyntaxTrivia FindTrivia(int position, Func<SyntaxTrivia, bool> stepInto) => wrappedInstance.FindTrivia(position, stepInto);
+    public IEnumerable<SyntaxNode> GetAnnotatedNodes(SyntaxAnnotation syntaxAnnotation) => wrappedInstance.GetAnnotatedNodes(syntaxAnnotation);
+    public IEnumerable<SyntaxNode> GetAnnotatedNodes(string annotationKind) => wrappedInstance.GetAnnotatedNodes(annotationKind);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(SyntaxAnnotation annotation) => wrappedInstance.GetAnnotatedNodesAndTokens(annotation);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(string annotationKind) => wrappedInstance.GetAnnotatedNodesAndTokens(annotationKind);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(string[] annotationKinds) => wrappedInstance.GetAnnotatedNodesAndTokens(annotationKinds);
+    public IEnumerable<SyntaxToken> GetAnnotatedTokens(SyntaxAnnotation syntaxAnnotation) => wrappedInstance.GetAnnotatedTokens(syntaxAnnotation);
+    public IEnumerable<SyntaxToken> GetAnnotatedTokens(string annotationKind) => wrappedInstance.GetAnnotatedTokens(annotationKind);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(SyntaxAnnotation annotation) => wrappedInstance.GetAnnotatedTrivia(annotation);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(string annotationKind) => wrappedInstance.GetAnnotatedTrivia(annotationKind);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(string[] annotationKinds) => wrappedInstance.GetAnnotatedTrivia(annotationKinds);
+    public IEnumerable<SyntaxAnnotation> GetAnnotations(IEnumerable<string> annotationKinds) => wrappedInstance.GetAnnotations(annotationKinds);
+    public IEnumerable<SyntaxAnnotation> GetAnnotations(string annotationKind) => wrappedInstance.GetAnnotations(annotationKind);
+    public IEnumerable<Diagnostic> GetDiagnostics() => wrappedInstance.GetDiagnostics();
+    public DirectiveTriviaSyntax GetFirstDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetFirstDirective(predicate);
+    public SyntaxToken GetFirstToken(bool includeZeroWidth, bool includeSkipped, bool includeDirectives, bool includeDocumentationComments) => wrappedInstance.GetFirstToken(includeZeroWidth, includeSkipped, includeDirectives, includeDocumentationComments);
+    public DirectiveTriviaSyntax GetLastDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetLastDirective(predicate);
+    public SyntaxToken GetLastToken(bool includeZeroWidth, bool includeSkipped, bool includeDirectives, bool includeDocumentationComments) => wrappedInstance.GetLastToken(includeZeroWidth, includeSkipped, includeDirectives, includeDocumentationComments);
+    public SyntaxTriviaList GetLeadingTrivia() => wrappedInstance.GetLeadingTrivia();
+    public Location GetLocation() => wrappedInstance.GetLocation();
+    public DirectiveTriviaSyntax GetNextDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetNextDirective(predicate);
+    public DirectiveTriviaSyntax GetPreviousDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetPreviousDirective(predicate);
+    public SyntaxReference GetReference() => wrappedInstance.GetReference();
+    public List<DirectiveTriviaSyntax> GetRelatedDirectives() => wrappedInstance.GetRelatedDirectives();
+    public SourceText GetText(Encoding encoding, SourceHashAlgorithm checksumAlgorithm) => wrappedInstance.GetText(encoding, checksumAlgorithm);
+    public SyntaxTriviaList GetTrailingTrivia() => wrappedInstance.GetTrailingTrivia();
+    public bool HasAnnotation(SyntaxAnnotation annotation) => wrappedInstance.HasAnnotation(annotation);
+    public bool HasAnnotations(IEnumerable<string> annotationKinds) => wrappedInstance.HasAnnotations(annotationKinds);
+    public bool HasAnnotations(string annotationKind) => wrappedInstance.HasAnnotations(annotationKind);
+    public bool IsEquivalentTo(SyntaxNode other) => wrappedInstance.IsEquivalentTo(other);
+    public bool IsEquivalentTo(SyntaxNode node, bool topLevel) => wrappedInstance.IsEquivalentTo(node, topLevel);
+    public bool IsPartOfStructuredTrivia() => wrappedInstance.IsPartOfStructuredTrivia();
+    public SyntaxKind Kind() => wrappedInstance.Kind();
+    [System.ObsoleteAttribute("Syntax serialization support is no longer supported", true)]
+    public void SerializeTo(Stream stream, CancellationToken cancellationToken) => wrappedInstance.SerializeTo(stream, cancellationToken);
+    public string ToFullString() => wrappedInstance.ToFullString();
+    public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
+
+    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public LineOrSpanDirectiveTriviaSyntaxWrapper WithEndOfDirectiveToken(SyntaxToken endOfDirectiveToken) => LineOrSpanDirectiveTriviaSyntaxWrapper.From(WithEndOfDirectiveTokenAccessor(wrappedInstance, endOfDirectiveToken));
+    public LineOrSpanDirectiveTriviaSyntaxWrapper WithFile(SyntaxToken file) => LineOrSpanDirectiveTriviaSyntaxWrapper.From(WithFileAccessor(wrappedInstance, file));
+    public LineOrSpanDirectiveTriviaSyntaxWrapper WithHashToken(SyntaxToken hashToken) => LineOrSpanDirectiveTriviaSyntaxWrapper.From(WithHashTokenAccessor(wrappedInstance, hashToken));
+    public LineOrSpanDirectiveTriviaSyntaxWrapper WithLineKeyword(SyntaxToken lineKeyword) => LineOrSpanDirectiveTriviaSyntaxWrapper.From(WithLineKeywordAccessor(wrappedInstance, lineKeyword));
+
+    public static explicit operator LineOrSpanDirectiveTriviaSyntaxWrapper(SyntaxNode instance) =>
+        From(instance);
 
     public static implicit operator DirectiveTriviaSyntax(LineOrSpanDirectiveTriviaSyntaxWrapper wrapper) =>
         wrapper.wrappedInstance;
 
-    public static LineOrSpanDirectiveTriviaSyntaxWrapper From(SyntaxNode node)
+    public static LineOrSpanDirectiveTriviaSyntaxWrapper From(SyntaxNode instance)
     {
-        if (node is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(node))
+        else if (IsInstance(instance))
         {
-            return new LineOrSpanDirectiveTriviaSyntaxWrapper((DirectiveTriviaSyntax)node);
+            return new LineOrSpanDirectiveTriviaSyntaxWrapper((DirectiveTriviaSyntax)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.CSharp.Syntax.LineOrSpanDirectiveTriviaSyntax'");
         }
     }
 
-    public static bool IsInstance(SyntaxNode node) =>
-        node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+    public static bool IsInstance(SyntaxNode instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 
+    public static implicit operator LineOrSpanDirectiveTriviaSyntaxWrapper(LineDirectiveTriviaSyntax instance) => new(instance);
 }

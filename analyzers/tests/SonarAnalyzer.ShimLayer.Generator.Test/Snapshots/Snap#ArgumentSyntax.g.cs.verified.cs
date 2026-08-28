@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,16 @@ public static partial class ArgumentSyntaxShimExtensions
 
     private static readonly Func<ArgumentSyntax, SyntaxToken> RefKindKeywordAccessor = AccessorFactory.CreateProperty<Func<ArgumentSyntax, SyntaxToken>>(WrappedType, "RefKindKeyword");
 
+    private static readonly Func<ArgumentSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ArgumentSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ArgumentSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ArgumentSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ArgumentSyntax, SyntaxToken, ArgumentSyntax> WithRefKindKeywordAccessor = AccessorFactory.CreateMethod<Func<ArgumentSyntax, SyntaxToken, ArgumentSyntax>>(WrappedType, "WithRefKindKeyword");
+
     extension(ArgumentSyntax wrappedInstance)
     {
         public SyntaxToken RefKindKeyword => (SyntaxToken)RefKindKeywordAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ArgumentSyntax WithRefKindKeyword(SyntaxToken refKindKeyword) => WithRefKindKeywordAccessor(wrappedInstance, refKindKeyword);
     }
 }

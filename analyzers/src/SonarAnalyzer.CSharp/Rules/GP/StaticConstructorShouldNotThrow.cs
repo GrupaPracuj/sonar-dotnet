@@ -62,11 +62,11 @@ public sealed class StaticConstructorShouldNotThrow : SonarDiagnosticAnalyzer
     // A throw that runs synchronously as part of the type initializer - as opposed to one that only fires later,
     // from inside a local function or lambda the static constructor merely declares (e.g. assigns to a field to
     // run on demand) rather than calls right away while the type is being initialized.
-    // "ExpressionBody" is ambiguous as a plain member access here: two different lightup/shim layers each add an
-    // extension for it on this project's compile-time (older) Roslyn reference, so the call is qualified to pick one.
+    // "ExpressionBody" is ambiguous as a plain member access here: the CFG extension method and the generated shim
+    // extension member both offer it on this project's compile-time (older) Roslyn reference, so the call is qualified.
     private static bool ThrowsDirectly(SemanticModel model, ConstructorDeclarationSyntax constructor)
     {
-        SyntaxNode body = constructor.Body ?? (SyntaxNode)StyleCop.Analyzers.Lightup.BaseMethodDeclarationSyntaxExtensions.ExpressionBody(constructor);
+        SyntaxNode body = constructor.Body ?? (SyntaxNode)SonarAnalyzer.CFG.Extensions.BaseMethodDeclarationSyntaxExtensions.ExpressionBody(constructor);
         return body is not null && ContainsUncaughtThrow(model, body);
     }
 

@@ -24,10 +24,15 @@ public static class ModelBuilder
     public static StrategyModel Build(TypeDescriptor[] latest, TypeDescriptor[] baseline)
     {
         var baselineMap = baseline.ToDictionary(x => x.Type.FullName, x => x);
-        return new(latest.ToDictionary(x => x.Type, x => CreateStrategy(x, baselineMap.TryGetValue(x.Type.FullName, out var baselineType) ? baselineType : null, baselineMap)));
+        var fallbackMap = CreateFallbackBaseTypeMap(latest, baselineMap);
+        return new(latest.ToDictionary(x => x.Type, x => CreateStrategy(
+                                                            x,
+                                                            baselineMap.TryGetValue(x.Type.FullName, out var baselineType) ? baselineType : null,
+                                                            fallbackMap.TryGetValue(x.Type.FullName, out var fallbackBaseType) ? fallbackBaseType : null,
+                                                            baselineMap)));
     }
 
-    private static Strategy CreateStrategy(TypeDescriptor latest, TypeDescriptor baseline, IReadOnlyDictionary<string, TypeDescriptor> baselineMap)
+    private static Strategy CreateStrategy(TypeDescriptor latest, TypeDescriptor baseline, Type fallbackBaseType, IReadOnlyDictionary<string, TypeDescriptor> baselineMap)
     {
         if (IsSkipped(latest.Type))
         {
@@ -44,12 +49,16 @@ public static class ModelBuilder
                 ? new NewEnumStrategy(latest.Type, fields)
                 : new PartialEnumStrategy(latest.Type, fields);
         }
+        else if (latest.Type.FullName == "Microsoft.CodeAnalysis.IOperation")
+        {
+            return new IOperationStrategy(latest.Type, CreateMembers(latest, baseline));
+        }
         else if (IsAssignableTo(latest.Type, "Microsoft.CodeAnalysis.SyntaxNode"))
         {
             if (baseline is null)
             {
                 var commonBase = FindCommonBaseType(latest, baselineMap);
-                return new SyntaxNodeWrapStrategy(latest.Type, commonBase.Type, CreateMembers(latest, commonBase));
+                return new SyntaxNodeWrapStrategy(latest.Type, commonBase.Type, fallbackBaseType, CreateMembers(latest, commonBase));
             }
             else
             {
@@ -62,10 +71,27 @@ public static class ModelBuilder
                 ? new OperationWrapStrategy(latest.Type, CreateMembers(latest, baselineMap[typeof(IOperation).FullName]))
                 : new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
         }
-        // ToDo: TypeStrategy, or ClassStrategy / StructStrategy / InterfaceStrategy?
+        else if (latest.Type.IsInterface)
+        {
+            return baseline is null
+                ? new InterfaceWrapStrategy(latest.Type, typeof(object), CreateMembers(latest, null))
+                : new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
+        }
         else if (latest.Type.Name == nameof(Microsoft.CodeAnalysis.FlowAnalysis.CaptureId)) // ToDo: Remove once StructStrategy exists
         {
             return new NoChangeStrategy(latest.Type);
+        }
+        else if (IsNonStaticClass(latest.Type) && latest.Type.Name is not "SymbolStartAnalysisContext")
+        {
+            if (baseline is null)
+            {
+                var commonBase = FindCommonBaseType(latest, baselineMap);
+                return new ClassWrapStrategy(latest.Type, commonBase.Type, CreateMembers(latest, commonBase));
+            }
+            else
+            {
+                return new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
+            }
         }
         else
         {
@@ -75,6 +101,9 @@ public static class ModelBuilder
                 : new NoChangeStrategy(latest.Type);
         }
     }
+
+    private static bool IsNonStaticClass(Type type) =>
+        type.IsClass && !(type.IsAbstract && type.IsSealed);
 
     private static TypeDescriptor FindCommonBaseType(TypeDescriptor latest, IReadOnlyDictionary<string, TypeDescriptor> baselineMap)
     {
@@ -88,6 +117,35 @@ public static class ModelBuilder
             current = current.BaseType;
         }
         return ObjectTypeDescriptor;
+    }
+
+    private static IReadOnlyDictionary<string, Type> CreateFallbackBaseTypeMap(TypeDescriptor[] latestTypes, IReadOnlyDictionary<string, TypeDescriptor> baselineMap)
+    {
+        var candidates = new Dictionary<string, HashSet<Type>>();
+        var syntaxNodeType = latestTypes.Single(x => x.Type.FullName == typeof(SyntaxNode).FullName).Type;
+        foreach (var fallback in latestTypes.Select(x => x.Type).Where(x => syntaxNodeType.IsAssignableFrom(x) && baselineMap.ContainsKey(x.FullName)))   // Fallback itself has a basetype
+        {
+            var current = fallback.BaseType;
+            while (current is not null && current != syntaxNodeType)
+            {
+                if (!baselineMap.ContainsKey(current.FullName))
+                {
+                    Add(current.FullName, fallback);
+                }
+                current = current.BaseType;
+            }
+        }
+        return candidates.Where(x => x.Value.Count == 1).ToDictionary(x => x.Key, x => x.Value.Single());
+
+        void Add(string fullName, Type fallback)
+        {
+            if (!candidates.TryGetValue(fullName, out var candidateTypes))
+            {
+                candidateTypes = [];
+                candidates.Add(fullName, candidateTypes);
+            }
+            candidateTypes.Add(fallback);
+        }
     }
 
     private static bool IsAssignableTo(Type type, string fullName)   // We can't use typeof(Xxx).IsAssignableFrom(type) because it's loaded into a different metadata context
@@ -144,10 +202,15 @@ public static class ModelBuilder
         || typeof(Delegate).IsAssignableFrom(type);
 
     private static bool IsValid(MemberInfo member) =>
-        member switch
+        !IsExcluded(member)
+        && member switch
         {
             MethodInfo method => !method.IsSpecialName && !(method.Name is nameof(GetType) or nameof(Equals) or nameof(GetHashCode) or nameof(ToString)),   // Struct methods that would need override
             PropertyInfo => true,
             _ => false
         };
+
+    private static bool IsExcluded(MemberInfo member) =>
+        member.DeclaringType.Name == nameof(SemanticModel)
+        && member.Name is "NullableAnalysisIsDisabled";  // this would have the wrong default (nullable enabled) and is fully covered by GetNullableContext anyway.
 }

@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -33,10 +28,28 @@ public static partial class LocalDeclarationStatementSyntaxShimExtensions
     private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> AwaitKeywordAccessor = AccessorFactory.CreateProperty<Func<LocalDeclarationStatementSyntax, SyntaxToken>>(WrappedType, "AwaitKeyword");
     private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken> UsingKeywordAccessor = AccessorFactory.CreateProperty<Func<LocalDeclarationStatementSyntax, SyntaxToken>>(WrappedType, "UsingKeyword");
 
+    private static readonly Func<LocalDeclarationStatementSyntax, AttributeListSyntax[], LocalDeclarationStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, AttributeListSyntax[], LocalDeclarationStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<LocalDeclarationStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxTokenList, VariableDeclarationSyntax, SyntaxToken, LocalDeclarationStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxTokenList, VariableDeclarationSyntax, SyntaxToken, LocalDeclarationStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken, SyntaxToken, SyntaxTokenList, VariableDeclarationSyntax, SyntaxToken, LocalDeclarationStatementSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxToken, SyntaxToken, SyntaxTokenList, VariableDeclarationSyntax, SyntaxToken, LocalDeclarationStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>, LocalDeclarationStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxList<AttributeListSyntax>, LocalDeclarationStatementSyntax>>(WrappedType, "WithAttributeLists");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken, LocalDeclarationStatementSyntax> WithAwaitKeywordAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxToken, LocalDeclarationStatementSyntax>>(WrappedType, "WithAwaitKeyword");
+    private static readonly Func<LocalDeclarationStatementSyntax, SyntaxToken, LocalDeclarationStatementSyntax> WithUsingKeywordAccessor = AccessorFactory.CreateMethod<Func<LocalDeclarationStatementSyntax, SyntaxToken, LocalDeclarationStatementSyntax>>(WrappedType, "WithUsingKeyword");
+
     extension(LocalDeclarationStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
         public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
         public SyntaxToken UsingKeyword => (SyntaxToken)UsingKeywordAccessor(wrappedInstance);
+
+        public LocalDeclarationStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public LocalDeclarationStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken awaitKeyword, SyntaxToken usingKeyword, SyntaxTokenList modifiers, VariableDeclarationSyntax declaration, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, awaitKeyword, usingKeyword, modifiers, declaration, semicolonToken);
+        public LocalDeclarationStatementSyntax Update(SyntaxToken awaitKeyword, SyntaxToken usingKeyword, SyntaxTokenList modifiers, VariableDeclarationSyntax declaration, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, awaitKeyword, usingKeyword, modifiers, declaration, semicolonToken);
+        public LocalDeclarationStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
+        public LocalDeclarationStatementSyntax WithAwaitKeyword(SyntaxToken awaitKeyword) => WithAwaitKeywordAccessor(wrappedInstance, awaitKeyword);
+        public LocalDeclarationStatementSyntax WithUsingKeyword(SyntaxToken usingKeyword) => WithUsingKeywordAccessor(wrappedInstance, usingKeyword);
     }
 }

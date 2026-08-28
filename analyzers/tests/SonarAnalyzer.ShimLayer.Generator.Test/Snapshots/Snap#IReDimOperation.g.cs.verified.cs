@@ -16,35 +16,26 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct IReDimOperationWrapper : IOperationWrapper
+public readonly struct IReDimOperationWrapper : IOperationWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.Operations.IReDimOperation";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(IReDimOperationWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IReDimOperation");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly IOperation wrappedInstance;
 
     private static readonly Func<IOperation, IEnumerable<IOperation>> ChildrenAccessor = AccessorFactory.CreateProperty<Func<IOperation, IEnumerable<IOperation>>>(WrappedType, "Children");
-    private static readonly Func<IOperation, ImmutableArray<IOperation>> ClausesAccessor = LightupHelpers.CreateOperationListPropertyAccessor<IOperation>(WrappedType, nameof(Clauses));
-    private static readonly Func<IOperation, Boolean> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsImplicit");
-    private static readonly Func<IOperation, String> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, String>>(WrappedType, "Language");
+    private static readonly Func<IOperation, ImmutableArray<IReDimClauseOperationWrapper>> ClausesAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<IReDimClauseOperationWrapper>>>(WrappedType, "Clauses");
+    private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
+    private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
     private static readonly Func<IOperation, IOperation> ParentAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Parent");
-    private static readonly Func<IOperation, Boolean> PreserveAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "Preserve");
+    private static readonly Func<IOperation, bool> PreserveAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "Preserve");
     private static readonly Func<IOperation, SemanticModel> SemanticModelAccessor = AccessorFactory.CreateProperty<Func<IOperation, SemanticModel>>(WrappedType, "SemanticModel");
+
+    private static readonly Action<IOperation, OperationVisitorWrapper> AcceptAccessor = AccessorFactory.CreateMethod<Action<IOperation, OperationVisitorWrapper>>(WrappedType, "Accept");
 
     private IReDimOperationWrapper(IOperation wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public IOperation WrappedOperation => wrappedInstance;
 
     public IOperation WrappedInstance => wrappedInstance;
 
@@ -55,34 +46,34 @@ public readonly partial struct IReDimOperationWrapper : IOperationWrapper
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
     public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
-    public ImmutableArray<IOperation> Clauses => ClausesAccessor(wrappedInstance);
-    public Boolean IsImplicit => (Boolean)IsImplicitAccessor(wrappedInstance);
-    public String Language => (String)LanguageAccessor(wrappedInstance);
+    public ImmutableArray<IReDimClauseOperationWrapper> Clauses => ClausesAccessor(wrappedInstance);
+    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
+    public string Language => (string)LanguageAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
-    public Boolean Preserve => (Boolean)PreserveAccessor(wrappedInstance);
-    public SemanticModel SemanticModel => (SemanticModel)SemanticModelAccessor(wrappedInstance);
+    public bool Preserve => (bool)PreserveAccessor(wrappedInstance);
+    public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
 
-    [Obsolete("Use From instead")]
-    public static IReDimOperationWrapper FromOperation(IOperation operation) =>
-        From(operation);
+    public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 
-    public static IReDimOperationWrapper From(IOperation operation)
+    public static IReDimOperationWrapper? FromOrDefault(IOperation instance) =>
+        IsInstance(instance) ? From(instance) : null;
+
+    public static IReDimOperationWrapper From(IOperation instance)
     {
-        if (operation is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(operation))
+        else if (IsInstance(instance))
         {
-            return new IReDimOperationWrapper(operation);
+            return new IReDimOperationWrapper((IOperation)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{operation.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.Operations.IReDimOperation'");
         }
     }
 
-    public static bool IsInstance(IOperation operation) =>
-        operation is not null && LightupHelpers.CanWrapOperation(operation, WrappedType);
-
+    public static bool IsInstance(IOperation instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 }

@@ -17,42 +17,15 @@
 
 namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
-public class OperationWrapStrategy : WrapStrategy
+public class OperationWrapStrategy : InterfaceWrapStrategy
 {
     protected override string BaseTypeSnippet => "IOperationWrapper";
+    protected override string FromTypeName => "IOperation";
 
-    protected override string ObsoletePropertiesSnippet => $"""
-            [Obsolete("Use WrappedInstance instead")]
-            public {CompiletimeTypeSnippet()} WrappedOperation => wrappedInstance;
+    protected override string ConversionSnippet => $"""
+            public static {ReturnTypeSnippet}? FromOrDefault(IOperation instance) =>
+                IsInstance(instance) ? From(instance) : null;
         """;
 
-    protected override string ConversionSnippet => $$"""
-            [Obsolete("Use From instead")]
-            public static {{Latest.Name}}Wrapper FromOperation(IOperation operation) =>
-                From(operation);
-
-            public static {{Latest.Name}}Wrapper From(IOperation operation)
-            {
-                if (operation is null)
-                {
-                    return default;
-                }
-                else if (IsInstance(operation))
-                {
-                    return new {{Latest.Name}}Wrapper(operation);
-                }
-                else
-                {
-                    throw new InvalidCastException($"Cannot cast '{operation.GetType().FullName}' to '{WrappedTypeName}'");
-                }
-            }
-
-            public static bool IsInstance(IOperation operation) =>
-                operation is not null && LightupHelpers.CanWrapOperation(operation, WrappedType);
-        """;
-
-    public OperationWrapStrategy(Type latest, IReadOnlyList<MemberDescriptor> members) : base(latest, typeof(IOperation), members) { }
-
-    protected override string WrapperToWrapperConversions(StrategyModel model) =>
-        WrapperToWrapperConversions(Latest.GetInterfaces().Where(x => model[x] is OperationWrapStrategy));
+    public OperationWrapStrategy(Type latest, MemberDescriptor[] members) : base(latest, typeof(IOperation), members) { }
 }

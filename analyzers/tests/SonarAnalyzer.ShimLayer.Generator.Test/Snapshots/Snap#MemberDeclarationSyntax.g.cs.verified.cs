@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -32,9 +27,23 @@ public static partial class MemberDeclarationSyntaxShimExtensions
     private static readonly Func<MemberDeclarationSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<MemberDeclarationSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
     private static readonly Func<MemberDeclarationSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<MemberDeclarationSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
+    private static readonly Func<MemberDeclarationSyntax, AttributeListSyntax[], MemberDeclarationSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, AttributeListSyntax[], MemberDeclarationSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<MemberDeclarationSyntax, SyntaxToken[], MemberDeclarationSyntax> AddModifiersAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, SyntaxToken[], MemberDeclarationSyntax>>(WrappedType, "AddModifiers");
+    private static readonly Func<MemberDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<MemberDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<MemberDeclarationSyntax, SyntaxList<AttributeListSyntax>, MemberDeclarationSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, SyntaxList<AttributeListSyntax>, MemberDeclarationSyntax>>(WrappedType, "WithAttributeLists");
+    private static readonly Func<MemberDeclarationSyntax, SyntaxTokenList, MemberDeclarationSyntax> WithModifiersAccessor = AccessorFactory.CreateMethod<Func<MemberDeclarationSyntax, SyntaxTokenList, MemberDeclarationSyntax>>(WrappedType, "WithModifiers");
+
     extension(MemberDeclarationSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
         public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+
+        public MemberDeclarationSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public MemberDeclarationSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public MemberDeclarationSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
+        public MemberDeclarationSyntax WithModifiers(SyntaxTokenList modifiers) => WithModifiersAccessor(wrappedInstance, modifiers);
     }
 }

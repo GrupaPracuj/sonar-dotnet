@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class ClassDeclarationSyntaxShimExtensions
 
     private static readonly Func<ClassDeclarationSyntax, ParameterListSyntax> ParameterListAccessor = AccessorFactory.CreateProperty<Func<ClassDeclarationSyntax, ParameterListSyntax>>(WrappedType, "ParameterList");
 
+    private static readonly Func<ClassDeclarationSyntax, ParameterSyntax[], ClassDeclarationSyntax> AddParameterListParametersAccessor = AccessorFactory.CreateMethod<Func<ClassDeclarationSyntax, ParameterSyntax[], ClassDeclarationSyntax>>(WrappedType, "AddParameterListParameters");
+    private static readonly Func<ClassDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ClassDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ClassDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ClassDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ClassDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, SyntaxToken, TypeParameterListSyntax, ParameterListSyntax, BaseListSyntax, SyntaxList<TypeParameterConstraintClauseSyntax>, SyntaxToken, SyntaxList<MemberDeclarationSyntax>, SyntaxToken, SyntaxToken, ClassDeclarationSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<ClassDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, SyntaxToken, TypeParameterListSyntax, ParameterListSyntax, BaseListSyntax, SyntaxList<TypeParameterConstraintClauseSyntax>, SyntaxToken, SyntaxList<MemberDeclarationSyntax>, SyntaxToken, SyntaxToken, ClassDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<ClassDeclarationSyntax, ParameterListSyntax, ClassDeclarationSyntax> WithParameterListAccessor = AccessorFactory.CreateMethod<Func<ClassDeclarationSyntax, ParameterListSyntax, ClassDeclarationSyntax>>(WrappedType, "WithParameterList");
+
     extension(ClassDeclarationSyntax wrappedInstance)
     {
         public ParameterListSyntax ParameterList => ParameterListAccessor(wrappedInstance);
+
+        public ClassDeclarationSyntax AddParameterListParameters(ParameterSyntax[] items) => AddParameterListParametersAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ClassDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken keyword, SyntaxToken identifier, TypeParameterListSyntax typeParameterList, ParameterListSyntax parameterList, BaseListSyntax baseList, SyntaxList<TypeParameterConstraintClauseSyntax> constraintClauses, SyntaxToken openBraceToken, SyntaxList<MemberDeclarationSyntax> members, SyntaxToken closeBraceToken, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, attributeLists, modifiers, keyword, identifier, typeParameterList, parameterList, baseList, constraintClauses, openBraceToken, members, closeBraceToken, semicolonToken);
+        public ClassDeclarationSyntax WithParameterList(ParameterListSyntax parameterList) => WithParameterListAccessor(wrappedInstance, parameterList);
     }
 }

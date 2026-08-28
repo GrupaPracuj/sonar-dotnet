@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,22 @@ public static partial class TryStatementSyntaxShimExtensions
 
     private static readonly Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<TryStatementSyntax, AttributeListSyntax[], TryStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, AttributeListSyntax[], TryStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<TryStatementSyntax, AttributeListSyntax[], TryStatementSyntax> AddBlockAttributeListsAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, AttributeListSyntax[], TryStatementSyntax>>(WrappedType, "AddBlockAttributeLists");
+    private static readonly Func<TryStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<TryStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, BlockSyntax, SyntaxList<CatchClauseSyntax>, FinallyClauseSyntax, TryStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, BlockSyntax, SyntaxList<CatchClauseSyntax>, FinallyClauseSyntax, TryStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>, TryStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<TryStatementSyntax, SyntaxList<AttributeListSyntax>, TryStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(TryStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public TryStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public TryStatementSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public TryStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken tryKeyword, BlockSyntax block, SyntaxList<CatchClauseSyntax> catches, FinallyClauseSyntax @finally) => UpdateAccessor(wrappedInstance, attributeLists, tryKeyword, block, catches, @finally);
+        public TryStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

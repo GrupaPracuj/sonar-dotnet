@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class LabeledStatementSyntaxShimExtensions
 
     private static readonly Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<LabeledStatementSyntax, AttributeListSyntax[], LabeledStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LabeledStatementSyntax, AttributeListSyntax[], LabeledStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<LabeledStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<LabeledStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<LabeledStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<LabeledStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, StatementSyntax, LabeledStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, StatementSyntax, LabeledStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>, LabeledStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<LabeledStatementSyntax, SyntaxList<AttributeListSyntax>, LabeledStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(LabeledStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public LabeledStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public LabeledStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken identifier, SyntaxToken colonToken, StatementSyntax statement) => UpdateAccessor(wrappedInstance, attributeLists, identifier, colonToken, statement);
+        public LabeledStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

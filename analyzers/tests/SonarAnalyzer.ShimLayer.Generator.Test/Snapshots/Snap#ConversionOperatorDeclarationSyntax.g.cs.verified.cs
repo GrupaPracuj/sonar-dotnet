@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -32,9 +27,25 @@ public static partial class ConversionOperatorDeclarationSyntaxShimExtensions
     private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxToken> CheckedKeywordAccessor = AccessorFactory.CreateProperty<Func<ConversionOperatorDeclarationSyntax, SyntaxToken>>(WrappedType, "CheckedKeyword");
     private static readonly Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax> ExplicitInterfaceSpecifierAccessor = AccessorFactory.CreateProperty<Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax>>(WrappedType, "ExplicitInterfaceSpecifier");
 
+    private static readonly Func<ConversionOperatorDeclarationSyntax, AttributeListSyntax[], ConversionOperatorDeclarationSyntax> AddBodyAttributeListsAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, AttributeListSyntax[], ConversionOperatorDeclarationSyntax>>(WrappedType, "AddBodyAttributeLists");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ExplicitInterfaceSpecifierSyntax, SyntaxToken, TypeSyntax, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ExplicitInterfaceSpecifierSyntax, SyntaxToken, TypeSyntax, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, TypeSyntax, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ExplicitInterfaceSpecifierSyntax, SyntaxToken, SyntaxToken, TypeSyntax, ParameterListSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax> WithCheckedKeywordAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, SyntaxToken, ConversionOperatorDeclarationSyntax>>(WrappedType, "WithCheckedKeyword");
+    private static readonly Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax, ConversionOperatorDeclarationSyntax> WithExplicitInterfaceSpecifierAccessor = AccessorFactory.CreateMethod<Func<ConversionOperatorDeclarationSyntax, ExplicitInterfaceSpecifierSyntax, ConversionOperatorDeclarationSyntax>>(WrappedType, "WithExplicitInterfaceSpecifier");
+
     extension(ConversionOperatorDeclarationSyntax wrappedInstance)
     {
         public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
         public ExplicitInterfaceSpecifierSyntax ExplicitInterfaceSpecifier => ExplicitInterfaceSpecifierAccessor(wrappedInstance);
+
+        public ConversionOperatorDeclarationSyntax AddBodyAttributeLists(AttributeListSyntax[] items) => AddBodyAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ConversionOperatorDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken implicitOrExplicitKeyword, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken operatorKeyword, TypeSyntax type, ParameterListSyntax parameterList, BlockSyntax body, ArrowExpressionClauseSyntax expressionBody, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, modifiers, implicitOrExplicitKeyword, explicitInterfaceSpecifier, operatorKeyword, type, parameterList, body, expressionBody, semicolonToken);
+        public ConversionOperatorDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken implicitOrExplicitKeyword, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken operatorKeyword, SyntaxToken checkedKeyword, TypeSyntax type, ParameterListSyntax parameterList, BlockSyntax body, ArrowExpressionClauseSyntax expressionBody, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, attributeLists, modifiers, implicitOrExplicitKeyword, explicitInterfaceSpecifier, operatorKeyword, checkedKeyword, type, parameterList, body, expressionBody, semicolonToken);
+        public ConversionOperatorDeclarationSyntax WithCheckedKeyword(SyntaxToken checkedKeyword) => WithCheckedKeywordAccessor(wrappedInstance, checkedKeyword);
+        public ConversionOperatorDeclarationSyntax WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier) => WithExplicitInterfaceSpecifierAccessor(wrappedInstance, explicitInterfaceSpecifier);
     }
 }

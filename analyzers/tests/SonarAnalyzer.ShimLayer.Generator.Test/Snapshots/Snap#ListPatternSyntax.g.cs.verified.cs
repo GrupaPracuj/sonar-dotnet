@@ -16,89 +16,150 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct ListPatternSyntaxWrapper : ISyntaxWrapper<CSharpSyntaxNode>
+public readonly struct ListPatternSyntaxWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.CSharp.Syntax.ListPatternSyntax";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(ListPatternSyntaxWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.ListPatternSyntax");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly CSharpSyntaxNode wrappedInstance;
 
     private static readonly Func<CSharpSyntaxNode, SyntaxToken> CloseBracketTokenAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxToken>>(WrappedType, "CloseBracketToken");
     private static readonly Func<CSharpSyntaxNode, CSharpSyntaxNode> DesignationAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, CSharpSyntaxNode>>(WrappedType, "Designation");
     private static readonly Func<CSharpSyntaxNode, SyntaxToken> OpenBracketTokenAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxToken>>(WrappedType, "OpenBracketToken");
-    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>> PatternsAccessor = LightupHelpers.CreateSeparatedSyntaxListPropertyAccessor<CSharpSyntaxNode, PatternSyntaxWrapper>(WrappedType, nameof(Patterns));
+    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>> PatternsAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>>>(WrappedType, "Patterns");
+
+    private static readonly Func<CSharpSyntaxNode, PatternSyntaxWrapper[], CSharpSyntaxNode> AddPatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, PatternSyntaxWrapper[], CSharpSyntaxNode>>(WrappedType, "AddPatterns");
+    private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>, SyntaxToken, VariableDesignationSyntaxWrapper, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>, SyntaxToken, VariableDesignationSyntaxWrapper, CSharpSyntaxNode>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithCloseBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithCloseBracketToken");
+    private static readonly Func<CSharpSyntaxNode, VariableDesignationSyntaxWrapper, CSharpSyntaxNode> WithDesignationAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, VariableDesignationSyntaxWrapper, CSharpSyntaxNode>>(WrappedType, "WithDesignation");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithOpenBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithOpenBracketToken");
+    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>, CSharpSyntaxNode> WithPatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<PatternSyntaxWrapper>, CSharpSyntaxNode>>(WrappedType, "WithPatterns");
 
     private ListPatternSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
-    [Obsolete("Use WrappedInstance instead")]
-    public CSharpSyntaxNode Node => wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public CSharpSyntaxNode SyntaxNode => wrappedInstance;
-
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
 
-    public Boolean ContainsAnnotations => wrappedInstance.ContainsAnnotations;
-    public Boolean ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
-    public Boolean ContainsDirectives => wrappedInstance.ContainsDirectives;
-    public Boolean ContainsSkippedText => wrappedInstance.ContainsSkippedText;
+    public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
+    public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
+    public bool ContainsDirectives => wrappedInstance.ContainsDirectives;
+    public bool ContainsSkippedText => wrappedInstance.ContainsSkippedText;
     public TextSpan FullSpan => wrappedInstance.FullSpan;
-    public Boolean HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
-    public Boolean HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
-    public Boolean HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
-    public Boolean IsMissing => wrappedInstance.IsMissing;
-    public Boolean IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
-    public String Language => wrappedInstance.Language;
+    public bool HasLeadingTrivia => wrappedInstance.HasLeadingTrivia;
+    public bool HasStructuredTrivia => wrappedInstance.HasStructuredTrivia;
+    public bool HasTrailingTrivia => wrappedInstance.HasTrailingTrivia;
+    public bool IsMissing => wrappedInstance.IsMissing;
+    public bool IsStructuredTrivia => wrappedInstance.IsStructuredTrivia;
+    public string Language => wrappedInstance.Language;
     public SyntaxNode Parent => wrappedInstance.Parent;
     public SyntaxTrivia ParentTrivia => wrappedInstance.ParentTrivia;
-    public Int32 RawKind => wrappedInstance.RawKind;
+    public int RawKind => wrappedInstance.RawKind;
     public TextSpan Span => wrappedInstance.Span;
-    public Int32 SpanStart => wrappedInstance.SpanStart;
+    public int SpanStart => wrappedInstance.SpanStart;
 
     public SyntaxToken CloseBracketToken => (SyntaxToken)CloseBracketTokenAccessor(wrappedInstance);
     public VariableDesignationSyntaxWrapper Designation => VariableDesignationSyntaxWrapper.From(DesignationAccessor(wrappedInstance));
     public SyntaxToken OpenBracketToken => (SyntaxToken)OpenBracketTokenAccessor(wrappedInstance);
     public SeparatedSyntaxListWrapper<PatternSyntaxWrapper> Patterns => PatternsAccessor(wrappedInstance);
 
-    public static explicit operator ListPatternSyntaxWrapper(SyntaxNode node) =>
-        From(node);
+    public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
+    public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
+    public IEnumerable<SyntaxNode> AncestorsAndSelf(bool ascendOutOfTrivia) => wrappedInstance.AncestorsAndSelf(ascendOutOfTrivia);
+    public IEnumerable<SyntaxNode> ChildNodes() => wrappedInstance.ChildNodes();
+    public ChildSyntaxList ChildNodesAndTokens() => wrappedInstance.ChildNodesAndTokens();
+    public SyntaxNodeOrToken ChildThatContainsPosition(int position) => wrappedInstance.ChildThatContainsPosition(position);
+    public IEnumerable<SyntaxToken> ChildTokens() => wrappedInstance.ChildTokens();
+    public bool Contains(SyntaxNode node) => wrappedInstance.Contains(node);
+    public IEnumerable<SyntaxNode> DescendantNodes(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodes(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodes(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodes(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodesAndSelf(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndSelf(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNode> DescendantNodesAndSelf(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndSelf(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokens(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokens(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokens(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokens(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokensAndSelf(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokensAndSelf(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxNodeOrToken> DescendantNodesAndTokensAndSelf(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantNodesAndTokensAndSelf(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxToken> DescendantTokens(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTokens(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxToken> DescendantTokens(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTokens(descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxTrivia> DescendantTrivia(TextSpan span, Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTrivia(span, descendIntoChildren, descendIntoTrivia);
+    public IEnumerable<SyntaxTrivia> DescendantTrivia(Func<SyntaxNode, bool> descendIntoChildren, bool descendIntoTrivia) => wrappedInstance.DescendantTrivia(descendIntoChildren, descendIntoTrivia);
+    public SyntaxNode FindNode(TextSpan span, bool findInsideTrivia, bool getInnermostNodeForTie) => wrappedInstance.FindNode(span, findInsideTrivia, getInnermostNodeForTie);
+    public SyntaxToken FindToken(int position, bool findInsideTrivia) => wrappedInstance.FindToken(position, findInsideTrivia);
+    public SyntaxTrivia FindTrivia(int position, bool findInsideTrivia) => wrappedInstance.FindTrivia(position, findInsideTrivia);
+    public SyntaxTrivia FindTrivia(int position, Func<SyntaxTrivia, bool> stepInto) => wrappedInstance.FindTrivia(position, stepInto);
+    public IEnumerable<SyntaxNode> GetAnnotatedNodes(SyntaxAnnotation syntaxAnnotation) => wrappedInstance.GetAnnotatedNodes(syntaxAnnotation);
+    public IEnumerable<SyntaxNode> GetAnnotatedNodes(string annotationKind) => wrappedInstance.GetAnnotatedNodes(annotationKind);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(SyntaxAnnotation annotation) => wrappedInstance.GetAnnotatedNodesAndTokens(annotation);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(string annotationKind) => wrappedInstance.GetAnnotatedNodesAndTokens(annotationKind);
+    public IEnumerable<SyntaxNodeOrToken> GetAnnotatedNodesAndTokens(string[] annotationKinds) => wrappedInstance.GetAnnotatedNodesAndTokens(annotationKinds);
+    public IEnumerable<SyntaxToken> GetAnnotatedTokens(SyntaxAnnotation syntaxAnnotation) => wrappedInstance.GetAnnotatedTokens(syntaxAnnotation);
+    public IEnumerable<SyntaxToken> GetAnnotatedTokens(string annotationKind) => wrappedInstance.GetAnnotatedTokens(annotationKind);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(SyntaxAnnotation annotation) => wrappedInstance.GetAnnotatedTrivia(annotation);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(string annotationKind) => wrappedInstance.GetAnnotatedTrivia(annotationKind);
+    public IEnumerable<SyntaxTrivia> GetAnnotatedTrivia(string[] annotationKinds) => wrappedInstance.GetAnnotatedTrivia(annotationKinds);
+    public IEnumerable<SyntaxAnnotation> GetAnnotations(IEnumerable<string> annotationKinds) => wrappedInstance.GetAnnotations(annotationKinds);
+    public IEnumerable<SyntaxAnnotation> GetAnnotations(string annotationKind) => wrappedInstance.GetAnnotations(annotationKind);
+    public IEnumerable<Diagnostic> GetDiagnostics() => wrappedInstance.GetDiagnostics();
+    public DirectiveTriviaSyntax GetFirstDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetFirstDirective(predicate);
+    public SyntaxToken GetFirstToken(bool includeZeroWidth, bool includeSkipped, bool includeDirectives, bool includeDocumentationComments) => wrappedInstance.GetFirstToken(includeZeroWidth, includeSkipped, includeDirectives, includeDocumentationComments);
+    public DirectiveTriviaSyntax GetLastDirective(Func<DirectiveTriviaSyntax, bool> predicate) => wrappedInstance.GetLastDirective(predicate);
+    public SyntaxToken GetLastToken(bool includeZeroWidth, bool includeSkipped, bool includeDirectives, bool includeDocumentationComments) => wrappedInstance.GetLastToken(includeZeroWidth, includeSkipped, includeDirectives, includeDocumentationComments);
+    public SyntaxTriviaList GetLeadingTrivia() => wrappedInstance.GetLeadingTrivia();
+    public Location GetLocation() => wrappedInstance.GetLocation();
+    public SyntaxReference GetReference() => wrappedInstance.GetReference();
+    public SourceText GetText(Encoding encoding, SourceHashAlgorithm checksumAlgorithm) => wrappedInstance.GetText(encoding, checksumAlgorithm);
+    public SyntaxTriviaList GetTrailingTrivia() => wrappedInstance.GetTrailingTrivia();
+    public bool HasAnnotation(SyntaxAnnotation annotation) => wrappedInstance.HasAnnotation(annotation);
+    public bool HasAnnotations(IEnumerable<string> annotationKinds) => wrappedInstance.HasAnnotations(annotationKinds);
+    public bool HasAnnotations(string annotationKind) => wrappedInstance.HasAnnotations(annotationKind);
+    public bool IsEquivalentTo(SyntaxNode other) => wrappedInstance.IsEquivalentTo(other);
+    public bool IsEquivalentTo(SyntaxNode node, bool topLevel) => wrappedInstance.IsEquivalentTo(node, topLevel);
+    public bool IsPartOfStructuredTrivia() => wrappedInstance.IsPartOfStructuredTrivia();
+    public SyntaxKind Kind() => wrappedInstance.Kind();
+    [System.ObsoleteAttribute("Syntax serialization support is no longer supported", true)]
+    public void SerializeTo(Stream stream, CancellationToken cancellationToken) => wrappedInstance.SerializeTo(stream, cancellationToken);
+    public string ToFullString() => wrappedInstance.ToFullString();
+    public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
+
+    public ListPatternSyntaxWrapper AddPatterns(PatternSyntaxWrapper[] items) => ListPatternSyntaxWrapper.From(AddPatternsAccessor(wrappedInstance, items));
+    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public ListPatternSyntaxWrapper Update(SyntaxToken openBracketToken, SeparatedSyntaxListWrapper<PatternSyntaxWrapper> patterns, SyntaxToken closeBracketToken, VariableDesignationSyntaxWrapper designation) => ListPatternSyntaxWrapper.From(UpdateAccessor(wrappedInstance, openBracketToken, patterns, closeBracketToken, designation));
+    public ListPatternSyntaxWrapper WithCloseBracketToken(SyntaxToken closeBracketToken) => ListPatternSyntaxWrapper.From(WithCloseBracketTokenAccessor(wrappedInstance, closeBracketToken));
+    public ListPatternSyntaxWrapper WithDesignation(VariableDesignationSyntaxWrapper designation) => ListPatternSyntaxWrapper.From(WithDesignationAccessor(wrappedInstance, designation));
+    public ListPatternSyntaxWrapper WithOpenBracketToken(SyntaxToken openBracketToken) => ListPatternSyntaxWrapper.From(WithOpenBracketTokenAccessor(wrappedInstance, openBracketToken));
+    public ListPatternSyntaxWrapper WithPatterns(SeparatedSyntaxListWrapper<PatternSyntaxWrapper> patterns) => ListPatternSyntaxWrapper.From(WithPatternsAccessor(wrappedInstance, patterns));
+
+    public static explicit operator ListPatternSyntaxWrapper(SyntaxNode instance) =>
+        From(instance);
 
     public static implicit operator CSharpSyntaxNode(ListPatternSyntaxWrapper wrapper) =>
         wrapper.wrappedInstance;
 
-    public static ListPatternSyntaxWrapper From(SyntaxNode node)
+    public static ListPatternSyntaxWrapper From(SyntaxNode instance)
     {
-        if (node is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(node))
+        else if (IsInstance(instance))
         {
-            return new ListPatternSyntaxWrapper((CSharpSyntaxNode)node);
+            return new ListPatternSyntaxWrapper((CSharpSyntaxNode)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.CSharp.Syntax.ListPatternSyntax'");
         }
     }
 
-    public static bool IsInstance(SyntaxNode node) =>
-        node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
+    public static bool IsInstance(SyntaxNode instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 
     public static implicit operator PatternSyntaxWrapper(ListPatternSyntaxWrapper up) => PatternSyntaxWrapper.From(up.WrappedInstance);
     public static explicit operator ListPatternSyntaxWrapper(PatternSyntaxWrapper down) => ListPatternSyntaxWrapper.From(down.WrappedInstance);
 
     public static implicit operator ExpressionOrPatternSyntaxWrapper(ListPatternSyntaxWrapper up) => ExpressionOrPatternSyntaxWrapper.From(up.WrappedInstance);
     public static explicit operator ListPatternSyntaxWrapper(ExpressionOrPatternSyntaxWrapper down) => ListPatternSyntaxWrapper.From(down.WrappedInstance);
-
 }

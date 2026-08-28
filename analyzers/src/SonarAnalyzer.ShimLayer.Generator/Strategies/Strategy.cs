@@ -22,29 +22,36 @@ namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 public abstract class Strategy
 {
     // Match 3 or more consecutive newlines (with optional whitespace-only lines between them) and replace with exactly 2 newlines.
-    private static readonly Regex ExcessiveNewLines = new(@"\n(\s*\n){2,}", RegexOptions.ExplicitCapture, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex ExcessiveNewLines = new(@"\n(\s*\n){2,}", RegexOptions.None, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex EmptyLineAfterBlockStart = new(@"{\n\s*\n", RegexOptions.None, TimeSpan.FromMilliseconds(100));
+    private static readonly Regex EmptyLineBeforeBlockEnd = new(@"\n\s*\n(?=\s*})", RegexOptions.None, TimeSpan.FromMilliseconds(100));
 
-    public abstract string ReturnTypeSnippet();
+    public abstract string ReturnTypeSnippet { get; }
     public abstract string ToConversionSnippet(string from);
     protected abstract string GenerateCore(StrategyModel model);
 
     public virtual bool IsSupported => true;
+    public virtual string CompiletimeTypeSnippet => Latest.Name;
 
     public Type Latest { get; }
 
     protected Strategy(Type latest) =>
         Latest = latest;
 
-    public virtual string CompiletimeTypeSnippet() =>
-        Latest.Name;
-
-    public string Generate(StrategyModel model) =>
-        GenerateCore(model) is { } content
-            ? ExcessiveNewLines.Replace(content.Replace("\r", null), "\n\n")
-            : null;
-
-    public virtual string PropertyAccessorInitializerSnippet(string compiletimeType, string propertyName) =>
-        $"""AccessorFactory.CreateProperty<Func<{compiletimeType}, {CompiletimeTypeSnippet()}>>(WrappedType, "{propertyName}")""";
+    public string Generate(StrategyModel model)
+    {
+        if (GenerateCore(model) is { } content)
+        {
+            content = content.Replace("\r", null);
+            content = ExcessiveNewLines.Replace(content, "\n\n");
+            content = EmptyLineAfterBlockStart.Replace(content, "{\n");
+            return EmptyLineBeforeBlockEnd.Replace(content, "\n");
+        }
+        else
+        {
+            return null;
+        }
+    }
 
     protected static string JoinLines(IEnumerable<string> lines) =>
        string.Join("\n", lines.Where(x => x is not null));
@@ -69,14 +76,7 @@ public abstract class Strategy
          * along with this program; if not, see https://sonarsource.com/license/ssal/
          */
 
-        {JoinLines((SortedSet<string>)[
-            "using Microsoft.CodeAnalysis;",
-            "using Microsoft.CodeAnalysis.CSharp;",
-            "using Microsoft.CodeAnalysis.CSharp.Syntax;",
-            "using Microsoft.CodeAnalysis.Text;",
-            "using System;",
-            "using System.Collections.Immutable;",
-            .. additionalUsing])}
+        {JoinLines(new SortedSet<string>(additionalUsing))}
 
         namespace SonarAnalyzer.ShimLayer;
 

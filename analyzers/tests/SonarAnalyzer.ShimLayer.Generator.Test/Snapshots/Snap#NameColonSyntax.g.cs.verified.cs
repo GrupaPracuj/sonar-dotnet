@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,16 @@ public static partial class NameColonSyntaxShimExtensions
 
     private static readonly Func<NameColonSyntax, ExpressionSyntax> ExpressionAccessor = AccessorFactory.CreateProperty<Func<NameColonSyntax, ExpressionSyntax>>(WrappedType, "Expression");
 
+    private static readonly Func<NameColonSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<NameColonSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<NameColonSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<NameColonSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<NameColonSyntax, ExpressionSyntax, CSharpSyntaxNode> WithExpressionAccessor = AccessorFactory.CreateMethod<Func<NameColonSyntax, ExpressionSyntax, CSharpSyntaxNode>>(WrappedType, "WithExpression");
+
     extension(NameColonSyntax wrappedInstance)
     {
         public ExpressionSyntax Expression => ExpressionAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public BaseExpressionColonSyntaxWrapper WithExpression(ExpressionSyntax expression) => BaseExpressionColonSyntaxWrapper.From(WithExpressionAccessor(wrappedInstance, expression));
     }
 }

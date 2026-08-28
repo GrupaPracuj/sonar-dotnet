@@ -19,11 +19,20 @@ namespace SonarAnalyzer.ShimLayer.Generator.Snippets;
 
 public abstract class Snippet
 {
+    public abstract string AccessorDeclaration();
+    public abstract string MemberDeclaration(int indentSize);
+
     public static string SerializeAttributes(IEnumerable<CustomAttributeData> attributes, int indentSize)
     {
         var sb = new StringBuilder();
         var indent = Indent(indentSize);
-        foreach (var attribute in attributes.Where(x => x.AttributeType.Name is not "ExperimentalAttribute" and not "NullableAttribute"))
+        foreach (var attribute in attributes.Where(x => x.AttributeType.Name is not "AsyncStateMachineAttribute"
+                                                                                and not "ExperimentalAttribute"
+                                                                                and not "IteratorStateMachineAttribute"
+                                                                                and not "MemberNotNullWhenAttribute"
+                                                                                and not "NullableAttribute"
+                                                                                and not "NullableContextAttribute"
+                                                                                and not "TupleElementNamesAttribute"))
         {
             sb.Append("[").Append(attribute.AttributeType.FullName);
             if (attribute.ConstructorArguments.Any())
@@ -68,9 +77,6 @@ public abstract class Snippet<TMember> : Snippet where TMember : MemberInfo
     protected readonly TMember member;
     protected readonly string accessorName;
     protected readonly Strategy returnType;
-
-    public abstract string AccessorDeclaration();
-    public abstract string MemberDeclaration(int indentSize);
 
     protected Snippet(Strategy strategy, MemberDescriptor member, Strategy returnType)
     {

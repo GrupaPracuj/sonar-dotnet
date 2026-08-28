@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class ConstructorDeclarationSyntaxShimExtensions
 
     private static readonly Func<ConstructorDeclarationSyntax, ArrowExpressionClauseSyntax> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<ConstructorDeclarationSyntax, ArrowExpressionClauseSyntax>>(WrappedType, "ExpressionBody");
 
+    private static readonly Func<ConstructorDeclarationSyntax, AttributeListSyntax[], ConstructorDeclarationSyntax> AddBodyAttributeListsAccessor = AccessorFactory.CreateMethod<Func<ConstructorDeclarationSyntax, AttributeListSyntax[], ConstructorDeclarationSyntax>>(WrappedType, "AddBodyAttributeLists");
+    private static readonly Func<ConstructorDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ConstructorDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ConstructorDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ConstructorDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ConstructorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ParameterListSyntax, ConstructorInitializerSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConstructorDeclarationSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<ConstructorDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, ParameterListSyntax, ConstructorInitializerSyntax, BlockSyntax, ArrowExpressionClauseSyntax, SyntaxToken, ConstructorDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<ConstructorDeclarationSyntax, ArrowExpressionClauseSyntax, ConstructorDeclarationSyntax> WithExpressionBodyAccessor = AccessorFactory.CreateMethod<Func<ConstructorDeclarationSyntax, ArrowExpressionClauseSyntax, ConstructorDeclarationSyntax>>(WrappedType, "WithExpressionBody");
+
     extension(ConstructorDeclarationSyntax wrappedInstance)
     {
         public ArrowExpressionClauseSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
+
+        public ConstructorDeclarationSyntax AddBodyAttributeLists(AttributeListSyntax[] items) => AddBodyAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ConstructorDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken identifier, ParameterListSyntax parameterList, ConstructorInitializerSyntax initializer, BlockSyntax body, ArrowExpressionClauseSyntax expressionBody, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, modifiers, identifier, parameterList, initializer, body, expressionBody, semicolonToken);
+        public ConstructorDeclarationSyntax WithExpressionBody(ArrowExpressionClauseSyntax expressionBody) => WithExpressionBodyAccessor(wrappedInstance, expressionBody);
     }
 }

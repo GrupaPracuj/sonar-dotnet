@@ -16,36 +16,27 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct IParameterInitializerOperationWrapper : IOperationWrapper
+public readonly struct IParameterInitializerOperationWrapper : IOperationWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.Operations.IParameterInitializerOperation";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(IParameterInitializerOperationWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IParameterInitializerOperation");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly IOperation wrappedInstance;
 
     private static readonly Func<IOperation, IEnumerable<IOperation>> ChildrenAccessor = AccessorFactory.CreateProperty<Func<IOperation, IEnumerable<IOperation>>>(WrappedType, "Children");
-    private static readonly Func<IOperation, Boolean> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsImplicit");
-    private static readonly Func<IOperation, String> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, String>>(WrappedType, "Language");
+    private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
+    private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
     private static readonly Func<IOperation, ImmutableArray<ILocalSymbol>> LocalsAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<ILocalSymbol>>>(WrappedType, "Locals");
     private static readonly Func<IOperation, IParameterSymbol> ParameterAccessor = AccessorFactory.CreateProperty<Func<IOperation, IParameterSymbol>>(WrappedType, "Parameter");
     private static readonly Func<IOperation, IOperation> ParentAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Parent");
     private static readonly Func<IOperation, SemanticModel> SemanticModelAccessor = AccessorFactory.CreateProperty<Func<IOperation, SemanticModel>>(WrappedType, "SemanticModel");
     private static readonly Func<IOperation, IOperation> ValueAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Value");
 
+    private static readonly Action<IOperation, OperationVisitorWrapper> AcceptAccessor = AccessorFactory.CreateMethod<Action<IOperation, OperationVisitorWrapper>>(WrappedType, "Accept");
+
     private IParameterInitializerOperationWrapper(IOperation wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public IOperation WrappedOperation => wrappedInstance;
 
     public IOperation WrappedInstance => wrappedInstance;
 
@@ -56,38 +47,38 @@ public readonly partial struct IParameterInitializerOperationWrapper : IOperatio
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
     public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
-    public Boolean IsImplicit => (Boolean)IsImplicitAccessor(wrappedInstance);
-    public String Language => (String)LanguageAccessor(wrappedInstance);
+    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
+    public string Language => (string)LanguageAccessor(wrappedInstance);
     public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
-    public IParameterSymbol Parameter => (IParameterSymbol)ParameterAccessor(wrappedInstance);
+    public IParameterSymbol Parameter => ParameterAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
-    public SemanticModel SemanticModel => (SemanticModel)SemanticModelAccessor(wrappedInstance);
+    public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
     public IOperation Value => ValueAccessor(wrappedInstance);
 
-    [Obsolete("Use From instead")]
-    public static IParameterInitializerOperationWrapper FromOperation(IOperation operation) =>
-        From(operation);
+    public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 
-    public static IParameterInitializerOperationWrapper From(IOperation operation)
+    public static IParameterInitializerOperationWrapper? FromOrDefault(IOperation instance) =>
+        IsInstance(instance) ? From(instance) : null;
+
+    public static IParameterInitializerOperationWrapper From(IOperation instance)
     {
-        if (operation is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(operation))
+        else if (IsInstance(instance))
         {
-            return new IParameterInitializerOperationWrapper(operation);
+            return new IParameterInitializerOperationWrapper((IOperation)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{operation.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.Operations.IParameterInitializerOperation'");
         }
     }
 
-    public static bool IsInstance(IOperation operation) =>
-        operation is not null && LightupHelpers.CanWrapOperation(operation, WrappedType);
+    public static bool IsInstance(IOperation instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 
     public static implicit operator ISymbolInitializerOperationWrapper(IParameterInitializerOperationWrapper up) => ISymbolInitializerOperationWrapper.From(up.WrappedInstance);
     public static explicit operator IParameterInitializerOperationWrapper(ISymbolInitializerOperationWrapper down) => IParameterInitializerOperationWrapper.From(down.WrappedInstance);
-
 }

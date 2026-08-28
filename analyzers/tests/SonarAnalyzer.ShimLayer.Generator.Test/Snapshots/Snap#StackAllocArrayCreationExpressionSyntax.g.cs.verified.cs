@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,18 @@ public static partial class StackAllocArrayCreationExpressionSyntaxShimExtension
 
     private static readonly Func<StackAllocArrayCreationExpressionSyntax, InitializerExpressionSyntax> InitializerAccessor = AccessorFactory.CreateProperty<Func<StackAllocArrayCreationExpressionSyntax, InitializerExpressionSyntax>>(WrappedType, "Initializer");
 
+    private static readonly Func<StackAllocArrayCreationExpressionSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<StackAllocArrayCreationExpressionSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<StackAllocArrayCreationExpressionSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<StackAllocArrayCreationExpressionSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<StackAllocArrayCreationExpressionSyntax, SyntaxToken, TypeSyntax, InitializerExpressionSyntax, StackAllocArrayCreationExpressionSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<StackAllocArrayCreationExpressionSyntax, SyntaxToken, TypeSyntax, InitializerExpressionSyntax, StackAllocArrayCreationExpressionSyntax>>(WrappedType, "Update");
+    private static readonly Func<StackAllocArrayCreationExpressionSyntax, InitializerExpressionSyntax, StackAllocArrayCreationExpressionSyntax> WithInitializerAccessor = AccessorFactory.CreateMethod<Func<StackAllocArrayCreationExpressionSyntax, InitializerExpressionSyntax, StackAllocArrayCreationExpressionSyntax>>(WrappedType, "WithInitializer");
+
     extension(StackAllocArrayCreationExpressionSyntax wrappedInstance)
     {
         public InitializerExpressionSyntax Initializer => InitializerAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public StackAllocArrayCreationExpressionSyntax Update(SyntaxToken stackAllocKeyword, TypeSyntax type, InitializerExpressionSyntax initializer) => UpdateAccessor_Overload2(wrappedInstance, stackAllocKeyword, type, initializer);
+        public StackAllocArrayCreationExpressionSyntax WithInitializer(InitializerExpressionSyntax initializer) => WithInitializerAccessor(wrappedInstance, initializer);
     }
 }

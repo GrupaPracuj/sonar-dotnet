@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -33,10 +28,26 @@ public static partial class UsingDirectiveSyntaxShimExtensions
     private static readonly Func<UsingDirectiveSyntax, TypeSyntax> NamespaceOrTypeAccessor = AccessorFactory.CreateProperty<Func<UsingDirectiveSyntax, TypeSyntax>>(WrappedType, "NamespaceOrType");
     private static readonly Func<UsingDirectiveSyntax, SyntaxToken> UnsafeKeywordAccessor = AccessorFactory.CreateProperty<Func<UsingDirectiveSyntax, SyntaxToken>>(WrappedType, "UnsafeKeyword");
 
+    private static readonly Func<UsingDirectiveSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken, SyntaxToken, SyntaxToken, NameEqualsSyntax, NameSyntax, SyntaxToken, UsingDirectiveSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, SyntaxToken, SyntaxToken, SyntaxToken, NameEqualsSyntax, NameSyntax, SyntaxToken, UsingDirectiveSyntax>>(WrappedType, "Update");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken, SyntaxToken, SyntaxToken, SyntaxToken, NameEqualsSyntax, TypeSyntax, SyntaxToken, UsingDirectiveSyntax> UpdateAccessor_Overload3 = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, SyntaxToken, SyntaxToken, SyntaxToken, SyntaxToken, NameEqualsSyntax, TypeSyntax, SyntaxToken, UsingDirectiveSyntax>>(WrappedType, "Update");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken, UsingDirectiveSyntax> WithGlobalKeywordAccessor = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, SyntaxToken, UsingDirectiveSyntax>>(WrappedType, "WithGlobalKeyword");
+    private static readonly Func<UsingDirectiveSyntax, TypeSyntax, UsingDirectiveSyntax> WithNamespaceOrTypeAccessor = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, TypeSyntax, UsingDirectiveSyntax>>(WrappedType, "WithNamespaceOrType");
+    private static readonly Func<UsingDirectiveSyntax, SyntaxToken, UsingDirectiveSyntax> WithUnsafeKeywordAccessor = AccessorFactory.CreateMethod<Func<UsingDirectiveSyntax, SyntaxToken, UsingDirectiveSyntax>>(WrappedType, "WithUnsafeKeyword");
+
     extension(UsingDirectiveSyntax wrappedInstance)
     {
         public SyntaxToken GlobalKeyword => (SyntaxToken)GlobalKeywordAccessor(wrappedInstance);
         public TypeSyntax NamespaceOrType => NamespaceOrTypeAccessor(wrappedInstance);
         public SyntaxToken UnsafeKeyword => (SyntaxToken)UnsafeKeywordAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public UsingDirectiveSyntax Update(SyntaxToken globalKeyword, SyntaxToken usingKeyword, SyntaxToken staticKeyword, NameEqualsSyntax alias, NameSyntax name, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, globalKeyword, usingKeyword, staticKeyword, alias, name, semicolonToken);
+        public UsingDirectiveSyntax Update(SyntaxToken globalKeyword, SyntaxToken usingKeyword, SyntaxToken staticKeyword, SyntaxToken unsafeKeyword, NameEqualsSyntax alias, TypeSyntax namespaceOrType, SyntaxToken semicolonToken) => UpdateAccessor_Overload3(wrappedInstance, globalKeyword, usingKeyword, staticKeyword, unsafeKeyword, alias, namespaceOrType, semicolonToken);
+        public UsingDirectiveSyntax WithGlobalKeyword(SyntaxToken globalKeyword) => WithGlobalKeywordAccessor(wrappedInstance, globalKeyword);
+        public UsingDirectiveSyntax WithNamespaceOrType(TypeSyntax namespaceOrType) => WithNamespaceOrTypeAccessor(wrappedInstance, namespaceOrType);
+        public UsingDirectiveSyntax WithUnsafeKeyword(SyntaxToken unsafeKeyword) => WithUnsafeKeywordAccessor(wrappedInstance, unsafeKeyword);
     }
 }

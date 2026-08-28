@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -33,10 +28,32 @@ public static partial class AnonymousFunctionExpressionSyntaxShimExtensions
     private static readonly Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax>>(WrappedType, "ExpressionBody");
     private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
+    private static readonly Func<AnonymousFunctionExpressionSyntax, AttributeListSyntax[], AnonymousFunctionExpressionSyntax> AddBlockAttributeListsAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, AttributeListSyntax[], AnonymousFunctionExpressionSyntax>>(WrappedType, "AddBlockAttributeLists");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, StatementSyntax[], AnonymousFunctionExpressionSyntax> AddBlockStatementsAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, StatementSyntax[], AnonymousFunctionExpressionSyntax>>(WrappedType, "AddBlockStatements");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxToken[], AnonymousFunctionExpressionSyntax> AddModifiersAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, SyntaxToken[], AnonymousFunctionExpressionSyntax>>(WrappedType, "AddModifiers");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxToken, AnonymousFunctionExpressionSyntax> WithAsyncKeywordAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, SyntaxToken, AnonymousFunctionExpressionSyntax>>(WrappedType, "WithAsyncKeyword");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, BlockSyntax, AnonymousFunctionExpressionSyntax> WithBlockAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, BlockSyntax, AnonymousFunctionExpressionSyntax>>(WrappedType, "WithBlock");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, CSharpSyntaxNode, AnonymousFunctionExpressionSyntax> WithBodyAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, CSharpSyntaxNode, AnonymousFunctionExpressionSyntax>>(WrappedType, "WithBody");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax, AnonymousFunctionExpressionSyntax> WithExpressionBodyAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, ExpressionSyntax, AnonymousFunctionExpressionSyntax>>(WrappedType, "WithExpressionBody");
+    private static readonly Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList, AnonymousFunctionExpressionSyntax> WithModifiersAccessor = AccessorFactory.CreateMethod<Func<AnonymousFunctionExpressionSyntax, SyntaxTokenList, AnonymousFunctionExpressionSyntax>>(WrappedType, "WithModifiers");
+
     extension(AnonymousFunctionExpressionSyntax wrappedInstance)
     {
         public BlockSyntax Block => BlockAccessor(wrappedInstance);
         public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
         public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+
+        public AnonymousFunctionExpressionSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
+        public AnonymousFunctionExpressionSyntax AddBlockStatements(StatementSyntax[] items) => AddBlockStatementsAccessor(wrappedInstance, items);
+        public AnonymousFunctionExpressionSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public AnonymousFunctionExpressionSyntax WithAsyncKeyword(SyntaxToken asyncKeyword) => WithAsyncKeywordAccessor(wrappedInstance, asyncKeyword);
+        public AnonymousFunctionExpressionSyntax WithBlock(BlockSyntax block) => WithBlockAccessor(wrappedInstance, block);
+        public AnonymousFunctionExpressionSyntax WithBody(CSharpSyntaxNode body) => WithBodyAccessor(wrappedInstance, body);
+        public AnonymousFunctionExpressionSyntax WithExpressionBody(ExpressionSyntax expressionBody) => WithExpressionBodyAccessor(wrappedInstance, expressionBody);
+        public AnonymousFunctionExpressionSyntax WithModifiers(SyntaxTokenList modifiers) => WithModifiersAccessor(wrappedInstance, modifiers);
     }
 }

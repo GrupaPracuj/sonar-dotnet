@@ -19,57 +19,16 @@ namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
 public class SyntaxNodeWrapStrategy : WrapStrategy
 {
-    protected override string BaseTypeSnippet => $"ISyntaxWrapper<{CompiletimeTypeSnippet()}>";
+    protected override string BaseTypeSnippet => null;
+    protected override string FromTypeName => "SyntaxNode";
 
-    protected override string ObsoletePropertiesSnippet => $"""
-            [Obsolete("Use WrappedInstance instead")]
-            public {CompiletimeTypeSnippet()} Node => wrappedInstance;
+    protected override string ConversionSnippet => $"""
+            public static explicit operator {ReturnTypeSnippet}(SyntaxNode instance) =>
+                From(instance);
 
-            [Obsolete("Use WrappedInstance instead")]
-            public {CompiletimeTypeSnippet()} SyntaxNode => wrappedInstance;
-        """;
-
-    protected override string ConversionSnippet => $$"""
-            public static explicit operator {{Latest.Name}}Wrapper(SyntaxNode node) =>
-                From(node);
-
-            public static implicit operator {{CompiletimeTypeSnippet()}}({{Latest.Name}}Wrapper wrapper) =>
+            public static implicit operator {CompiletimeTypeSnippet}({Latest.Name}Wrapper wrapper) =>
                 wrapper.wrappedInstance;
-
-            public static {{Latest.Name}}Wrapper From(SyntaxNode node)
-            {
-                if (node is null)
-                {
-                    return default;
-                }
-                else if (IsInstance(node))
-                {
-                    return new {{Latest.Name}}Wrapper(({{CompiletimeTypeSnippet()}})node);
-                }
-                else
-                {
-                    throw new InvalidCastException($"Cannot cast '{node.GetType().FullName}' to '{WrappedTypeName}'");
-                }
-            }
-
-            public static bool IsInstance(SyntaxNode node) =>
-                node is not null && LightupHelpers.CanWrapNode(node, WrappedType);
         """;
 
-    public SyntaxNodeWrapStrategy(Type latest, Type baseType, IReadOnlyList<MemberDescriptor> members) : base(latest, baseType, members) { }
-
-    protected override string WrapperToWrapperConversions(StrategyModel model)
-    {
-        return WrapperToWrapperConversions(WrappedBaseTypes());
-
-        IEnumerable<Type> WrappedBaseTypes()
-        {
-            var baseType = Latest.BaseType;
-            while (baseType is not null && model[baseType] is SyntaxNodeWrapStrategy) // BaseType is also wrapped
-            {
-                yield return baseType;
-                baseType = baseType.BaseType;
-            }
-        }
-    }
+    public SyntaxNodeWrapStrategy(Type latest, Type baseType, Type fallbackBaseType, MemberDescriptor[] members) : base(latest, baseType, fallbackBaseType, members) { }
 }

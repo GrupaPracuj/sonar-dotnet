@@ -94,7 +94,7 @@ public sealed class AvoidUnderPosting : SonarDiagnosticAnalyzer
             CanBeNull(property.Type)
             || property.HasAnyAttribute(IgnoredAttributes)
             || IsNewtonsoftJsonPropertyRequired(property)
-            || property.IsRequired();
+            || property.IsRequired;
 
         static bool IsNewtonsoftJsonPropertyRequired(IPropertySymbol property) =>
             property.GetAttributes(KnownType.Newtonsoft_Json_JsonPropertyAttribute).FirstOrDefault() is { } attribute
@@ -108,7 +108,7 @@ public sealed class AvoidUnderPosting : SonarDiagnosticAnalyzer
         || !CanBeUsedInModelBinding(namedType);
 
     private static bool CanBeUsedInModelBinding(INamedTypeSymbol type) =>
-        !type.IsTupleType()                                             // Tuples are not supported (unless a custom Model Binder is used)
+        !type.IsTupleType                                               // Tuples are not supported (unless a custom Model Binder is used)
         && (type.Constructors.Any(x => x.Parameters.Length == 0)        // The type must have a parameterless constructor, unless
             || type.IsValueType                                         // - it's a value type
             || type.IsRecord                                            // - it's a record type

@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -29,16 +24,22 @@ public static partial class PointerTypeSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(PointerTypeSyntax);
 
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNint");
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNotNull");
-    private static readonly Func<PointerTypeSyntax, Boolean> IsNuintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsNuint");
-    private static readonly Func<PointerTypeSyntax, Boolean> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, Boolean>>(WrappedType, "IsUnmanaged");
+    private static readonly Func<PointerTypeSyntax, bool> IsNintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, bool>>(WrappedType, "IsNint");
+    private static readonly Func<PointerTypeSyntax, bool> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, bool>>(WrappedType, "IsNotNull");
+    private static readonly Func<PointerTypeSyntax, bool> IsNuintAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, bool>>(WrappedType, "IsNuint");
+    private static readonly Func<PointerTypeSyntax, bool> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<PointerTypeSyntax, bool>>(WrappedType, "IsUnmanaged");
+
+    private static readonly Func<PointerTypeSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<PointerTypeSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<PointerTypeSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<PointerTypeSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
 
     extension(PointerTypeSyntax wrappedInstance)
     {
-        public Boolean IsNint => (Boolean)IsNintAccessor(wrappedInstance);
-        public Boolean IsNotNull => (Boolean)IsNotNullAccessor(wrappedInstance);
-        public Boolean IsNuint => (Boolean)IsNuintAccessor(wrappedInstance);
-        public Boolean IsUnmanaged => (Boolean)IsUnmanagedAccessor(wrappedInstance);
+        public bool IsNint => (bool)IsNintAccessor(wrappedInstance);
+        public bool IsNotNull => (bool)IsNotNullAccessor(wrappedInstance);
+        public bool IsNuint => (bool)IsNuintAccessor(wrappedInstance);
+        public bool IsUnmanaged => (bool)IsUnmanagedAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
     }
 }

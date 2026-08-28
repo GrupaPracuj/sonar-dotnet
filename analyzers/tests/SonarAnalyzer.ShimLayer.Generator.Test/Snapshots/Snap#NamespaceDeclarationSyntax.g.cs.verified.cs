@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -32,9 +27,25 @@ public static partial class NamespaceDeclarationSyntaxShimExtensions
     private static readonly Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
     private static readonly Func<NamespaceDeclarationSyntax, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<NamespaceDeclarationSyntax, SyntaxTokenList>>(WrappedType, "Modifiers");
 
+    private static readonly Func<NamespaceDeclarationSyntax, AttributeListSyntax[], NamespaceDeclarationSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, AttributeListSyntax[], NamespaceDeclarationSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxToken[], NamespaceDeclarationSyntax> AddModifiersAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, SyntaxToken[], NamespaceDeclarationSyntax>>(WrappedType, "AddModifiers");
+    private static readonly Func<NamespaceDeclarationSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, NameSyntax, SyntaxToken, SyntaxList<ExternAliasDirectiveSyntax>, SyntaxList<UsingDirectiveSyntax>, SyntaxList<MemberDeclarationSyntax>, SyntaxToken, SyntaxToken, NamespaceDeclarationSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>, SyntaxTokenList, SyntaxToken, NameSyntax, SyntaxToken, SyntaxList<ExternAliasDirectiveSyntax>, SyntaxList<UsingDirectiveSyntax>, SyntaxList<MemberDeclarationSyntax>, SyntaxToken, SyntaxToken, NamespaceDeclarationSyntax>>(WrappedType, "Update");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>, NamespaceDeclarationSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, SyntaxList<AttributeListSyntax>, NamespaceDeclarationSyntax>>(WrappedType, "WithAttributeLists");
+    private static readonly Func<NamespaceDeclarationSyntax, SyntaxTokenList, NamespaceDeclarationSyntax> WithModifiersAccessor = AccessorFactory.CreateMethod<Func<NamespaceDeclarationSyntax, SyntaxTokenList, NamespaceDeclarationSyntax>>(WrappedType, "WithModifiers");
+
     extension(NamespaceDeclarationSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
         public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+
+        public NamespaceDeclarationSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public NamespaceDeclarationSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public NamespaceDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken namespaceKeyword, NameSyntax name, SyntaxToken openBraceToken, SyntaxList<ExternAliasDirectiveSyntax> externs, SyntaxList<UsingDirectiveSyntax> usings, SyntaxList<MemberDeclarationSyntax> members, SyntaxToken closeBraceToken, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, modifiers, namespaceKeyword, name, openBraceToken, externs, usings, members, closeBraceToken, semicolonToken);
+        public NamespaceDeclarationSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
+        public NamespaceDeclarationSyntax WithModifiers(SyntaxTokenList modifiers) => WithModifiersAccessor(wrappedInstance, modifiers);
     }
 }

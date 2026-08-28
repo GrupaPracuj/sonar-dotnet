@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class ThrowStatementSyntaxShimExtensions
 
     private static readonly Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<ThrowStatementSyntax, AttributeListSyntax[], ThrowStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<ThrowStatementSyntax, AttributeListSyntax[], ThrowStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<ThrowStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ThrowStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<ThrowStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ThrowStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, ExpressionSyntax, SyntaxToken, ThrowStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, ExpressionSyntax, SyntaxToken, ThrowStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>, ThrowStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<ThrowStatementSyntax, SyntaxList<AttributeListSyntax>, ThrowStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(ThrowStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public ThrowStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public ThrowStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken throwKeyword, ExpressionSyntax expression, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, throwKeyword, expression, semicolonToken);
+        public ThrowStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

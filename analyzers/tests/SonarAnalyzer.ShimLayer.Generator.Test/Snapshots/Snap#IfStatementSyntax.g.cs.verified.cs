@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class IfStatementSyntaxShimExtensions
 
     private static readonly Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<IfStatementSyntax, AttributeListSyntax[], IfStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<IfStatementSyntax, AttributeListSyntax[], IfStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<IfStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<IfStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<IfStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<IfStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ElseClauseSyntax, IfStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ElseClauseSyntax, IfStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>, IfStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<IfStatementSyntax, SyntaxList<AttributeListSyntax>, IfStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(IfStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public IfStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public IfStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken ifKeyword, SyntaxToken openParenToken, ExpressionSyntax condition, SyntaxToken closeParenToken, StatementSyntax statement, ElseClauseSyntax @else) => UpdateAccessor(wrappedInstance, attributeLists, ifKeyword, openParenToken, condition, closeParenToken, statement, @else);
+        public IfStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

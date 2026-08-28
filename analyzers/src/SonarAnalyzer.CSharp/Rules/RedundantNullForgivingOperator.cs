@@ -56,6 +56,16 @@ public sealed class RedundantNullForgivingOperator : SonarDiagnosticAnalyzer
             return false;
         }
 
+        // GetSpeculativeTypeInfo() wrongly reports NotNull when "suppression" is the receiver of a chain that is directly awaited,
+        // e.g. "await service!.RunAsync()", even without any narrowing. We can't trust the speculative result in that shape.
+        // This is a known limitation of speculative binding: https://github.com/dotnet/roslyn/issues/35037
+        // This bail-out causes an FN when the receiver was genuinely narrowed: https://sonarsource.atlassian.net/browse/NET-4415
+        var chainRoot = suppression.ChainRoot;
+        if (chainRoot is { Parent: AwaitExpressionSyntax { Expression: not null } })
+        {
+            return false;
+        }
+
         var typeInfo = model.GetSpeculativeTypeInfo(suppression.Operand.SpanStart, suppression.Operand, SpeculativeBindingOption.BindAsExpression);
         return typeInfo.Nullability().FlowState == NullableFlowState.NotNull && !IsOblivious(model, suppression.Operand) && !HasNestedNullableAnnotation(typeInfo.Type);
     }
@@ -65,9 +75,9 @@ public sealed class RedundantNullForgivingOperator : SonarDiagnosticAnalyzer
     private static bool IsOblivious(SemanticModel model, ExpressionSyntax operand) =>
         model.GetSymbolInfo(operand).Symbol switch
         {
-            IPropertySymbol property => property.NullableAnnotation() == NullableAnnotation.None,
-            IFieldSymbol field => field.NullableAnnotation() == NullableAnnotation.None,
-            IMethodSymbol method => method.ReturnNullableAnnotation() == NullableAnnotation.None,
+            IPropertySymbol property => property.NullableAnnotation == NullableAnnotation.None,
+            IFieldSymbol field => field.NullableAnnotation == NullableAnnotation.None,
+            IMethodSymbol method => method.ReturnNullableAnnotation == NullableAnnotation.None,
             // A "var" local has no annotation of its own, so we recurse into its initializer instead; explicitly-typed
             // locals are left alone. Chains can't cycle: an initializer can only reference symbols declared earlier.
             ILocalSymbol { FirstSyntaxRef: VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax { Type.IsVar: true }, Initializer.Value: { } initializer } } => IsOblivious(model, initializer),
@@ -78,9 +88,9 @@ public sealed class RedundantNullForgivingOperator : SonarDiagnosticAnalyzer
     private static bool HasNestedNullableAnnotation(ITypeSymbol type) =>
         type switch
         {
-            IArrayTypeSymbol array => array.ElementNullableAnnotation() == NullableAnnotation.Annotated || HasNestedNullableAnnotation(array.ElementType),
+            IArrayTypeSymbol array => array.ElementNullableAnnotation == NullableAnnotation.Annotated || HasNestedNullableAnnotation(array.ElementType),
             INamedTypeSymbol { IsGenericType: true } named => named.TypeArguments.Zip(
-                named.TypeArgumentNullableAnnotations(),
+                named.TypeArgumentNullableAnnotations,
                 (arg, ann) => ann == NullableAnnotation.Annotated || HasNestedNullableAnnotation(arg)).Contains(true),
             _ => false,
         };

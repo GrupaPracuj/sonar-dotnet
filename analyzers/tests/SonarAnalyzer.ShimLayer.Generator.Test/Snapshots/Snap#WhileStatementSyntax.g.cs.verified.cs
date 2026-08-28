@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class WhileStatementSyntaxShimExtensions
 
     private static readonly Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<WhileStatementSyntax, AttributeListSyntax[], WhileStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<WhileStatementSyntax, AttributeListSyntax[], WhileStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<WhileStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<WhileStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<WhileStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<WhileStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, WhileStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, WhileStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>, WhileStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<WhileStatementSyntax, SyntaxList<AttributeListSyntax>, WhileStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(WhileStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public WhileStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public WhileStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken whileKeyword, SyntaxToken openParenToken, ExpressionSyntax condition, SyntaxToken closeParenToken, StatementSyntax statement) => UpdateAccessor(wrappedInstance, attributeLists, whileKeyword, openParenToken, condition, closeParenToken, statement);
+        public WhileStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }

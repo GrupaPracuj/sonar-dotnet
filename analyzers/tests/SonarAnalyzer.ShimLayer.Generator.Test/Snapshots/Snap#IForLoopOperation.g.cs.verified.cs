@@ -16,20 +16,12 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly partial struct IForLoopOperationWrapper : IOperationWrapper
+public readonly struct IForLoopOperationWrapper : IOperationWrapper
 {
-    public const string WrappedTypeName = "Microsoft.CodeAnalysis.Operations.IForLoopOperation";
-
-    private static readonly Type WrappedType = TypeRegister.LatestType(typeof(IForLoopOperationWrapper));
+    private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IForLoopOperation");
+    private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly IOperation wrappedInstance;
 
     private static readonly Func<IOperation, ImmutableArray<IOperation>> AtLoopBottomAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<IOperation>>>(WrappedType, "AtLoopBottom");
@@ -40,18 +32,17 @@ public readonly partial struct IForLoopOperationWrapper : IOperationWrapper
     private static readonly Func<IOperation, ImmutableArray<ILocalSymbol>> ConditionLocalsAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<ILocalSymbol>>>(WrappedType, "ConditionLocals");
     private static readonly Func<IOperation, ILabelSymbol> ContinueLabelAccessor = AccessorFactory.CreateProperty<Func<IOperation, ILabelSymbol>>(WrappedType, "ContinueLabel");
     private static readonly Func<IOperation, ILabelSymbol> ExitLabelAccessor = AccessorFactory.CreateProperty<Func<IOperation, ILabelSymbol>>(WrappedType, "ExitLabel");
-    private static readonly Func<IOperation, Boolean> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, Boolean>>(WrappedType, "IsImplicit");
-    private static readonly Func<IOperation, String> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, String>>(WrappedType, "Language");
+    private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
+    private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
     private static readonly Func<IOperation, ImmutableArray<ILocalSymbol>> LocalsAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<ILocalSymbol>>>(WrappedType, "Locals");
     private static readonly Func<IOperation, LoopKind> LoopKindAccessor = AccessorFactory.CreateProperty<Func<IOperation, LoopKind>>(WrappedType, "LoopKind");
     private static readonly Func<IOperation, IOperation> ParentAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Parent");
     private static readonly Func<IOperation, SemanticModel> SemanticModelAccessor = AccessorFactory.CreateProperty<Func<IOperation, SemanticModel>>(WrappedType, "SemanticModel");
 
+    private static readonly Action<IOperation, OperationVisitorWrapper> AcceptAccessor = AccessorFactory.CreateMethod<Action<IOperation, OperationVisitorWrapper>>(WrappedType, "Accept");
+
     private IForLoopOperationWrapper(IOperation wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
-
-    [Obsolete("Use WrappedInstance instead")]
-    public IOperation WrappedOperation => wrappedInstance;
 
     public IOperation WrappedInstance => wrappedInstance;
 
@@ -67,39 +58,39 @@ public readonly partial struct IForLoopOperationWrapper : IOperationWrapper
     public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
     public IOperation Condition => ConditionAccessor(wrappedInstance);
     public ImmutableArray<ILocalSymbol> ConditionLocals => (ImmutableArray<ILocalSymbol>)ConditionLocalsAccessor(wrappedInstance);
-    public ILabelSymbol ContinueLabel => (ILabelSymbol)ContinueLabelAccessor(wrappedInstance);
-    public ILabelSymbol ExitLabel => (ILabelSymbol)ExitLabelAccessor(wrappedInstance);
-    public Boolean IsImplicit => (Boolean)IsImplicitAccessor(wrappedInstance);
-    public String Language => (String)LanguageAccessor(wrappedInstance);
+    public ILabelSymbol ContinueLabel => ContinueLabelAccessor(wrappedInstance);
+    public ILabelSymbol ExitLabel => ExitLabelAccessor(wrappedInstance);
+    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
+    public string Language => (string)LanguageAccessor(wrappedInstance);
     public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
     public LoopKind LoopKind => (LoopKind)LoopKindAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
-    public SemanticModel SemanticModel => (SemanticModel)SemanticModelAccessor(wrappedInstance);
+    public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
 
-    [Obsolete("Use From instead")]
-    public static IForLoopOperationWrapper FromOperation(IOperation operation) =>
-        From(operation);
+    public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 
-    public static IForLoopOperationWrapper From(IOperation operation)
+    public static IForLoopOperationWrapper? FromOrDefault(IOperation instance) =>
+        IsInstance(instance) ? From(instance) : null;
+
+    public static IForLoopOperationWrapper From(IOperation instance)
     {
-        if (operation is null)
+        if (instance is null)
         {
             return default;
         }
-        else if (IsInstance(operation))
+        else if (IsInstance(instance))
         {
-            return new IForLoopOperationWrapper(operation);
+            return new IForLoopOperationWrapper((IOperation)instance);
         }
         else
         {
-            throw new InvalidCastException($"Cannot cast '{operation.GetType().FullName}' to '{WrappedTypeName}'");
+            throw new InvalidCastException($"Cannot cast '{instance.GetType().FullName}' to 'Microsoft.CodeAnalysis.Operations.IForLoopOperation'");
         }
     }
 
-    public static bool IsInstance(IOperation operation) =>
-        operation is not null && LightupHelpers.CanWrapOperation(operation, WrappedType);
+    public static bool IsInstance(IOperation instance) =>
+        WrappedType.CanWrap(CanWrapCache, instance);
 
     public static implicit operator ILoopOperationWrapper(IForLoopOperationWrapper up) => ILoopOperationWrapper.From(up.WrappedInstance);
     public static explicit operator IForLoopOperationWrapper(ILoopOperationWrapper down) => IForLoopOperationWrapper.From(down.WrappedInstance);
-
 }

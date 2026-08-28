@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -29,16 +24,22 @@ public static partial class TypeSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(TypeSyntax);
 
-    private static readonly Func<TypeSyntax, Boolean> IsNintAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, Boolean>>(WrappedType, "IsNint");
-    private static readonly Func<TypeSyntax, Boolean> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, Boolean>>(WrappedType, "IsNotNull");
-    private static readonly Func<TypeSyntax, Boolean> IsNuintAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, Boolean>>(WrappedType, "IsNuint");
-    private static readonly Func<TypeSyntax, Boolean> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, Boolean>>(WrappedType, "IsUnmanaged");
+    private static readonly Func<TypeSyntax, bool> IsNintAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, bool>>(WrappedType, "IsNint");
+    private static readonly Func<TypeSyntax, bool> IsNotNullAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, bool>>(WrappedType, "IsNotNull");
+    private static readonly Func<TypeSyntax, bool> IsNuintAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, bool>>(WrappedType, "IsNuint");
+    private static readonly Func<TypeSyntax, bool> IsUnmanagedAccessor = AccessorFactory.CreateProperty<Func<TypeSyntax, bool>>(WrappedType, "IsUnmanaged");
+
+    private static readonly Func<TypeSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<TypeSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
 
     extension(TypeSyntax wrappedInstance)
     {
-        public Boolean IsNint => (Boolean)IsNintAccessor(wrappedInstance);
-        public Boolean IsNotNull => (Boolean)IsNotNullAccessor(wrappedInstance);
-        public Boolean IsNuint => (Boolean)IsNuintAccessor(wrappedInstance);
-        public Boolean IsUnmanaged => (Boolean)IsUnmanagedAccessor(wrappedInstance);
+        public bool IsNint => (bool)IsNintAccessor(wrappedInstance);
+        public bool IsNotNull => (bool)IsNotNullAccessor(wrappedInstance);
+        public bool IsNuint => (bool)IsNuintAccessor(wrappedInstance);
+        public bool IsUnmanaged => (bool)IsUnmanagedAccessor(wrappedInstance);
+
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
     }
 }

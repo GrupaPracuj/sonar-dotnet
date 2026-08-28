@@ -16,12 +16,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Immutable;
 
 namespace SonarAnalyzer.ShimLayer;
 
@@ -31,8 +26,20 @@ public static partial class DoStatementSyntaxShimExtensions
 
     private static readonly Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>> AttributeListsAccessor = AccessorFactory.CreateProperty<Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>>>(WrappedType, "AttributeLists");
 
+    private static readonly Func<DoStatementSyntax, AttributeListSyntax[], DoStatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<DoStatementSyntax, AttributeListSyntax[], DoStatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<DoStatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<DoStatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
+    private static readonly Func<DoStatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<DoStatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
+    private static readonly Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, SyntaxToken, DoStatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, SyntaxToken, DoStatementSyntax>>(WrappedType, "Update");
+    private static readonly Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>, DoStatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<DoStatementSyntax, SyntaxList<AttributeListSyntax>, DoStatementSyntax>>(WrappedType, "WithAttributeLists");
+
     extension(DoStatementSyntax wrappedInstance)
     {
         public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+
+        public DoStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public DoStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken doKeyword, StatementSyntax statement, SyntaxToken whileKeyword, SyntaxToken openParenToken, ExpressionSyntax condition, SyntaxToken closeParenToken, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, doKeyword, statement, whileKeyword, openParenToken, condition, closeParenToken, semicolonToken);
+        public DoStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
     }
 }
