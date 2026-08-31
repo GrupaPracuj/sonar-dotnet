@@ -37,6 +37,57 @@ internal static class GpLoopCallHelper
             .Any(x => IsDeclaredByLoop(x, loop, body));
     }
 
+    // The classic N+1: one call fetches a collection and the loop over that result issues another call per element.
+    // The defect is visible in the method itself, so unlike the synchronous-API-path check this needs no call graph -
+    // which is what makes it reach data access that lives in its own assembly, away from the controller.
+    internal static bool IteratesFetchedSequence(InvocationExpressionSyntax invocation, SemanticModel model)
+    {
+        var loop = invocation.Ancestors().FirstOrDefault(x => LoopKinds.Contains(x.Kind()) || IsScopeBoundary(x));
+        return loop is ForEachStatementSyntax forEach
+            && !IteratesBatches(forEach, model)
+            && IsFetched(forEach.Expression, model);
+    }
+
+    private static bool IsFetched(ExpressionSyntax expression, SemanticModel model)
+    {
+        switch (expression?.RemoveParentheses())
+        {
+            case AwaitExpressionSyntax awaited:
+                return IsFetched(awaited.Expression, model);
+            case InvocationExpressionSyntax call:
+                return ChainInvocations(call).Any(x => IsFetchCall(x, model));
+            case IdentifierNameSyntax identifier:
+                return model.GetSymbolInfo(identifier).Symbol is ILocalSymbol local
+                    && Initializer(local) is { } initializer
+                    && IsFetched(initializer, model);
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsFetchCall(InvocationExpressionSyntax invocation, SemanticModel model) =>
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+        && (GpDatabaseCallHelper.IsDatabaseCall(model, invocation, method) || GpHttpCallHelper.IsHttpCall(method));
+
+    private static ExpressionSyntax Initializer(ILocalSymbol local) =>
+        local.DeclaringSyntaxReferences
+            .Select(x => x.GetSyntax())
+            .OfType<VariableDeclaratorSyntax>()
+            .Select(x => x.Initializer?.Value)
+            .FirstOrDefault(x => x is not null);
+
+    private static IEnumerable<InvocationExpressionSyntax> ChainInvocations(InvocationExpressionSyntax invocation)
+    {
+        for (var current = invocation; current is not null;)
+        {
+            yield return current;
+            current = current.Expression is MemberAccessExpressionSyntax { Expression: { } receiver }
+                ? receiver.RemoveParentheses() as InvocationExpressionSyntax
+                    ?? (receiver.RemoveParentheses() as AwaitExpressionSyntax)?.Expression.RemoveParentheses() as InvocationExpressionSyntax
+                : null;
+        }
+    }
+
     private static bool IsDeclaredByLoop(ILocalSymbol local, SyntaxNode loop, StatementSyntax body) =>
         local.DeclaringSyntaxReferences
             .Select(x => x.GetSyntax())

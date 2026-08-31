@@ -61,9 +61,13 @@ public sealed class GetEndpointsShouldNotHaveSideEffects : SonarDiagnosticAnalyz
         context.ReportIssue(Rule, invocation, method.Name);
     }
 
+    // Controllers delegate: the write that makes a GET unsafe is almost never in the action itself but in the handler,
+    // service or repository it calls. The call graph is the one the loop rules already use, rooted at GET actions here.
+    // It is built per compilation, so a handler living in its own assembly stays out of reach.
     private static bool IsInGetEndpoint(InvocationExpressionSyntax invocation, SemanticModel model) =>
         (model.GetEnclosingSymbol(invocation.SpanStart) is IMethodSymbol enclosing && IsHttpGetAction(enclosing))
-        || GpMinimalApi.TryGetInlineHandler(invocation, model, "MapGet", out _, out _, out _, out _);
+        || GpMinimalApi.TryGetInlineHandler(invocation, model, "MapGet", out _, out _, out _, out _)
+        || GpSynchronousApiReachability.IsReachableFromGet(model, invocation);
 
     private static bool IsStateChanging(IMethodSymbol method) =>
         (PersistenceMethods.Contains(method.Name) && IsEntityFrameworkTarget(method.ContainingType))

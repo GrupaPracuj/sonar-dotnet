@@ -24,13 +24,16 @@ public async Task&lt;IActionResult&gt; Confirm(int id)
 <code>SaveChangesAsync</code>, <code>Add</code>, <code>AddAsync</code>, <code>AddRange</code>, <code>AddRangeAsync</code>, <code>Update</code>,
 <code>UpdateRange</code>, <code>Remove</code>, <code>RemoveRange</code>, <code>ExecuteDelete</code>, <code>ExecuteDeleteAsync</code>,
 <code>ExecuteUpdate</code> and <code>ExecuteUpdateAsync</code>. It also reports GP.Juno or MassTransit calls to <code>Publish</code>,
-<code>PublishBatch</code>, <code>Send</code> and <code>RespondAsync</code>. Only calls made directly in an action annotated with
-<code>[HttpGet]</code> are checked. The same precise calls are checked inside an inline handler registered with the official ASP.NET Core
-<code>MapGet</code> extension. Registration code, named handlers, nested lambdas, local functions and lookalike mapping APIs are not attributed to the
-endpoint.</p>
+<code>PublishBatch</code>, <code>Send</code> and <code>RespondAsync</code>. It checks the action annotated with <code>[HttpGet]</code>, the inline
+handler registered with the official ASP.NET Core <code>MapGet</code> extension, and the methods those reach through the call graph - the write that
+makes a <code>GET</code> unsafe usually sits in the handler, service or repository the action delegates to rather than in the action itself.
+Registration code, named handlers, nested lambdas, local functions and lookalike mapping APIs are not attributed to the endpoint.</p>
 <h3>Exceptions</h3>
-<p>Work reached through a service the action calls is not reported - the rule does not follow the call graph, so it sees only what the action does
-itself. An issue here is therefore reliable, but its absence is not proof that the endpoint is read-only.</p>
+<p>The call graph is built per compilation, so a service or handler that lives in its own assembly is out of reach: an issue here is reliable, but its
+absence is not proof that the endpoint is read-only.</p>
+<p>The rule reports the write, not the intent behind it. A <code>GET</code> that deliberately records something on the side - an audit trail, a view
+counter, a cache entry written through the same context - is reported like any other; that write is still a write, and it is still repeated by every
+prefetch and retry.</p>
 <h2>How to fix it</h2>
 <p>Move the operation to a method that matches what it does - <code>POST</code> for an action, <code>PUT</code>/<code>PATCH</code> for an update,
 <code>DELETE</code> for a removal - and leave <code>GET</code> to read.</p>

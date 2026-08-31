@@ -195,6 +195,53 @@ public class DatabaseCallShouldNotBeMadeInALoopTest
             """)
             .VerifyNoIssues();
 
+    // N+1: the loop iterates the result of another query, so the fan-out is visible in the method itself and the
+    // rule does not need the caller to be an API action.
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_ReportsQueryPerElementOfAQueryResult() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ItemsSynchronizer
+            {
+                public async Task SyncFromLocal(IDbConnection connection)
+                {
+                    var items = await connection.QueryAsync<Item>("select * from Items");
+                    foreach (var item in items)
+                    {
+                        await connection.ExecuteAsync("update Items set Seen = 1 where Id = @Id", new { item.Id }); // Noncompliant
+                    }
+                }
+
+                public async Task SyncFromAwaitedQuery(IDbConnection connection)
+                {
+                    foreach (var item in await connection.QueryAsync<Item>("select * from Items"))
+                    {
+                        await connection.QuerySingleAsync<Item>("select * from Items where Id = @Id", new { item.Id }); // Noncompliant
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void DatabaseCallShouldNotBeMadeInALoop_CompliantWhenTheSequenceIsNotFetched() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class ItemsSynchronizer
+            {
+                public async Task Sync(IDbConnection connection, IEnumerable<Item> items)
+                {
+                    foreach (var item in items)
+                    {
+                        await connection.ExecuteAsync("update Items set Seen = 1 where Id = @Id", new { item.Id });
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void DatabaseCallShouldNotBeMadeInALoop_IndirectLoopDependencyIsIgnored() =>
         builder.AddSnippet(

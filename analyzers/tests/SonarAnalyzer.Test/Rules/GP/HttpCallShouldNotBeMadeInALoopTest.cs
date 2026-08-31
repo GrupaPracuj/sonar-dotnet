@@ -21,6 +21,7 @@ public class HttpCallShouldNotBeMadeInALoopTest
         using System;
         using System.Collections.Generic;
         using System.Net.Http;
+        using System.Net.Http.Json;
         using System.Threading.Tasks;
 
         namespace System.Net.Http
@@ -29,6 +30,14 @@ public class HttpCallShouldNotBeMadeInALoopTest
             {
                 public Task<string> GetStringAsync(string url) => null;
                 public void CancelPendingRequests() { }
+            }
+        }
+
+        namespace System.Net.Http.Json
+        {
+            public static class HttpClientJsonExtensions
+            {
+                public static Task<T> GetFromJsonAsync<T>(this HttpClient client, string url) => null;
             }
         }
 
@@ -148,6 +157,43 @@ public class HttpCallShouldNotBeMadeInALoopTest
                     {
                         await client.GetStringAsync($"/items/{i}");
                         i++;
+                    }
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    // N+1: the loop iterates what another request returned, so the fan-out is visible in the method itself and the
+    // rule does not need the caller to be an API action.
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_ReportsRequestPerElementOfAFetchedSequence() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Synchronizer
+            {
+                public async Task Sync(HttpClient client)
+                {
+                    var ids = await client.GetFromJsonAsync<List<int>>("/items");
+                    foreach (var id in ids)
+                    {
+                        await client.GetStringAsync($"/items/{id}"); // Noncompliant
+                    }
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void HttpCallShouldNotBeMadeInALoop_CompliantWhenTheSequenceIsNotFetched() =>
+        builder.AddSnippet(
+            Stubs + """
+            public class Synchronizer
+            {
+                public async Task Sync(HttpClient client, IEnumerable<int> ids)
+                {
+                    foreach (var id in ids)
+                    {
+                        await client.GetStringAsync($"/items/{id}");
                     }
                 }
             }

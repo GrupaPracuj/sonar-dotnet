@@ -115,6 +115,71 @@ public class GetEndpointsShouldNotHaveSideEffectsTest
             .Verify();
 
     [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_NoncompliantForWriteInACalledService() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface IOrdersService
+            {
+                void Confirm(int id);
+            }
+
+            public class OrdersService : IOrdersService
+            {
+                private readonly ShopDbContext _context;
+                private readonly GP.Juno.Abstractions.EventStream.IPublisher _publisher;
+
+                public void Confirm(int id)
+                {
+                    _context.SaveChanges(); // Noncompliant {{A GET endpoint should not change state - 'SaveChanges' makes this endpoint unsafe to retry, prefetch or cache.}}
+                    _publisher.Publish(new OrderConfirmed()); // Noncompliant {{A GET endpoint should not change state - 'Publish' makes this endpoint unsafe to retry, prefetch or cache.}}
+                }
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly IOrdersService _orders;
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Confirm(int id)
+                {
+                    _orders.Confirm(id);
+                    return Ok();
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_CompliantForWriteInAServiceCalledFromPostOnly() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrdersService
+            {
+                private readonly ShopDbContext _context;
+
+                public void Confirm(int id) => _context.SaveChanges();
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly OrdersService _orders;
+
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public Microsoft.AspNetCore.Mvc.IActionResult Confirm(int id)
+                {
+                    _orders.Confirm(id);
+                    return Ok();
+                }
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Get(int id) => Ok();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void GetEndpointsShouldNotHaveSideEffects_CompliantForPostEndpoint() =>
         builder.AddSnippet(
             Stubs + """

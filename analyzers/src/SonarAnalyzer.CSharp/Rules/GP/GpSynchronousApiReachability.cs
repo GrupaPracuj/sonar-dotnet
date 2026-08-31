@@ -23,17 +23,39 @@ internal static class GpSynchronousApiReachability
         "MapPut",
     };
 
-    private static readonly ConditionalWeakTable<Compilation, Lazy<Reachability>> Cache = new();
+    private static readonly HashSet<string> GetMapMethods = new(StringComparer.Ordinal) { "MapGet" };
 
+    private static readonly ConditionalWeakTable<Compilation, Lazy<Reachability>> AnyActionCache = new();
+    private static readonly ConditionalWeakTable<Compilation, Lazy<Reachability>> GetActionCache = new();
+
+    // Every HTTP action is a root: latency and fan-out matter on any synchronous request path.
     internal static bool IsReachable(SemanticModel model, SyntaxNode node) =>
+        IsReachable(model, node, AnyActionCache, IsAnyAction, MinimalApiMapMethods);
+
+    // Only GET actions are roots: what a GET is allowed to do is a different question from how long it takes.
+    internal static bool IsReachableFromGet(SemanticModel model, SyntaxNode node) =>
+        IsReachable(model, node, GetActionCache, IsGetAction, GetMapMethods);
+
+    private static bool IsReachable(SemanticModel model,
+                                    SyntaxNode node,
+                                    ConditionalWeakTable<Compilation, Lazy<Reachability>> cache,
+                                    Func<IMethodSymbol, bool> isRoot,
+                                    HashSet<string> mapMethods) =>
         model.GetEnclosingSymbol(node.SpanStart) is IMethodSymbol method
-        && Cache.GetValue(
+        && cache.GetValue(
             model.Compilation,
             compilation => new Lazy<Reachability>(
-                () => Build(compilation),
+                () => Build(compilation, isRoot, mapMethods),
                 LazyThreadSafetyMode.ExecutionAndPublication)).Value.Contains(method);
 
-    private static Reachability Build(Compilation compilation)
+    private static bool IsAnyAction(IMethodSymbol method) =>
+        GpOpenApiMetadata.IsOpenApiAction(method) && !GpOpenApiMetadata.IsIgnored(method);
+
+    private static bool IsGetAction(IMethodSymbol method) =>
+        method.IsControllerActionMethod
+        && method.AttributesWithInherited.Select(x => x.AttributeClass?.Name).Any(x => x is "HttpGet" or "HttpGetAttribute");
+
+    private static Reachability Build(Compilation compilation, Func<IMethodSymbol, bool> isRoot, HashSet<string> mapMethods)
     {
         var roots = new HashSet<IMethodSymbol>();
         var calls = new Dictionary<IMethodSymbol, HashSet<IMethodSymbol>>();
@@ -52,7 +74,7 @@ internal static class GpSynchronousApiReachability
 
                 method = Normalize(method);
                 declaredMethods.Add(method);
-                if (GpOpenApiMetadata.IsOpenApiAction(method) && !GpOpenApiMetadata.IsIgnored(method))
+                if (isRoot(method))
                 {
                     roots.Add(method);
                 }
@@ -71,7 +93,7 @@ internal static class GpSynchronousApiReachability
                     && GpMinimalApi.TryGetInlineHandler(
                         nodeInHandler,
                         model,
-                        MinimalApiMapMethods,
+                        mapMethods,
                         out _,
                         out _,
                         out _,

@@ -44,8 +44,9 @@ async Task&lt;List&lt;Order&gt;&gt; GetOrders(HttpClient client, IEnumerable&lt;
 }
 </pre>
 <h3>Exceptions</h3>
-<p>The rule follows calls within one compilation from MVC actions and inline Minimal API handlers. Calls that are not reachable from such an endpoint
-are not reported. Calls through another project are deliberately not guessed.</p>
+<p>A call qualifies in one of two ways. Either it is reachable, within one compilation, from an MVC action or an inline Minimal API handler - calls
+through another project are deliberately not guessed - or the loop iterates the result of another request or query made in the same method, which is
+the N+1 shape and a defect wherever it sits, whoever the caller is.</p>
 <p>Only a direct call whose receiver or arguments reference a variable declared by the enclosing loop is reported. This is a deliberately narrow
 signal that the request changes for each element. Retry and polling loops that repeat the same request are not reported.</p>
 <p>A loop whose element is itself a collection is not reported: one request per batch is the remedy this rule steers towards, not the defect. A call

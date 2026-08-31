@@ -7,8 +7,8 @@ the service implementation makes that assembly the source of the wire contract a
 contracts project gives both sides a small, versionable dependency containing only shared definitions.</p>
 <p>Exchanging a type from another assembly is not inherently a runtime failure. This rule enforces the GP assembly-boundary policy so ownership,
 versioning and dependencies remain explicit.</p>
-<p>On the REST side the rule looks only at API controllers - a type marked <code>[ApiController]</code> or deriving from
-<code>ControllerBase</code> - and at inline Minimal API handlers. A controller that renders views exchanges its own view models with its own
+<p>On the REST side the rule looks only at API controllers - a type carrying <code>[ApiController]</code>, or deriving from
+<code>ControllerBase</code> without deriving from <code>Controller</code> - and at inline Minimal API handlers. A controller that renders views exchanges its own view models with its own
 pages rather than a contract with another component; GP0132 is the rule that reports such a controller when it turns out to serve REST after
 all. The messaging side applies everywhere, whatever type publishes the message.</p>
 <h2>How to fix it</h2>

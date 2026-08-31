@@ -28,7 +28,8 @@ public sealed class DatabaseCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
         if (GpLoopCallHelper.DependsOnDirectLoopVariable(invocation, context.Model)
             && context.Model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
             && GpDatabaseCallHelper.IsDatabaseCall(context.Model, invocation, method)
-            && GpSynchronousApiReachability.IsReachable(context.Model, invocation))
+            && (GpSynchronousApiReachability.IsReachable(context.Model, invocation)
+                || GpLoopCallHelper.IteratesFetchedSequence(invocation, context.Model)))
         {
             context.ReportIssue(Rule, invocation);
         }

@@ -24,6 +24,7 @@ public class IndexedMigrationColumnShouldNotUseMaxLengthTest
             public abstract class Migration
             {
                 protected CreateRoot Create => null;
+                protected AlterRoot Alter => null;
                 public abstract void Up();
                 public abstract void Down();
             }
@@ -35,11 +36,19 @@ public class IndexedMigrationColumnShouldNotUseMaxLengthTest
                 IndexBuilder PrimaryKey(string name);
             }
 
+            public interface AlterRoot
+            {
+                ColumnBuilder Table(string name);
+            }
+
             public interface ColumnBuilder
             {
                 ColumnBuilder WithColumn(string name);
+                ColumnBuilder AddColumn(string name);
+                ColumnBuilder AlterColumn(string name);
                 ColumnBuilder AsString(int length);
                 ColumnBuilder PrimaryKey();
+                ColumnBuilder Indexed();
                 ColumnBuilder InSchema(string schema);
             }
 
@@ -135,7 +144,57 @@ public class IndexedMigrationColumnShouldNotUseMaxLengthTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void IndexedMigrationColumnShouldNotUseMaxLength_DoesNotCorrelateAcrossMigrationHistory() =>
+    public void IndexedMigrationColumnShouldNotUseMaxLength_CorrelatesAcrossMigrationHistory() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class Migration0010 : FluentMigrator.Migration
+            {
+                public override void Up() =>
+                    Create.Table("Sessions").WithColumn("WalletId").AsString(int.MaxValue); // Noncompliant
+
+                public override void Down() { }
+            }
+
+            public sealed class Migration0020 : FluentMigrator.Migration
+            {
+                public override void Up() =>
+                    Create.Index("IX_Sessions_WalletId").OnTable("Sessions").OnColumn("WalletId");
+
+                public override void Down() { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void IndexedMigrationColumnShouldNotUseMaxLength_ReportsInlineIndexedAndAddedColumns() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public sealed class Migration0010 : FluentMigrator.Migration
+            {
+                public override void Up()
+                {
+                    Create.Table("Sessions")
+                        .WithColumn("WalletId")
+                        .AsString(int.MaxValue) // Noncompliant {{Give indexed column 'WalletId' a bounded string length; SQL Server cannot index NVARCHAR(MAX).}}
+                        .Indexed();
+
+                    Alter.Table("Tokens")
+                        .AddColumn("Tenant")
+                        .AsString(int.MaxValue); // Noncompliant {{Give indexed column 'Tenant' a bounded string length; SQL Server cannot index NVARCHAR(MAX).}}
+                    Create.Index("IX_Tokens_Tenant")
+                        .OnTable("Tokens")
+                        .OnColumn("Tenant");
+                }
+
+                public override void Down() { }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void IndexedMigrationColumnShouldNotUseMaxLength_AllowsColumnBoundedByAnotherMigration() =>
         builder.AddSnippet(
             Stubs + """
 
@@ -148,6 +207,14 @@ public class IndexedMigrationColumnShouldNotUseMaxLengthTest
             }
 
             public sealed class Migration0020 : FluentMigrator.Migration
+            {
+                public override void Up() =>
+                    Alter.Table("Sessions").AlterColumn("WalletId").AsString(64);
+
+                public override void Down() { }
+            }
+
+            public sealed class Migration0030 : FluentMigrator.Migration
             {
                 public override void Up() =>
                     Create.Index("IX_Sessions_WalletId").OnTable("Sessions").OnColumn("WalletId");

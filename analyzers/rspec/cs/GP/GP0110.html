@@ -29,19 +29,29 @@ and stack traces out of the members the client sees.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-[ProducesResponseType(typeof(OrderError), StatusCodes.Status400BadRequest)] // Noncompliant
 public IActionResult Create(CreateOrder order) =&gt;
     BadRequest(new { Code = "invalid-order" }); // Noncompliant
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 public IActionResult Create(CreateOrder order) =&gt;
     Problem(
         type: "https://errors.example.com/invalid-order",
         title: "The order is invalid",
         statusCode: StatusCodes.Status400BadRequest);
 </pre>
+<p>The declared error type is checked the same way:</p>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="2" data-diff-type="noncompliant">
+[ProducesResponseType(typeof(OrderError), StatusCodes.Status400BadRequest)] // Noncompliant
+public IActionResult Create(CreateOrder order) =&gt; Problem(statusCode: StatusCodes.Status400BadRequest);
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="2" data-diff-type="compliant">
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+public IActionResult Create(CreateOrder order) =&gt; Problem(statusCode: StatusCodes.Status400BadRequest);
+</pre>
+<p>When a returned body and the metadata are wrong for the same status, only the returned body is reported - fixing it is what fixes the response.</p>
 <p>When the error carries its own fields, derive from <code>ProblemDetails</code> rather than replacing it:</p>
 <pre>
 public sealed class OrderProblemDetails : ProblemDetails

@@ -28,7 +28,8 @@ public sealed class HttpCallShouldNotBeMadeInALoop : SonarDiagnosticAnalyzer
         if (GpLoopCallHelper.DependsOnDirectLoopVariable(invocation, context.Model)
             && context.Model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
             && GpHttpCallHelper.IsHttpCall(method)
-            && GpSynchronousApiReachability.IsReachable(context.Model, invocation))
+            && (GpSynchronousApiReachability.IsReachable(context.Model, invocation)
+                || GpLoopCallHelper.IteratesFetchedSequence(invocation, context.Model)))
         {
             context.ReportIssue(Rule, invocation);
         }

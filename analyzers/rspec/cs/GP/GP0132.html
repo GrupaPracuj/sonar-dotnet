@@ -12,6 +12,7 @@ the authorization responses - skip anything that renders views, because there a 
 published contract. A REST controller declared as a view-rendering one is therefore excluded from the checks that were written for it.</p>
 <p>The rule reports a controller deriving from <code>Controller</code>, without <code>[ApiController]</code>, whose actions declare a produced media
 type or a response body type, and which never renders a view.</p>
+<p>An abstract base controller is not reported: what it is depends on the types deriving from it, and those are reported on their own.</p>
 <h2>How to fix it</h2>
 <p>Derive from <code>ControllerBase</code> and mark the type <code>[ApiController]</code>. If some actions do render views, keep those in a separate
 controller.</p>
