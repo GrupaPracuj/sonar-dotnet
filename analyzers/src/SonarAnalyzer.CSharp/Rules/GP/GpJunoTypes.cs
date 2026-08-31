@@ -15,6 +15,12 @@ internal static class GpJunoTypes
 {
     internal const string TransactionalInterface = "GP.Juno.Abstractions.Ado.ITransactional";
 
+    // A database operation Juno's runner executes: the runner hands it the connection and the ambient transaction.
+    internal static bool IsDbExecute(ITypeSymbol type) =>
+        type.AllInterfaces.Any(x =>
+            x.Name == "IDbExecute"
+            && x.ContainingNamespace.ToDisplayString() == "GP.Juno.Abstractions.Ado");
+
     internal static bool DerivesFrom(ITypeSymbol type, string baseTypeDisplayName)
     {
         for (var current = type; current is not null; current = current.BaseType)

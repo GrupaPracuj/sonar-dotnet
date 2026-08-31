@@ -125,7 +125,7 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
     // where the connection came from is the runner's business, so only the transaction is checked here.
     private static bool IsRunnerSupplied(SonarSyntaxNodeReportingContext context, SyntaxNode node, ExpressionSyntax connection) =>
         (context.Model.GetEnclosingSymbol(node.SpanStart)?.ContainingType is { } containingType
-         && ControllersShouldNotUseInfrastructureDirectly.IsDbExecute(containingType))
+         && GpJunoTypes.IsDbExecute(containingType))
         || (connection is not null && HelperTransaction(context.Model, node, connection) is not null);
 
     private static bool IsDapperDatabaseOperation(IMethodSymbol method) =>
