@@ -160,11 +160,12 @@ public class ControllersShouldNotUseInfrastructureDirectlyTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void ControllersShouldNotUseInfrastructureDirectly_NoncompliantForPersistenceInApiProject() =>
+    public void ControllersShouldNotUseInfrastructureDirectly_NoncompliantForPersistenceDependenciesInApiProject() =>
         VerifyForAssemblyName(
             Stubs + """
 
-            public sealed class LoadOrders : GP.Juno.Abstractions.Ado.IDbExecute<int> { } // Noncompliant {{Do not use infrastructure type 'LoadOrders' directly in an API project - depend on an application abstraction instead.}}
+            // Declaring the operation here is GP0133's subject, not this rule's.
+            public sealed class LoadOrders : GP.Juno.Abstractions.Ado.IDbExecute<int> { }
 
             public sealed class RuntimeHandler
             {

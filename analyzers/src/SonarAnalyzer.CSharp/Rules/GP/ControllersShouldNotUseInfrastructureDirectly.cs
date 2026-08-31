@@ -37,11 +37,7 @@ public sealed class ControllersShouldNotUseInfrastructureDirectly : SonarDiagnos
             return;
         }
 
-        if (isApiProject && IsPersistenceOperation(type))
-        {
-            context.ReportIssue(Rule, classDeclaration.Identifier, type.Name, "an API project");
-        }
-
+        // Declaring a persistence operation in an API assembly is GP0133's subject; this rule is about using one.
         foreach (var declaredType in DeclaredTypes(classDeclaration))
         {
             if (InfrastructureTypeName(context.Model, declaredType, isController) is { } name)
@@ -98,7 +94,7 @@ public sealed class ControllersShouldNotUseInfrastructureDirectly : SonarDiagnos
         || GpJunoTypes.DerivesFrom(type, "System.Data.Entity.DbContext")
         || GpJunoTypes.DerivesFrom(type, "System.Data.Common.DbConnection");
 
-    private static bool IsApiProject(Compilation compilation) =>
+    internal static bool IsApiProject(Compilation compilation) =>
         compilation.AssemblyName?.EndsWith(".Api", StringComparison.OrdinalIgnoreCase) == true;
 
     internal static bool IsPersistenceOperation(ITypeSymbol type) =>

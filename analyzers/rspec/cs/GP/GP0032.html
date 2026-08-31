@@ -10,8 +10,7 @@ infrastructure types directly.</p>
   <li>a type implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code></li>
 </ul>
 <p>In a non-controller type inside an assembly whose name ends with <code>.Api</code>, the list is narrower: only <code>DbContext</code> and
-<code>DbConnection</code>. Such an assembly is also not the place to implement a persistence operation, so a class there implementing
-<code>IDbExecute</code> or <code>ITransactional</code> is reported on its own declaration.</p>
+<code>DbConnection</code>. Declaring a persistence operation in such an assembly is a separate question, and the subject of GP0133.</p>
 <p>Types are resolved semantically. A name such as <code>OrderService</code> is never used as evidence, and a wrapper around
 <code>DbContext</code> is not reported for its name alone.</p>
 <h2>Where the rule looks</h2>

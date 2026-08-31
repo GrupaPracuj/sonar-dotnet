@@ -1,0 +1,24 @@
+{
+  "title": "Persistence operations should not be declared in an API project",
+  "type": "CODE_SMELL",
+  "code": {
+    "impacts": {
+      "MAINTAINABILITY": "MEDIUM"
+    },
+    "attribute": "MODULAR"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "30min"
+  },
+  "tags": [
+    "gp",
+    "design"
+  ],
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0133",
+  "sqKey": "GP0133",
+  "scope": "Main",
+  "quickfix": "infeasible"
+}
