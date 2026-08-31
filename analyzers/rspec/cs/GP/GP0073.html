@@ -22,6 +22,7 @@ Pascal-case boundaries. That accepts <code>CustomerNIP</code>, whose identifier 
 <code>CodeValue</code>, whose identifier sits in front of a trailing <code>Value</code>. Because whole words are compared rather than substrings,
 <code>Identity</code> and <code>IdempotencyMarker</code> still contain no <code>Id</code>. The identifier may live inside a nested payload object
 when that is how the contract is shaped, for example <code>Source.FileId</code>.</p>
+<p>The issue is reported at the publish registration or call, so an event published from several places is reported at each of them.</p>
 <h3>Exceptions</h3>
 <p>Commands, including legacy <code>*Command</code> types dispatched through a publish API, are outside this event rule. Scheduling and forwarding
 envelopes that carry a nested message are commands as well.</p>
