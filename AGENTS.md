@@ -73,7 +73,7 @@ A concrete example of adapting the right way: upstream turned helpers such as `I
   floods an existing codebase with true-but-low-value findings is not worth shipping.
 - Before adding a rule, check whether an `S`-rule already covers it — and read that rule's *implementation*, not just
   its title. Titles undersell scope, and duplicates have slipped through on title alone.
-- Rule ids are sequential and never reused. Highest so far is **GP0131**, so the next free id is **GP0132**; gaps are
+- Rule ids are sequential and never reused. Highest so far is **GP0132**, so the next free id is **GP0133**; gaps are
   removed rules and stay empty.
 - Decide by Roslyn semantics, not by identifier spelling, whenever the two can disagree.
 - Every rule needs an rspec `.json` (`sqKey`, `scope` must be `Main` or `Tests` — never `All`) and an `.html` with the

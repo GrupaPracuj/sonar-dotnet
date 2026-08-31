@@ -478,13 +478,34 @@ public class PublishedMessagesShouldComeFromContractAssembliesTest
             .VerifyNoIssues();
 
     [TestMethod]
-    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForExplicitBodyOutsideApiController() =>
+    public void PublishedMessagesShouldComeFromContractAssemblies_CompliantForViewRenderingController() =>
         CreateBuilder()
             .AddSnippet(
                 MvcStub + """
 
                 public sealed class ExecuteOrder { }
 
+                public sealed class ExecuteOrderViewModel { }
+
+                public class OrdersController : Microsoft.AspNetCore.Mvc.Controller
+                {
+                    [Microsoft.AspNetCore.Mvc.HttpPost]
+                    public Microsoft.AspNetCore.Mvc.IActionResult Execute(
+                        [Microsoft.AspNetCore.Mvc.FromBody] ExecuteOrder request) =>
+                        Ok(new ExecuteOrderViewModel());
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedMessagesShouldComeFromContractAssemblies_NoncompliantForApiControllerAttributeOnViewRenderingBase() =>
+        CreateBuilder()
+            .AddSnippet(
+                MvcStub + """
+
+                public sealed class ExecuteOrder { }
+
+                [Microsoft.AspNetCore.Mvc.ApiController]
                 public class OrdersController : Microsoft.AspNetCore.Mvc.Controller
                 {
                     [Microsoft.AspNetCore.Mvc.HttpPost]

@@ -105,7 +105,8 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
     private static void AnalyzeControllerAction(SonarSyntaxNodeReportingContext context, string[] contractAssemblyNames)
     {
         var declaration = (MethodDeclarationSyntax)context.Node;
-        if (context.Model.GetDeclaredSymbol(declaration) is not { IsControllerActionMethod: true } method)
+        if (context.Model.GetDeclaredSymbol(declaration) is not { IsControllerActionMethod: true } method
+            || !IsApiSurface(method.ContainingType))
         {
             return;
         }
@@ -236,16 +237,22 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
         !IsServiceParameter(parameter)
         && !HasAttribute(parameter, FromTokenAttribute)
         && !HasAttribute(parameter, SwaggerIgnoreAttribute)
-        && (IsApiController(action) || HasAttribute(parameter, FromBodyAttribute));
+        && (IsApiController(action.ContainingType) || HasAttribute(parameter, FromBodyAttribute));
 
-    private static bool IsApiController(IMethodSymbol action)
+    // Only a REST surface carries contracts. A type deriving from Controller renders views, and its request and
+    // response types are that application's own view models - GP0132 is the rule that asks such a type to become an
+    // API controller in the first place.
+    private static bool IsApiSurface(INamedTypeSymbol type) =>
+        type is { IsCoreApiController: true } || IsApiController(type);
+
+    private static bool IsApiController(INamedTypeSymbol controller)
     {
-        if (action.ContainingAssembly.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == ApiControllerAttribute))
+        if (controller?.ContainingAssembly?.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == ApiControllerAttribute) == true)
         {
             return true;
         }
 
-        for (var type = action.ContainingType; type is not null; type = type.BaseType)
+        for (var type = controller; type is not null; type = type.BaseType)
         {
             if (HasAttribute(type, ApiControllerAttribute))
             {
@@ -269,6 +276,7 @@ public sealed class PublishedMessagesShouldComeFromContractAssemblies : Parametr
         if (GpMvcResults.TryGetResultMethod(context.Model, invocation, out _))
         {
             return context.Model.GetEnclosingSymbol(invocation.SpanStart) is IMethodSymbol { IsControllerActionMethod: true } enclosing
+                && IsApiSurface(enclosing.ContainingType)
                 && ContractType(enclosing.ReturnType) is null;
         }
 

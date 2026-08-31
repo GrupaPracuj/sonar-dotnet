@@ -1,5 +1,4 @@
-<p>A database connection should be created by Juno: either supplied to an <code>IDbExecute</code>, or obtained from
-<code>IAdoConnectionFactory.CreateConnection()</code>. The two are equivalent as far as this rule is concerned.</p>
+<p>A database connection should be created by Juno's <code>IAdoConnectionFactory</code>, not constructed by hand.</p>
 <h2>Why is this an issue?</h2>
 <p>Constructing the connection yourself means supplying the connection string yourself, and that is the actual problem: the address, credentials,
 failover target and pooling settings stop coming from the service's configured data source and start coming from whatever string happened to be in
@@ -10,27 +9,39 @@ using var connection = new SqlConnection(_connectionString);
 <p>Only the act of creating a connection is reported, in the two forms it takes: constructing a <code>DbConnection</code>, and taking one from a
 <code>DbProviderFactory</code>. Code that merely receives a connection is not reported - it did not create it, and it is not where the fix belongs.</p>
 <h2>How to fix it</h2>
-<p>Obtain the connection from <code>IAdoConnectionFactory</code>, or express the work as an <code>IDbExecute</code> and let Juno supply one.</p>
+<p>Inject <code>IAdoConnectionFactory</code> and call <code>CreateConnection()</code>. What the code then does with the connection is outside this
+rule.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-public async Task&lt;Order&gt; Find(int id)
+public sealed class OrdersRepository(string connectionString)
 {
-    using var connection = new SqlConnection(_connectionString); // Noncompliant
-    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+    public async Task&lt;Order&gt; Find(int id)
+    {
+        using var connection = new SqlConnection(connectionString); // Noncompliant
+        return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+    }
 }
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public async Task&lt;Order&gt; Find(int id)
+public sealed class OrdersRepository(IAdoConnectionFactory connectionFactory)
 {
-    await using var connection = connectionFactory.CreateConnection();
-    return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+    public async Task&lt;Order&gt; Find(int id)
+    {
+        await using var connection = connectionFactory.CreateConnection();
+        return await connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
+    }
 }
+</pre>
+<p>A method that is handed a connection has nothing to fix:</p>
+<pre>
+public Task&lt;Order&gt; Find(IDbConnection connection, int id) =&gt;
+    connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @id", new { id });
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
-  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows both shapes this rule points at:
-  <code>IAdoConnectionFactory</code> for a connection you use directly, and <code>IDbExecute</code> for work Juno runs.</li>
+  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a> - <code>src/Juno/Examples/Ado/</code> shows <code>IAdoConnectionFactory</code> in
+  use.</li>
 </ul>

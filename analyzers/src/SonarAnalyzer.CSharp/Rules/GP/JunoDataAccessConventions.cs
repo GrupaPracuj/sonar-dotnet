@@ -15,7 +15,7 @@ public sealed class JunoDataAccessConventions : SonarDiagnosticAnalyzer
     internal const string TransactionRuleId = "GP0129";
     internal const string CancellationRuleId = "GP0130";
 
-    private const string ConnectionMessage = "Obtain the connection from Juno: express the work as an IDbExecute, or use Dapper on a connection created by IAdoConnectionFactory.";
+    private const string ConnectionMessage = "Obtain the connection from Juno's IAdoConnectionFactory instead of constructing it here.";
     private const string TransactionMessage = "Pass the active transaction to this Dapper operation.";
     private const string CancellationMessage = "Pass the CancellationToken through Dapper CommandDefinition.";
 

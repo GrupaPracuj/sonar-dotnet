@@ -140,7 +140,7 @@ public class JunoDataAccessConventionsTest
                 private readonly string _connectionString;
 
                 public System.Data.Common.DbConnection Open() =>
-                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno: express the work as an IDbExecute, or use Dapper on a connection created by IAdoConnectionFactory.}}
+                    new Microsoft.Data.SqlClient.SqlConnection(_connectionString); // Noncompliant {{Obtain the connection from Juno's IAdoConnectionFactory instead of constructing it here.}}
             }
             """)
             .Verify();

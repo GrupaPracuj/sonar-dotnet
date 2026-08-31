@@ -1,0 +1,44 @@
+<p>A controller that serves REST should derive from <code>ControllerBase</code> or carry <code>[ApiController]</code>, not derive from
+<code>Controller</code>.</p>
+<h2>Why is this an issue?</h2>
+<p><code>Controller</code> is the base for controllers that render views: it adds view lookup, view data, temp data and the partial-view machinery on
+top of <code>ControllerBase</code>. A controller that only produces JSON inherits all of it and uses none of it.</p>
+<p>The cost is not only the unused inheritance. Marking the type <code>[ApiController]</code> turns on the conventions an HTTP API is expected to
+follow: an invalid model returns 400 with <code>ValidationProblemDetails</code> before the action body runs, complex parameters are inferred as the
+request body without <code>[FromBody]</code>, and attribute routing becomes mandatory rather than optional. Without it, an invalid request reaches the
+action and each action has to check <code>ModelState</code> for itself - and the ones that forget silently work on a half-bound request.</p>
+<p>The declaration also decides which analyses see the type at all. Rules that reason about an HTTP API - the OpenAPI metadata, the response contracts,
+the authorization responses - skip anything that renders views, because there a returned type is that application's own view model rather than a
+published contract. A REST controller declared as a view-rendering one is therefore excluded from the checks that were written for it.</p>
+<p>The rule reports a controller deriving from <code>Controller</code>, without <code>[ApiController]</code>, whose actions declare a produced media
+type or a response body type, and which never renders a view.</p>
+<h2>How to fix it</h2>
+<p>Derive from <code>ControllerBase</code> and mark the type <code>[ApiController]</code>. If some actions do render views, keep those in a separate
+controller.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[Route("files")]
+public class FilesController : Controller // Noncompliant
+{
+    [HttpGet]
+    [ProducesResponseType(typeof(UserFiles), StatusCodes.Status200OK)]
+    public IActionResult Get() =&gt; Ok(new UserFiles());
+}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[ApiController]
+[Route("files")]
+public class FilesController : ControllerBase
+{
+    [HttpGet]
+    [ProducesResponseType(typeof(UserFiles), StatusCodes.Status200OK)]
+    public IActionResult Get() =&gt; Ok(new UserFiles());
+}
+</pre>
+<h2>Resources</h2>
+<ul>
+  <li><a href="https://learn.microsoft.com/en-us/aspnet/core/web-api/#apicontroller-attribute">Microsoft Learn - the [ApiController] attribute</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/aspnet/core/web-api/#controllerbase-class">Microsoft Learn - ControllerBase versus Controller</a></li>
+</ul>
