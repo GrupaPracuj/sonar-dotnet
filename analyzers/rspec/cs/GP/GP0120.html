@@ -8,7 +8,8 @@ operation can observe inconsistent times.</p>
 Clock implementations and types named <code>*TimeProvider</code> or <code>*Clock</code> are excluded because they need a system time source.</p>
 <h2>How to fix it</h2>
 <p>Read time through the available provider, for example with <code>GetUtcNow()</code>.</p>
-<h3>Noncompliant code example</h3>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
 <pre>
 public sealed class ReservationConsumer(TimeProvider timeProvider)
 {
@@ -16,7 +17,7 @@ public sealed class ReservationConsumer(TimeProvider timeProvider)
         new(DateTimeOffset.UtcNow); // Noncompliant
 }
 </pre>
-<h3>Compliant solution</h3>
+<h4>Compliant solution</h4>
 <pre>
 public sealed class ReservationConsumer(TimeProvider timeProvider)
 {

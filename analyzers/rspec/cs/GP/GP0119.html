@@ -1,3 +1,5 @@
+<p>A migration should create tables and indexes with FluentMigrator expressions, not with <code>CREATE TABLE</code> or <code>CREATE INDEX</code>
+inside <code>Execute.Sql</code>.</p>
 <h2>Why is this an issue?</h2>
 <p>Creating complete tables or indexes through <code>Execute.Sql</code> bypasses FluentMigrator's schema expressions. The migration becomes harder to
 review and refactor, loses FluentMigrator's structured representation, and encourages the corresponding <code>Down</code> operation to drift away from
@@ -9,7 +11,8 @@ tables, or migrating data.</p>
 <h2>How to fix it</h2>
 <p>Use <code>Create.Table(...)</code> and <code>Create.Index(...)</code> expressions. Keep <code>Execute.Sql</code> only for database operations that
 FluentMigrator cannot represent directly.</p>
-<h3>Noncompliant code example</h3>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
 <pre>
 Execute.Sql("""
     CREATE TABLE [dbo].[BookItems]
@@ -21,7 +24,7 @@ Execute.Sql("""
     CREATE INDEX [IX_BookItems_Isbn] ON [dbo].[BookItems] ([Isbn]);
     """); // Noncompliant
 </pre>
-<h3>Compliant solution</h3>
+<h4>Compliant solution</h4>
 <pre>
 Create.Table("BookItems").InSchema("dbo")
     .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()

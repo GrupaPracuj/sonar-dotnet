@@ -10,12 +10,13 @@ zero, reject the value, or preserve nullability.</p>
 <h2>How to fix it</h2>
 <p>State the null policy before conversion. Use <code>?? 0</code> when zero is intentional, access <code>Value</code> when
 absence is invalid, or keep the result nullable.</p>
-<h3>Noncompliant code example</h3>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 int ToId(int? sourceId) =>
     Convert.ToInt32(sourceId); // Noncompliant
 </pre>
-<h3>Compliant solution</h3>
+<h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 int ToId(int? sourceId) =>
     Convert.ToInt32(sourceId ?? 0);
