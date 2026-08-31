@@ -25,7 +25,8 @@ controller that happened to query it.</p>
   <li>a type implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code></li>
 </ul>
 <p>In a non-controller type inside an assembly whose name ends with <code>.Api</code>, the list is narrower: only <code>DbContext</code> and
-<code>DbConnection</code>. Declaring a persistence operation in such an assembly is a separate question, and the subject of GP0133.</p>
+<code>DbConnection</code>. Declaring a persistence operation there - a class implementing Juno's <code>IDbExecute</code> - is a placement
+question this rule does not answer; an architecture test or the absence of a data access package reference in the API project is a better guard.</p>
 <p>Types are resolved semantically. A name such as <code>OrderService</code> is never used as evidence, and a wrapper around <code>DbContext</code> is
 not reported for its name alone.</p>
 <h3>Where the rule looks</h3>

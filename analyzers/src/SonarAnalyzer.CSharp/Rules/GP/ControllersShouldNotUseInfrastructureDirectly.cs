@@ -37,7 +37,8 @@ public sealed class ControllersShouldNotUseInfrastructureDirectly : SonarDiagnos
             return;
         }
 
-        // Declaring a persistence operation in an API assembly is GP0133's subject; this rule is about using one.
+        // Where a persistence operation is declared is a placement question, left to the projects themselves; this rule
+        // is about transport code using one.
         foreach (var declaredType in DeclaredTypes(classDeclaration))
         {
             if (InfrastructureTypeName(context.Model, declaredType, isController) is { } name)
