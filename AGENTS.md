@@ -39,7 +39,7 @@ an explicit decision** — if a change seems to need a new entry, first look for
 | `sonar-csharp-plugin/src/test/java/.../CSharpPluginTest.java`, `CSharpRulesDefinitionTest.java` | cover our own wiring |
 | `sonar-dotnet-core/src/main/java/.../DotNetRulesDefinition.java` | makes `repositoryName()` overridable so the GP repository can be named |
 | `analyzers/src/RuleCatalog.targets` | `**/*.json` / `**/*.html` globs, so `rspec/cs/GP` reaches the rule catalog |
-| `pom.xml`, `sonar-*/pom.xml` | the `${revision}` version mechanism, GP artifact names/keys, the GP analyzer zip, the plugin size gate |
+| `pom.xml`, `sonar-*/pom.xml` | the `${revision}` version mechanism, GP artifact names/keys, the GP analyzer zip, the plugin size gate, the license-header check turned off in `sonar-csharp-plugin` |
 | `scripts/set-version.ps1` | adapted to the `${revision}` mechanism |
 | `.gitmodules`, `.github/workflows/gp-csharp-linux-validation.yml`, `build-gp-csharp-plugin.bat` | our submodules and our CI/build entry points |
 
