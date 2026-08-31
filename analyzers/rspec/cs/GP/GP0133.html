@@ -1,21 +1,22 @@
-<p>A class implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code> belongs in the data access project, not in an assembly whose
-name ends with <code>.Api</code>.</p>
+<p>A class implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code> belongs in the data access project, not in an assembly whose name
+ends with <code>.Api</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>A persistence operation carries the SQL, the table names and the shape of a row. Declared next to the endpoints, it puts all of that in the assembly
-whose job is HTTP, and every consumer of the same data either references the API assembly to reuse it or writes the query a second time. The second
-copy is the usual outcome, and the two drift: one remembers the soft-delete filter, the other does not.</p>
-<p>It also decides what can be tested without a database, and what a change to the schema costs. A query that lives in the data access project is
-reachable from a background service, a consumer and a second API alike, and a column rename is chased through one project rather than through whichever
-assemblies happened to declare their own operations.</p>
-<p>The rule reports the declaration of a concrete class implementing <code>GP.Juno.Abstractions.Ado.IDbExecute</code> or Juno's transactional interface,
-in a compilation whose assembly name ends with <code>.Api</code>. Abstract base operations are left alone: what they are depends on the classes deriving
-from them. Using such an operation from transport code is a separate question, and the subject of GP0032.</p>
+<p>A persistence operation carries the SQL, the table names and the shape of a row. Declared next to the endpoints, all of that lives in the assembly
+whose job is HTTP, and the next caller that needs the same data has two options: reference the API assembly to reuse the operation, or write the query
+again. The second is what usually happens, and the two copies drift - one remembers the soft-delete filter, the other does not.</p>
+<p>The placement also decides what can be tested without a database and what a schema change costs. An operation that lives in the data access project
+is available to a background service, a consumer and a second API alike, and a renamed column is chased through one project instead of through whichever
+assemblies happened to declare their own queries.</p>
+<h3>What the rule reports</h3>
+<p>The declaration of a concrete class implementing <code>GP.Juno.Abstractions.Ado.IDbExecute</code> or Juno's transactional interface, in a compilation
+whose assembly name ends with <code>.Api</code>. An abstract base operation is left alone - what it is depends on the classes deriving from it, and each
+of those is reported on its own. Using an operation from transport code is a separate question, and the subject of GP0032.</p>
 <h2>How to fix it</h2>
-<p>Move the operation to the project that owns data access, and let the API assembly depend on it.</p>
+<p>Move the operation to the project that owns data access, and let the API assembly depend on that project.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
-// GP.Shop.Api/Orders/GetOrderQuery.cs
+// GP.Shop.Api/Orders/GetOrderQuery.cs - the assembly that serves HTTP
 public sealed class GetOrderQuery(int orderId) : IDbExecute&lt;Order&gt; // Noncompliant
 {
     public Task&lt;Order&gt; Execute(IDbConnection connection, IDbTransaction transaction = null) =&gt;
@@ -24,13 +25,14 @@ public sealed class GetOrderQuery(int orderId) : IDbExecute&lt;Order&gt; // Nonc
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-// GP.Shop.DataAccess/Orders/GetOrderQuery.cs
+// GP.Shop.DataAccess/Orders/GetOrderQuery.cs - the assembly that owns the schema
 public sealed class GetOrderQuery(int orderId) : IDbExecute&lt;Order&gt;
 {
     public Task&lt;Order&gt; Execute(IDbConnection connection, IDbTransaction transaction = null) =&gt;
         connection.QuerySingleAsync&lt;Order&gt;("select * from Orders where Id = @orderId", new { orderId });
 }
 </pre>
+<p>The operation itself does not change. What changes is which assembly declares it, and therefore who can call it without depending on the API.</p>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>

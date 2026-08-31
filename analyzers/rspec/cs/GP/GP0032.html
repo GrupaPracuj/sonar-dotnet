@@ -1,23 +1,5 @@
 <p>Transport code - a controller, or any runtime type in an <code>*.Api</code> assembly - should depend on application abstractions rather than on
 infrastructure types directly.</p>
-<h2>What counts as an infrastructure type</h2>
-<p>In a controller, all of these:</p>
-<ul>
-  <li><code>DbContext</code> - EF Core's <code>Microsoft.EntityFrameworkCore.DbContext</code> or EF6's <code>System.Data.Entity.DbContext</code>, and
-  anything deriving from either</li>
-  <li><code>DbConnection</code> - <code>System.Data.Common.DbConnection</code> and anything deriving from it, such as <code>SqlConnection</code></li>
-  <li><code>HttpClient</code></li>
-  <li>a type implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code></li>
-</ul>
-<p>In a non-controller type inside an assembly whose name ends with <code>.Api</code>, the list is narrower: only <code>DbContext</code> and
-<code>DbConnection</code>. Declaring a persistence operation in such an assembly is a separate question, and the subject of GP0133.</p>
-<p>Types are resolved semantically. A name such as <code>OrderService</code> is never used as evidence, and a wrapper around
-<code>DbContext</code> is not reported for its name alone.</p>
-<h2>Where the rule looks</h2>
-<p>The three ways infrastructure reaches transport code: a field, a constructor parameter - including a primary constructor - or a local variable.
-Action method parameters are excluded, because model binding is a separate concern. A type appearing only as a type argument is not a declaration
-either, so DI registration such as <code>services.AddDbContext&lt;ShopDbContext&gt;()</code> is left alone: wiring an implementation up is the
-composition root's job.</p>
 <h2>Why is this an issue?</h2>
 <p>A controller belongs to the layer that handles HTTP: bind the request, call something, turn the result into a response. Microsoft's layering guidance
 draws the line explicitly:</p>
@@ -33,6 +15,24 @@ draws the line explicitly:</p>
 and the two drift apart - one remembers the <code>IsDeleted</code> filter or the <code>Include</code>, the other does not. Testing the endpoint now
 means standing up a context, so the logic worth testing is reachable only through a database. And a change to the model has to be chased through every
 controller that happened to query it.</p>
+<h3>What counts as an infrastructure type</h3>
+<p>In a controller, all of these:</p>
+<ul>
+  <li><code>DbContext</code> - EF Core's <code>Microsoft.EntityFrameworkCore.DbContext</code> or EF6's <code>System.Data.Entity.DbContext</code>, and
+  anything deriving from either</li>
+  <li><code>DbConnection</code> - <code>System.Data.Common.DbConnection</code> and anything deriving from it, such as <code>SqlConnection</code></li>
+  <li><code>HttpClient</code></li>
+  <li>a type implementing Juno's <code>IDbExecute</code> or <code>ITransactional</code></li>
+</ul>
+<p>In a non-controller type inside an assembly whose name ends with <code>.Api</code>, the list is narrower: only <code>DbContext</code> and
+<code>DbConnection</code>. Declaring a persistence operation in such an assembly is a separate question, and the subject of GP0133.</p>
+<p>Types are resolved semantically. A name such as <code>OrderService</code> is never used as evidence, and a wrapper around <code>DbContext</code> is
+not reported for its name alone.</p>
+<h3>Where the rule looks</h3>
+<p>The three ways infrastructure reaches transport code: a field, a constructor parameter - including a primary constructor - or a local variable.
+Action method parameters are excluded, because model binding is a separate concern. A type appearing only as a type argument is not a declaration
+either, so DI registration such as <code>services.AddDbContext&lt;ShopDbContext&gt;()</code> is left alone: wiring an implementation up is the
+composition root's job.</p>
 <h2>How to fix it</h2>
 <p>Move the query behind a service or repository that the controller depends on through an interface, and let the controller call that. The query then
 lives in one place, can be tested without a database, and the controller is left with the HTTP concerns that are actually its job.</p>
