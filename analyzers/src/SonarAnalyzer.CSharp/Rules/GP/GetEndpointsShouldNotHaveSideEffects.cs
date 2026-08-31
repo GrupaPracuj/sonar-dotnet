@@ -84,14 +84,10 @@ public sealed class GetEndpointsShouldNotHaveSideEffects : SonarDiagnosticAnalyz
                 or "Microsoft.EntityFrameworkCore.RelationalQueryableExtensions"
                 or "Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions");
 
-    private static bool IsMessagingTarget(IMethodSymbol method)
-    {
-        var containing = method.ContainingType?.ToDisplayString() ?? string.Empty;
-        return containing.StartsWith("MassTransit", StringComparison.Ordinal)
-               || containing.StartsWith("GP.Juno", StringComparison.Ordinal)
-               || (method.ContainingType?.AllInterfaces.Any(x => x.ToDisplayString().StartsWith("MassTransit", StringComparison.Ordinal)
-                                                                 || x.ToDisplayString().StartsWith("GP.Juno", StringComparison.Ordinal)) ?? false);
-    }
+    // Juno declares Send on unrelated surfaces - the HTTP client, mail, tracing - so the whole GP.Juno namespace cannot
+    // stand for "message bus". The shared predicate matches the EventStream and Messaging types themselves.
+    private static bool IsMessagingTarget(IMethodSymbol method) =>
+        GpMessageContracts.IsMessagingMethod(method);
 
     private static bool IsHttpGetAction(IMethodSymbol method) =>
         method.IsControllerActionMethod

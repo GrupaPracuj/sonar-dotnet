@@ -179,6 +179,34 @@ public class GetEndpointsShouldNotHaveSideEffectsTest
             """)
             .VerifyNoIssues();
 
+    // GP.Juno.HttpClient.IHttpClient.Send is an outbound HTTP call, not a message publish.
+    [TestMethod]
+    public void GetEndpointsShouldNotHaveSideEffects_CompliantForJunoHttpClientSend() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            namespace GP.Juno.HttpClient
+            {
+                public interface IHttpClient
+                {
+                    System.Threading.Tasks.Task<object> Send(object request);
+                }
+            }
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                private readonly GP.Juno.HttpClient.IHttpClient _client;
+
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Get()
+                {
+                    _client.Send(new object());
+                    return Ok();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
     [TestMethod]
     public void GetEndpointsShouldNotHaveSideEffects_CompliantForPostEndpoint() =>
         builder.AddSnippet(
