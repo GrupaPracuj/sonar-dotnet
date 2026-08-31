@@ -174,6 +174,10 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         node is not AnonymousFunctionExpressionSyntax
         && node.Kind() != SyntaxKindEx.LocalFunctionStatement;
 
+    // "Guarantees" is read from the filter's boolean structure, not by finding the negation somewhere in it. In
+    // "A && B" one side guaranteeing it is enough; in "A || B" both sides must, because either one can be what let the
+    // exception through - so "when (!token.IsCancellationRequested || retryTimeouts)" still suppresses a real
+    // cancellation and is reported. A filter this cannot read leaves the signal suppressed and is reported too.
     private static bool GuaranteesCancellationWasNotRequested(SemanticModel model, ExpressionSyntax condition)
     {
         while (condition is ParenthesizedExpressionSyntax parenthesized)

@@ -37,7 +37,7 @@ excluded. That shape represents an action on the addressed resource rather than 
 public IActionResult CreateOrder(OrderRequest request)
 {
     var order = _repository.Create(request);
-    return Ok(order); // Noncompliant {{Method 'CreateOrder' looks like it creates a resource - return 201 (Created/CreatedAtAction) instead of 200 (Ok).}}
+    return Ok(order); // Noncompliant {{POST action 'CreateOrder' is named for creation - return 201 Created instead of 200 Ok.}}
 }
 </pre>
 <h4>Compliant solution</h4>

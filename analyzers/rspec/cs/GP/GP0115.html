@@ -1,3 +1,5 @@
+<p>An action behind an authorization requirement should declare the <code>401</code> - and, where a policy or role is named, <code>403</code> - that
+requirement can produce.</p>
 <h2>Why is this an issue?</h2>
 <p>An action behind <code>[Authorize]</code> or a global MVC <code>AuthorizeFilter</code> can answer <code>401 Unauthorized</code>, and - when the authorization names a policy or a role - also
 <code>403 Forbidden</code>. Those responses are produced by the authorization middleware, not by a <code>return</code> statement in the action, so nothing in
@@ -8,11 +10,16 @@ and typically surface an authorization failure as an unexplained deserialization
 <p>This is exactly the gap rules that inspect returned statuses cannot close: they only see what the action itself returns.</p>
 <h3>What is the potential impact?</h3>
 <p>Generated clients and API documentation silently omit the authorization failure contract of a protected endpoint.</p>
+<h3>Exceptions</h3>
+<p><code>[AllowAnonymous]</code> on the action or its controller wins over every <code>[Authorize]</code> that would otherwise apply - the framework
+skips authorization entirely - so such an action is not reported. Actions excluded from API Explorer, actions covered by ASP.NET API conventions, and
+controllers that are not API controllers are outside the rule as well.</p>
 <h2>How to fix it</h2>
 <p>Declare the responses the action's authorization can produce. Add <code>401</code> for any authorization requirement, and <code>403</code> as well when a
 policy or a role is named. An attribute may sit on the action or controller; a global <code>AuthorizeFilter</code> registered in MVC options is also
 honoured.</p>
-<h3>Noncompliant code example</h3>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 [ApiController]
 [Authorize(Policy = "RoleReadAccess")]
@@ -23,7 +30,7 @@ public class RoleDefinitionsController : ControllerBase
     public IActionResult GetRoleDefinitions() =&gt; Ok(definitions); // Noncompliant: 401 and 403 are reachable but undeclared
 }
 </pre>
-<h3>Compliant solution</h3>
+<h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
 [ApiController]
 [Authorize(Policy = "RoleReadAccess")]

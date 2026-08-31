@@ -23,7 +23,7 @@ boundary.</p>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 // in MyCompany.Orders.Contracts
-public sealed record OrderAccepted(Guid OrderId, JsonPatchDocument Changes); // Noncompliant {{'JsonPatchDocument' comes from 'Microsoft.AspNetCore.JsonPatch', which a contract assembly should not depend on.}}
+public sealed record OrderAccepted(Guid OrderId, JsonPatchDocument Changes); // Noncompliant {{'JsonPatchDocument' comes from 'Microsoft.AspNetCore.JsonPatch', which a contract must not depend on.}}
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">

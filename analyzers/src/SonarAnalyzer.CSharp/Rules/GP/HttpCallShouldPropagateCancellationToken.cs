@@ -39,8 +39,8 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
 
     // GpHttpCallHelper.IsHttpCall recognizes any call to a known HTTP-ish type - including the GP.Juno fluent HTTP API
     // (IHttpClient, IHttpClientBuilder, HttpRequestProperties) - because that same broad detection is also shared by
-    // GP0007 (SharedDictionariesShouldUseJunoDictionaries) and DatabaseTransactionsShouldNotContainExternalNetworkCalls,
-    // which only need to know "is this an outgoing HTTP call", not whether it can be cancelled.
+    // DatabaseTransactionsShouldNotContainExternalNetworkCalls, which only needs to know "is this an outgoing HTTP
+    // call", not whether it can be cancelled.
     // For GP0027 specifically, a call is only actionable if it can actually be fixed. The legacy GP.Juno.HttpClient
     // builder surface (IHttpClient.Send, IHttpClientBuilder.Service and HttpRequestProperties extensions) exposes no
     // CancellationToken overload, so those calls are not reported. The newer GP.Juno.HttpApiClient HttpSender

@@ -20,5 +20,5 @@
   "ruleSpecification": "GP-0089",
   "sqKey": "GP0089",
   "scope": "Main",
-  "quickfix": "targeted"
+  "quickfix": "partial"
 }

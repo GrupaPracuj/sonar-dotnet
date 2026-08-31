@@ -36,7 +36,7 @@ public class UsersController : ControllerBase
     [Authorize]
     public IActionResult GetProfile() { /* ... */ }
 
-    public IActionResult GetSettings() { /* ... */ } // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous], but other actions in 'UsersController' are explicitly protected with [Authorize].}}
+    public IActionResult GetSettings() { /* ... */ } // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous]; explicitly declare its access policy.}}
 }
 </pre>
 <h4>Compliant solution</h4>

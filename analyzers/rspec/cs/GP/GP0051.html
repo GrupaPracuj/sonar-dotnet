@@ -16,9 +16,10 @@ requires a <code>DateTimeOffset</code> member named <code>OccurredAt</code> or <
 <code>Timestamp</code> and a plain <code>Time</code> member on an unrelated contract are not accepted. <code>DateTimeOffset</code> rather than
 <code>DateTime</code> is deliberate and matches S6566: an instant crossing a service boundary needs its offset.</p>
 <p>One exception is a contract that is itself a CloudEvents envelope or derives from one. CloudEvents already standardises the occurrence timestamp as the
-envelope's <code>Time</code> attribute. A public <code>DateTime</code> or <code>DateTimeOffset</code> <code>Time</code> satisfies the rule only when the
-base type also exposes the standard CloudEvents envelope members such as <code>Id</code>, <code>Source</code>, <code>SpecVersion</code>,
-<code>Type</code> and <code>Data</code>; the type name alone is not enough.</p>
+envelope's <code>Time</code> attribute. A public <code>DateTime</code> or <code>DateTimeOffset</code> <code>Time</code> satisfies the rule only when it is
+declared on a base type named <code>CloudEventsEnvelope</code> that also exposes the standard envelope members <code>Id</code>, <code>Source</code>,
+<code>SpecVersion</code>, <code>Type</code> and <code>Data</code>. Both conditions are required: an envelope under a different name is not recognised, and
+neither is a <code>Time</code> member on a type that only looks like one.</p>
 <p>The issue is reported once on the event type declaration, regardless of how many registrations or publish calls use that type. When the event is
 declared in a referenced assembly whose source is not part of the current analysis, one issue is reported on the first publish use instead because the
 declaration is not available to the analyzer.</p>

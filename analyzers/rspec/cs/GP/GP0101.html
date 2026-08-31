@@ -3,8 +3,8 @@
 <p>A route and method name rarely communicate the action's behavior, authorization assumptions and important side effects well enough for a generated
 API reference. Without operation documentation, consumers have to read the implementation or reverse-engineer the endpoint.</p>
 <p>The rule accepts a non-empty Swashbuckle <code>SwaggerOperation</code> summary or description, native
-<code>EndpointSummary</code>/<code>EndpointDescription</code> metadata, or an XML <code>summary</code> or <code>remarks</code>. It therefore enforces documentation without
-forcing one OpenAPI library.</p>
+<code>EndpointSummary</code>/<code>EndpointDescription</code> metadata, or an XML <code>summary</code> or <code>remarks</code> - including one inherited
+through <code>&lt;inheritdoc&gt;</code>. It therefore enforces documentation without forcing one OpenAPI library.</p>
 <h3>Exceptions</h3>
 <p>Actions excluded from API Explorer and classic MVC controllers serving views are not part of the generated API and are not reported. Minimal APIs are
 outside this rule because their metadata is attached to route builders rather than action methods.</p>

@@ -19,31 +19,21 @@ catch (OperationCanceledException)
 <p>The rule reports a <code>catch</code> of <code>OperationCanceledException</code> or <code>TaskCanceledException</code> unless every path through the
 catch rethrows or throws a cancellation exception.</p>
 <h3>Exceptions</h3>
-<p>A block that rethrows - with <code>throw;</code> or <code>throw ex;</code> - or throws another cancellation exception on every path is not reported.
-Returning, breaking out of a loop, or throwing an unrelated exception suppresses the cancellation signal. Logging alone does not count: a log line does
-not stop the caller from treating the operation as complete.</p>
-<p>A <code>when</code> filter that <em>guarantees</em> cancellation was not requested -
-<code>catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)</code>, the documented way to tell an
-<code>HttpClient</code> timeout apart from a caller's cancellation - is not reported: the filter only lets the exception through when nobody asked to
-stop, so handling it there hides no cancellation signal.</p>
-<p>"Guarantees" is read through the filter's boolean structure, not by looking for the negation anywhere in it. In <code>A &amp;&amp; B</code> it is
-enough that one side guarantees it; in <code>A || B</code> both sides must, because either one can be what let the exception through. So
-<code>when (!token.IsCancellationRequested &amp;&amp; isTimeout)</code> is not reported, while
-<code>when (!token.IsCancellationRequested || retryTimeouts)</code> is - that filter also accepts a real cancellation. Any filter whose structure the
-rule cannot read this way leaves the signal suppressed and is still reported.</p>
-<p>A <code>TaskCanceledException</code> caught in a method with no <code>CancellationToken</code> parameter is treated as a timeout rather than a
-suppressed caller signal. Graceful shutdown at a <code>BackgroundService.ExecuteAsync</code> boundary, a catch inside a loop controlled by
-<code>!token.IsCancellationRequested</code>, and an explicit <code>when (token.IsCancellationRequested)</code> handler are also not reported. The same
-applies when the catch belongs to a try that contains such a cancellation-controlled loop, as in a spinner that displays cancellation and cleans up
-after <code>Task.Delay(token)</code> ends the loop.</p>
-<p>The lifecycle boundary of an <code>IHostedService</code> is also excluded: cancellation in <code>StopAsync</code> means the host no longer waits
-for graceful shutdown, while a <code>PeriodicTimer</code> helper ends normally when its owned timer token is cancelled. A method with no caller token
-may likewise handle a timeout created by its own local <code>CancellationTokenSource</code> when that source has an explicit timeout and its token is
-the one used inside the protected operation.</p>
-<p>Consuming an async stream is another graceful boundary when the method has no caller cancellation token: an
-<code>OperationCanceledException</code> catch around an <code>await foreach</code> is not reported when the containing async method returns no success
-data (<code>Task</code>, <code>ValueTask</code>, or <code>void</code>). Methods accepting a <code>CancellationToken</code> or returning a result remain
-reported, so caller cancellation cannot silently become successful completion or a normal result value.</p>
+<p>A catch that rethrows on every path - with <code>throw;</code>, <code>throw ex;</code> or another cancellation exception - is not reported.
+Returning, breaking out of a loop, or throwing an unrelated exception does suppress the signal, and logging alone does not count: a log line does not
+stop the caller from treating the operation as complete.</p>
+<p>The rule also stays silent where the exception is not a caller's cancellation in the first place:</p>
+<ul>
+  <li>a <code>when</code> filter that lets the exception through only when nobody asked to stop -
+  <code>catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)</code>, the documented way to tell an <code>HttpClient</code>
+  timeout apart from a cancellation - or one that explicitly handles the opposite case, <code>when (token.IsCancellationRequested)</code></li>
+  <li>a timeout the method owns itself: a <code>TaskCanceledException</code> in a method with no <code>CancellationToken</code> parameter, or a token
+  from a local <code>CancellationTokenSource</code> created with a timeout</li>
+  <li>a graceful shutdown boundary: <code>BackgroundService.ExecuteAsync</code>, <code>IHostedService.StopAsync</code>, a loop controlled by
+  <code>!token.IsCancellationRequested</code>, or a <code>PeriodicTimer</code> helper ending on its own timer token</li>
+  <li>an <code>await foreach</code> in a method that takes no cancellation token and returns no result - there is no caller expecting data that could
+  be silently replaced by success</li>
+</ul>
 <h2>How to fix it</h2>
 <p>Let the exception propagate. If it has to be handled locally - to clean up, or to record that the work stopped - rethrow afterwards so the caller still
 learns the operation did not finish.</p>
