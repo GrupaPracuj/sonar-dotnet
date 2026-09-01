@@ -152,7 +152,9 @@
           <skipDependenciesPackaging>true</skipDependenciesPackaging>
           <sonarLintSupported>false</sonarLintSupported>
           <pluginApiMinVersion>${plugin.api.min.version}</pluginApiMinVersion>
-          <requiredForLanguages>cs</requiredForLanguages>
+          <!-- Upstream declares requiredForLanguages=cs because its plugin IS the C# analyzer. This one only adds
+               Roslyn rules beside it, so claiming the language would put it in the path of every C# analysis on the
+               server - including projects whose quality profile activates no GP rule at all. -->
         </configuration>
       </plugin>
       <plugin>
