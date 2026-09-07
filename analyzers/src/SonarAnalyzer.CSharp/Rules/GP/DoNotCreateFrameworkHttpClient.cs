@@ -13,7 +13,7 @@ public sealed class DoNotCreateFrameworkHttpClient : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0033";
 
-    private const string MessageFormat = "Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating '{0}' directly.";
+    private const string MessageFormat = "Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating '{0}' directly.";
 
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 

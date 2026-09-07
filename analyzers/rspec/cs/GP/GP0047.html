@@ -1,7 +1,8 @@
 <p>A service address should be resolved through Juno, not by querying the Consul client directly.</p>
 <h2>Why is this an issue?</h2>
-<p>Juno owns service discovery. Naming a service - <code>Service("orders")</code> on the Juno HTTP client - resolves the address, applies the configured
-retry and timeout policy, and records the call. Reaching for <code>IConsulClient</code> gets you an address and nothing else, so everything Juno layers on
+<p>Juno owns service discovery. Naming the client - <code>Create("orders")</code> on <code>IHttpSenderFactory</code>, with
+<code>localizeBy.discovery</code> configured for that service - resolves the address, applies the configured retry and timeout policy, and records the
+call. Reaching for <code>IConsulClient</code> gets you an address and nothing else, so everything Juno layers on
 top has to be rebuilt by hand at each call site: the health filter, the choice between instances, the cache lifetime, the failure behaviour when the
 catalog is briefly unavailable.</p>
 <p>The consequences show up under exactly the conditions discovery exists for. Code that takes the first entry from the catalog sends all traffic to one
@@ -22,7 +23,8 @@ discovery data is then used to make an outbound service call directly instead of
 <p>A dedicated Akka discovery-provider assembly that implements <code>Akka.Cluster.Discovery.DiscoveryService</code> is also exempt. Its purpose is to
 implement the discovery abstraction itself, so direct Consul registration and health queries are the implementation rather than an application bypass.</p>
 <h2>How to fix it</h2>
-<p>Name the service and let Juno resolve it.</p>
+<p>Name the client and let Juno resolve it. Discovery is configuration - <code>localizeBy.discovery</code> under the service's key in the HOCON
+<code>httpClient.services</code> block - so the call site only ever names the client.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -35,8 +37,15 @@ public async Task&lt;string&gt; GetOrders()
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public Task&lt;string&gt; GetOrders() =&gt;
-    _builder.Service("orders").AddPath("orders").GetJson&lt;string&gt;();
+public async Task&lt;string?&gt; GetOrders(CancellationToken cancellation)
+{
+    using var sender = _senderFactory.Create("orders");
+
+    return await sender
+        .AppendPathSegments("orders")
+        .ThrowWhenNotSuccessStatusCode("Could not fetch orders")
+        .GetString(cancellation);
+}
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>

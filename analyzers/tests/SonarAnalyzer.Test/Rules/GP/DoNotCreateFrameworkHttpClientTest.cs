@@ -56,7 +56,7 @@ public class DoNotCreateFrameworkHttpClientTest
 
             public class OrderClient
             {
-                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'HttpClient' directly.}}
+                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating 'HttpClient' directly.}}
             }
             """)
             .Verify();
@@ -68,7 +68,7 @@ public class DoNotCreateFrameworkHttpClientTest
 
             public class OrderClient
             {
-                public string Fetch() => new System.Net.WebClient().DownloadString("/orders"); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'WebClient' directly.}}
+                public string Fetch() => new System.Net.WebClient().DownloadString("/orders"); // Noncompliant {{Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating 'WebClient' directly.}}
             }
             """)
             .Verify();
@@ -82,7 +82,7 @@ public class DoNotCreateFrameworkHttpClientTest
             {
                 private readonly System.Net.Http.IHttpClientFactory _factory;
 
-                public string Fetch() => _factory.CreateClient("orders").GetStringAsync("/orders"); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'IHttpClientFactory.CreateClient' directly.}}
+                public string Fetch() => _factory.CreateClient("orders").GetStringAsync("/orders"); // Noncompliant {{Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating 'IHttpClientFactory.CreateClient' directly.}}
             }
             """)
             .Verify();
@@ -95,7 +95,7 @@ public class DoNotCreateFrameworkHttpClientTest
 
             public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
-                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'HttpClient' directly.}}
+                private readonly System.Net.Http.HttpClient _client = new System.Net.Http.HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating 'HttpClient' directly.}}
             }
             """)
             .Verify();

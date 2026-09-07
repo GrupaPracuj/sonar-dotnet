@@ -1,7 +1,7 @@
 <p>An HTTP client should be obtained from Juno, not constructed with <code>new HttpClient()</code>, <code>new WebClient()</code>,
 <code>WebRequest.Create(...)</code> or <code>IHttpClientFactory.CreateClient(...)</code>.</p>
 <h2>Why is this an issue?</h2>
-<p>Every outbound call from a GP service is expected to go through the Juno HTTP client. That is not a stylistic preference: the Juno client is where
+<p>Every outbound call from a GP service is expected to go through Juno's <code>HttpApiClient</code>. That is not a stylistic preference: it is where
 service discovery, the retry and timeout policy, the propagated correlation headers, the authentication handler and the outgoing-call metrics live. A
 hand-rolled client reaches the same endpoint while quietly opting out of all of it, so the call is invisible in tracing, ignores the configured
 timeouts, and resolves addresses by whatever string happened to be at hand instead of through discovery.</p>
@@ -33,14 +33,23 @@ reported here.</p>
 <p>The implementation of Juno itself is not reported: its HTTP abstraction necessarily creates the framework client that consuming applications are
 required to obtain through Juno.</p>
 <h2>How to fix it</h2>
-<p>Take an <code>IHttpClientBuilder</code> from dependency injection and start the call with <code>Service("&lt;service-name&gt;")</code>, so the
-address comes from discovery and the configured policies apply.</p>
+<p>Inject <code>IHttpSenderFactory</code> and send through the <code>HttpSender</code> it creates. The name given to <code>Create</code> is the name
+the client is registered under - the key in the HOCON <code>httpClient.services</code> block that
+<code>AddConfiguredHttpApiClients(configuration)</code> reads - so the address, discovery, authentication, retry and timeout come from configuration
+instead of from the call site. Build the URL with <code>AppendPathSegments</code>, dispose the sender, and pass the caller's
+<code>CancellationToken</code> rather than <code>CancellationToken.None</code>.</p>
+<p><code>GetJson</code> and its siblings do not check the response status - they deserialize whatever came back - so decide what a failure means:
+<code>ThrowWhenNotSuccessStatusCode</code> with your own message when any non-2xx is a fault, or <code>HttpSenderResponse</code> and
+<code>ReceiveJson&lt;T&gt;</code> when a status such as 404 is a domain answer.</p>
+<p>Do not reach for <code>GP.Juno.HttpClient</code> - <code>IHttpClientBuilder</code>, <code>IHttpClient</code>,
+<code>HttpClientConfigurator</code>, <code>UseHttpClient</code>. That is the previous HTTP stack, the whole namespace carries
+<code>[Obsolete]</code>, and <code>HttpApiClient</code> supersedes it.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
 public class OrderClient
 {
-    private readonly HttpClient _client = new HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpClientBuilder.Service(...)) instead of creating 'HttpClient' directly.}}
+    private readonly HttpClient _client = new HttpClient(); // Noncompliant {{Obtain the HTTP client from Juno (IHttpSenderFactory.Create(...)) instead of creating 'HttpClient' directly.}}
 
     public Task&lt;string&gt; GetOrder(string id) =&gt;
         _client.GetStringAsync($"https://orders.internal/orders/{id}");
@@ -48,20 +57,27 @@ public class OrderClient
 </pre>
 <h4>Compliant solution</h4>
 <pre data-diff-id="1" data-diff-type="compliant">
-public class OrderClient
+public sealed class OrderClient(IHttpSenderFactory senderFactory)
 {
-    private readonly IHttpClientBuilder _builder;
+    private const string ClientName = "orders";
 
-    public OrderClient(IHttpClientBuilder builder) =&gt;
-        _builder = builder;
+    public async Task&lt;Order?&gt; GetOrder(string id, CancellationToken cancellation)
+    {
+        using var sender = senderFactory.Create(ClientName);
 
-    public Task&lt;string&gt; GetOrder(string id) =&gt;
-        _builder.Service("orders").AddPath("orders").AddPath(id).GetJson&lt;string&gt;();
+        return await sender
+            .AppendPathSegments("orders", id)
+            .ThrowWhenNotSuccessStatusCode($"Could not fetch order {id}")
+            .GetJson&lt;Order&gt;(cancellation);
+    }
 }
 </pre>
 <h2>Resources</h2>
 <h3>Documentation</h3>
 <ul>
+  <li><a href="https://github.com/GrupaPracuj/juno/tree/master/docs/http-api-client">GP.Juno</a> - <code>docs/http-api-client</code> documents the
+  client this rule points at: the HOCON <code>httpClient.services</code> configuration, <code>IHttpSenderFactory</code> and the
+  <code>HttpSender</code> verbs.</li>
   <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/fundamentals/networking/http/httpclient-guidelines">HttpClient guidelines for
   .NET</a></li>
   <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory">IHttpClientFactory with .NET</a></li>
