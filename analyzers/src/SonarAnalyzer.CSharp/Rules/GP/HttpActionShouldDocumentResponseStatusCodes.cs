@@ -36,6 +36,7 @@ public sealed class HttpActionShouldDocumentResponseStatusCodes : SonarDiagnosti
         var documented = GpOpenApiMetadata.ResponseAttributes(method)
             .Select(GpOpenApiMetadata.ResponseStatusCode)
             .WhereNotNull()
+            .Concat(GpOpenApiMetadata.StatusCodesNamedInReturnType(method))
             .ToHashSet();
         var missing = GpOpenApiMetadata.ReturnedInvocations(declaration)
             .Select(x => (Invocation: x, Status: GpOpenApiMetadata.ResponseStatusCode(context.Model, x)))

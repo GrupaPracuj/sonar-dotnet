@@ -77,6 +77,24 @@ public class HttpActionShouldDocumentResponseStatusCodesTest
             {
                 public static IResult NotFound() => null;
             }
+            public static class TypedResults
+            {
+                public static HttpResults.Ok<T> Ok<T>(T value) => null;
+                public static HttpResults.NotFound NotFound() => null;
+                public static HttpResults.CreatedAtRoute<T> CreatedAtRoute<T>(T value, string routeName) => null;
+            }
+        }
+
+        namespace Microsoft.AspNetCore.Http.HttpResults
+        {
+            public sealed class Ok<T> : Microsoft.AspNetCore.Http.IResult { }
+            public sealed class NotFound : Microsoft.AspNetCore.Http.IResult { }
+            public sealed class CreatedAtRoute<T> : Microsoft.AspNetCore.Http.IResult { }
+            public sealed class Results<T1, T2> : Microsoft.AspNetCore.Http.IResult
+            {
+                public static implicit operator Results<T1, T2>(T1 value) => null;
+                public static implicit operator Results<T1, T2>(T2 value) => null;
+            }
         }
         """;
 
@@ -362,6 +380,52 @@ public class HttpActionShouldDocumentResponseStatusCodesTest
             {
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.IActionResult Get() =>
+                    NotFound(); // Noncompliant {{HTTP status 404 is returned but not declared. Add ProducesResponseType for this status.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void HttpActionShouldDocumentResponseStatusCodes_StatusNamedInTheReturnTypeCountsAsDeclared() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Http.HttpResults.Results<
+                    Microsoft.AspNetCore.Http.HttpResults.Ok<string>,
+                    Microsoft.AspNetCore.Http.HttpResults.NotFound> Get(int id)
+                {
+                    if (id < 0)
+                    {
+                        return Microsoft.AspNetCore.Http.TypedResults.NotFound();
+                    }
+                    return Microsoft.AspNetCore.Http.TypedResults.Ok("value");
+                }
+
+                [Microsoft.AspNetCore.Mvc.HttpPost]
+                public System.Threading.Tasks.Task<Microsoft.AspNetCore.Http.HttpResults.CreatedAtRoute<string>> Create() =>
+                    System.Threading.Tasks.Task.FromResult(Microsoft.AspNetCore.Http.TypedResults.CreatedAtRoute("value", "route"));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void HttpActionShouldDocumentResponseStatusCodes_StatusNotNamedInTheReturnTypeIsStillReported() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public class OrdersController : Microsoft.AspNetCore.Mvc.ControllerBase
+            {
+                // The return type names no status, so the typed factory is documented by nothing.
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Http.IResult Get() =>
+                    Microsoft.AspNetCore.Http.TypedResults.Ok("value"); // Noncompliant {{HTTP status 200 is returned but not declared. Add ProducesResponseType for this status.}}
+
+                // The factory is an MVC one, so the typed return type of the other actions says nothing about it.
+                [Microsoft.AspNetCore.Mvc.HttpGet]
+                public Microsoft.AspNetCore.Mvc.IActionResult Legacy() =>
                     NotFound(); // Noncompliant {{HTTP status 404 is returned but not declared. Add ProducesResponseType for this status.}}
             }
             """)

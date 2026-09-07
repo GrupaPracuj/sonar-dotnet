@@ -6,6 +6,11 @@ generated clients and API documentation describe an incomplete protocol. Consume
 <code>Conflict</code>, <code>Ok</code>, <code>Created</code>, <code>Accepted</code>, <code>NoContent</code>, constant <code>StatusCode</code> calls and
 <code>Problem</code> calls with a constant <code>statusCode</code>. It does not guess responses produced by middleware, model validation, filters or
 called services.</p>
+<p>A status named in the action's return type counts as declared: .NET reads response metadata off a typed result -
+<code>Ok&lt;T&gt;</code>, <code>CreatedAtRoute&lt;T&gt;</code>, <code>NotFound</code> and the rest, alone or as members of a
+<code>Results&lt;...&gt;</code> union - and does so for controller actions too since .NET 10. An action whose signature names every status
+it returns needs no attribute at all. Result types whose status is not part of the type, such as <code>ProblemHttpResult</code> or
+<code>StatusCodeHttpResult</code>, declare nothing.</p>
 <h3>Exceptions</h3>
 <p>Actions excluded from API Explorer, actions covered by ASP.NET API conventions, and classic MVC controllers serving views are not reported. A response
 declaration inherited from the controller also counts. Minimal APIs are outside this rule because they use fluent <code>Produces</code> metadata rather

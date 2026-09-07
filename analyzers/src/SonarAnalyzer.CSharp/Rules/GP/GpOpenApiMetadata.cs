@@ -10,6 +10,8 @@ namespace SonarAnalyzer.CSharp.Rules;
 
 internal static class GpOpenApiMetadata
 {
+    private const string HttpResultsNamespace = "Microsoft.AspNetCore.Http.HttpResults";
+
     private static readonly Dictionary<string, int> FactoryStatusCodes = new(StringComparer.Ordinal)
     {
         ["Accepted"] = 202,
@@ -35,6 +37,26 @@ internal static class GpOpenApiMetadata
         ["RedirectPreserveMethod"] = 307,
         ["Unauthorized"] = 401,
         ["UnprocessableEntity"] = 422,
+    };
+
+    // The typed results whose status is part of the type rather than an argument. Keyed by INamedTypeSymbol.Name, so
+    // one entry covers both the bare and the generic form - Ok and Ok<T> alike.
+    private static readonly Dictionary<string, int> TypedResultStatusCodes = new(StringComparer.Ordinal)
+    {
+        ["Accepted"] = 202,
+        ["AcceptedAtRoute"] = 202,
+        ["BadRequest"] = 400,
+        ["Conflict"] = 409,
+        ["Created"] = 201,
+        ["CreatedAtRoute"] = 201,
+        ["ForbidHttpResult"] = 403,
+        ["InternalServerError"] = 500,
+        ["NoContent"] = 204,
+        ["NotFound"] = 404,
+        ["Ok"] = 200,
+        ["UnauthorizedHttpResult"] = 401,
+        ["UnprocessableEntity"] = 422,
+        ["ValidationProblem"] = 400,
     };
 
     internal static bool IsOpenApiAction(IMethodSymbol method) =>
@@ -74,6 +96,14 @@ internal static class GpOpenApiMetadata
             .OfType<int>()
             .Cast<int?>()
             .FirstOrDefault();
+
+    // .NET reads response metadata off a typed result named in the signature - for controller actions too, since
+    // .NET 10 - so a status named there is declared even with no attribute in sight. Only fixed-status result types
+    // are listed: ProblemHttpResult and StatusCodeHttpResult carry their status at run time and name nothing.
+    internal static IEnumerable<int> StatusCodesNamedInReturnType(IMethodSymbol method) =>
+        NamedResultTypes(UnwrapAwaitable(method.ReturnType))
+            .Select(TypedResultStatusCode)
+            .WhereNotNull();
 
     internal static bool HasConcreteProducedType(IMethodSymbol method) =>
         method.AttributesWithInherited
@@ -214,6 +244,26 @@ internal static class GpOpenApiMetadata
                 break;
         }
     }
+
+    private static int? TypedResultStatusCode(ITypeSymbol type) =>
+        IsHttpResult(type) && TypedResultStatusCodes.TryGetValue(type.Name, out var statusCode)
+            ? statusCode
+            : null;
+
+    // A Results<...> union names one status per member; any other result type names its own.
+    private static IEnumerable<ITypeSymbol> NamedResultTypes(ITypeSymbol type) =>
+        type is INamedTypeSymbol { Name: "Results", IsGenericType: true } union && IsHttpResult(union)
+            ? (IEnumerable<ITypeSymbol>)union.TypeArguments
+            : [type];
+
+    private static bool IsHttpResult(ITypeSymbol type) =>
+        type.ContainingNamespace?.ToDisplayString() == HttpResultsNamespace;
+
+    private static ITypeSymbol UnwrapAwaitable(ITypeSymbol type) =>
+        type is INamedTypeSymbol { IsGenericType: true, TypeArguments.Length: 1 } awaitable
+        && awaitable.OriginalDefinition.IsAny(KnownType.System_Threading_Tasks_Task_T, KnownType.System_Threading_Tasks_ValueTask_TResult)
+            ? awaitable.TypeArguments[0]
+            : type;
 
     private static bool IsConcreteType(ITypeSymbol type) =>
         type.SpecialType != SpecialType.System_Void;
