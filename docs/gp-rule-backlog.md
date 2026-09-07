@@ -32,6 +32,14 @@ GP0115–GP0118 were committed in `f1c6cbd89`. **`996b7609b` then removed GP0116
 GP0115, on the grounds that they were "cancellation and SQL heuristics that cannot avoid legitimate findings
 without stronger semantic context".
 
+**GP0115 has since been removed as well**, so nothing from that batch is left in the tree. It required an
+`[Authorize]`d action to declare 401 and 403 with attributes, and an application that declares those answers
+centrally - from the authorization wiring, with an OpenAPI operation transformer - has no such attribute anywhere,
+which a Roslyn rule cannot see. On our own reference application that was 8 findings against a document that
+described every one of them correctly. The same objection sank GP0134, which did the same for the automatic 400 of
+model validation: a status that the method body does not produce cannot be verified in the source that hosts it.
+Both were dropped rather than heuristically narrowed, deliberately - see the id bookkeeping in `AGENTS.md`.
+
 That sets the bar for everything below, so read it as a constraint rather than trivia: a candidate that decides by
 text shape rather than by semantics will be rejected, however good its motivating example is. Where a candidate
 here is still partly heuristic, that is called out under its own heading.
