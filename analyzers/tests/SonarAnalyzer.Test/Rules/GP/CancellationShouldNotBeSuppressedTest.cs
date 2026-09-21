@@ -413,6 +413,41 @@ public class CancellationShouldNotBeSuppressedTest
             .VerifyNoIssues();
 
     [TestMethod]
+    public void CancellationShouldNotBeSuppressed_CompliantForLocallyOwnedTimeoutUsingConfiguredDuration() =>
+        builder.AddSnippet(
+            """
+            public class Queue
+            {
+                private readonly System.TimeSpan timeoutDuration = System.TimeSpan.FromSeconds(10);
+
+                public async System.Threading.Tasks.Task TryQueue()
+                {
+                    try
+                    {
+                        using var timeout = new System.Threading.CancellationTokenSource();
+                        timeout.CancelAfter(timeoutDuration);
+
+                        if (await WaitToWriteAsync(timeout.Token))
+                        {
+                            await WriteAsync(timeout.Token);
+                        }
+                    }
+                    catch (System.OperationCanceledException)
+                    {
+                        System.Console.WriteLine("Queue timeout");
+                    }
+                }
+
+                private static System.Threading.Tasks.Task<bool> WaitToWriteAsync(System.Threading.CancellationToken token) =>
+                    System.Threading.Tasks.Task.FromResult(true);
+
+                private static System.Threading.Tasks.Task WriteAsync(System.Threading.CancellationToken token) =>
+                    System.Threading.Tasks.Task.CompletedTask;
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
     public void CancellationShouldNotBeSuppressed_CompliantAtHostedServiceStopBoundary() =>
         builder.AddSnippet(
             """

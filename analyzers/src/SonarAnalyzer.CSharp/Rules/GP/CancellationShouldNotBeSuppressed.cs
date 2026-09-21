@@ -111,7 +111,7 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
         foreach (var declarator in tryStatement.Block.DescendantNodes(DoesNotEnterNestedFunction).OfType<VariableDeclaratorSyntax>())
         {
             if (model.GetDeclaredSymbol(declarator) is not ILocalSymbol local
-                || local.Type.ToDisplayString() != "System.Threading.CancellationTokenSource"
+                || !local.Type.Is(KnownType.System_Threading_CancellationTokenSource)
                 || !HasLocalTimeout(model, tryStatement.Block, declarator, local)
                 || !UsesLocalToken(model, tryStatement.Block, local))
             {
@@ -149,9 +149,13 @@ public sealed class CancellationShouldNotBeSuppressed : SonarDiagnosticAnalyzer
             .OfType<MemberAccessExpressionSyntax>()
             .Any(x => x.Name.Identifier.ValueText == "Token" && SymbolEquals(model, x.Expression, local));
 
-    private static bool SymbolEquals(SemanticModel model, ExpressionSyntax expression, ISymbol expected) =>
+    private static bool SymbolEquals(SemanticModel model, ExpressionSyntax expression, ILocalSymbol expected) =>
         model.GetSymbolInfo(expression.RemoveParentheses()).Symbol is { } actual
-        && actual.Equals(expected);
+        && (actual.Equals(expected)
+            || actual.DeclaringSyntaxReferences.Any(actualDeclaration =>
+                expected.DeclaringSyntaxReferences.Any(expectedDeclaration =>
+                    actualDeclaration.SyntaxTree == expectedDeclaration.SyntaxTree
+                    && actualDeclaration.Span == expectedDeclaration.Span)));
 
     private static bool TryContainsCancellationControlledLoop(SemanticModel model, CatchClauseSyntax catchClause) =>
         catchClause.Parent is TryStatementSyntax tryStatement
