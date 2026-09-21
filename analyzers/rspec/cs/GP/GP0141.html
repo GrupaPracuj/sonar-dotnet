@@ -1,0 +1,36 @@
+<p>An AI model invocation should cap the number of output tokens the model may generate.</p>
+<h2>Why is this an issue?</h2>
+<p>An unbounded (or zero/negative) output token limit lets a single call generate an arbitrarily long response, which directly drives cost and
+latency and can be used to exhaust a budget or a rate limit through nothing more exotic than a verbose prompt. Setting <code>MaxOutputTokens</code>
+turns "how much can this one call cost" into a reviewable, bounded number instead of an open question.</p>
+<pre>
+public Task&lt;ChatResponse&gt; Ask(string prompt) =>
+    _chatClient.GetResponseAsync(prompt, new ChatOptions());
+</pre>
+<p>The rule recognizes <code>IChatClient.GetResponseAsync()</code> and <code>GetStreamingResponseAsync()</code> from
+<code>Microsoft.Extensions.AI</code>, including calls through implementations and extension methods. It also recognizes
+<code>AIAgent.RunAsync()</code> and <code>RunStreamingAsync()</code> from <code>Microsoft.Extensions.AI</code> and
+<code>Microsoft.Agents.AI</code>. When one of these methods has a <code>ChatOptions</code> parameter, the rule checks that
+<code>MaxOutputTokens</code> is set to a positive value.</p>
+<h3>Exceptions</h3>
+<p>A <code>ChatOptions</code> instance supplied through a parameter, field, or method call is not reported because its configuration cannot be
+determined at the call site. A non-constant value assigned to <code>MaxOutputTokens</code> is also accepted because the rule cannot prove that it
+is zero or negative.</p>
+<h2>How to fix it</h2>
+<p>Set <code>MaxOutputTokens</code> on the <code>ChatOptions</code> passed to the call to a positive value appropriate for the use case.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public Task&lt;ChatResponse&gt; Ask(string prompt) =>
+    _chatClient.GetResponseAsync(prompt, new ChatOptions()); // Noncompliant {{Set 'MaxOutputTokens' on the ChatOptions passed to this AI model invocation to a positive value.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public Task&lt;ChatResponse&gt; Ask(string prompt) =>
+    _chatClient.GetResponseAsync(prompt, new ChatOptions { MaxOutputTokens = 512 });
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/ai/">AI development with .NET</a></li>
+</ul>

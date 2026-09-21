@@ -188,4 +188,188 @@ public class DoNotLogSecretLikeValueTest
             }
             """)
             .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_CompliantForSystemDateAndTimeTypes() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+            using System;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                }
+            }
+
+            public class AuthService
+            {
+                private readonly ILogger _logger;
+
+                public void LogExpiration(
+                    DateTime accessTokenCreatedAt,
+                    DateTimeOffset accessTokenExpiresAtUtc,
+                    TimeSpan tokenLifetime,
+                    DateTime? refreshTokenCreatedAt,
+                    DateTimeOffset? refreshTokenExpiresAtUtc,
+                    TimeSpan? refreshTokenLifetime)
+                {
+                    _logger.LogInformation(
+                        "Token dates: {AccessTokenCreatedAt}, {AccessTokenExpiresAtUtc}, {TokenLifetime}",
+                        accessTokenCreatedAt,
+                        accessTokenExpiresAtUtc,
+                        tokenLifetime);
+                    _logger.LogInformation(
+                        "Token dates: {Value1}, {Value2}, {Value3}",
+                        refreshTokenCreatedAt,
+                        refreshTokenExpiresAtUtc,
+                        refreshTokenLifetime);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+#if NET
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_CompliantForDateOnlyAndTimeOnly() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+            using System;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                }
+            }
+
+            public class AuthService
+            {
+                private readonly ILogger _logger;
+
+                public void LogExpiration(
+                    DateOnly accessTokenExpirationDate,
+                    TimeOnly tokenExpirationTime,
+                    DateOnly? refreshTokenExpirationDate,
+                    TimeOnly? refreshTokenExpirationTime)
+                {
+                    _logger.LogInformation(
+                        "Token dates: {AccessTokenExpirationDate}, {TokenExpirationTime}",
+                        accessTokenExpirationDate,
+                        tokenExpirationTime);
+                    _logger.LogInformation(
+                        "Token dates: {Value1}, {Value2}",
+                        refreshTokenExpirationDate,
+                        refreshTokenExpirationTime);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+#endif
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_CompliantForNodaTimeAndJunoDateTypes() =>
+        builder.WithConcurrentAnalysis(false)
+            .AddSnippet(
+                """
+                using Microsoft.Extensions.Logging;
+
+                namespace Microsoft.Extensions.Logging
+                {
+                    public interface ILogger { }
+
+                    public static class LoggerExtensions
+                    {
+                        public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                    }
+                }
+
+                namespace NodaTime
+                {
+                    public struct Instant { }
+                    public struct LocalDate { }
+                    public struct LocalDateTime { }
+                    public struct OffsetDateTime { }
+                    public struct ZonedDateTime { }
+                }
+
+                namespace GP.Juno.Dates
+                {
+                    public struct LocalDate { }
+                }
+
+                public class AuthService
+                {
+                    private readonly ILogger _logger;
+
+                    public void LogExpiration(
+                        NodaTime.Instant accessTokenIssuedAt,
+                        NodaTime.LocalDate refreshTokenExpirationDate,
+                        NodaTime.LocalDateTime tokenExpirationLocalTime,
+                        NodaTime.OffsetDateTime accessTokenExpiresAt,
+                        NodaTime.ZonedDateTime refreshTokenExpiresAt,
+                        GP.Juno.Dates.LocalDate tokenExpirationDate,
+                        NodaTime.Instant? nullableTokenIssuedAt,
+                        NodaTime.LocalDate? nullableRefreshTokenExpirationDate,
+                        NodaTime.LocalDateTime? nullableTokenExpirationLocalTime,
+                        NodaTime.OffsetDateTime? nullableAccessTokenExpiresAt,
+                        NodaTime.ZonedDateTime? nullableRefreshTokenExpiresAt,
+                        GP.Juno.Dates.LocalDate? nullableTokenExpirationDate)
+                    {
+                        _logger.LogInformation(
+                            "Token dates: {AccessTokenIssuedAt}, {RefreshTokenExpirationDate}, {TokenExpirationLocalTime}, {AccessTokenExpiresAt}, {RefreshTokenExpiresAt}, {TokenExpirationDate}",
+                            accessTokenIssuedAt,
+                            refreshTokenExpirationDate,
+                            tokenExpirationLocalTime,
+                            accessTokenExpiresAt,
+                            refreshTokenExpiresAt,
+                            tokenExpirationDate);
+                        _logger.LogInformation(
+                            "Token dates: {Value1}, {Value2}, {Value3}, {Value4}, {Value5}, {Value6}",
+                            nullableTokenIssuedAt,
+                            nullableRefreshTokenExpirationDate,
+                            nullableTokenExpirationLocalTime,
+                            nullableAccessTokenExpiresAt,
+                            nullableRefreshTokenExpiresAt,
+                            nullableTokenExpirationDate);
+                    }
+                }
+                """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void DoNotLogSecretLikeValue_NoncompliantForNumericSecretLikeValue() =>
+        builder.AddSnippet(
+            """
+            using Microsoft.Extensions.Logging;
+
+            namespace Microsoft.Extensions.Logging
+            {
+                public interface ILogger { }
+
+                public static class LoggerExtensions
+                {
+                    public static void LogInformation(this ILogger logger, string message, params object[] args) { }
+                }
+            }
+
+            public class AuthService
+            {
+                private readonly ILogger _logger;
+
+                public void Login(int token) =>
+                    _logger.LogInformation("Received {Value}", token); // Noncompliant {{Do not log 'token' - its name suggests it holds a secret.}}
+            }
+            """)
+            .Verify();
 }

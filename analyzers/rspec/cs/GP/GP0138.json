@@ -1,11 +1,11 @@
 {
-  "title": "Secrets should not be passed in URLs",
+  "title": "Sensitive values should not be included in exception messages",
   "type": "VULNERABILITY",
   "code": {
     "impacts": {
       "SECURITY": "MEDIUM"
     },
-    "attribute": "CLEAR"
+    "attribute": "TRUSTWORTHY"
   },
   "status": "ready",
   "remediation": {
@@ -14,19 +14,19 @@
   },
   "tags": [
     "gp",
+    "error-handling",
+    "privacy",
     "security",
-    "api",
-    "rest",
     "cwe"
   ],
-  "defaultSeverity": "Minor",
-  "ruleSpecification": "GP-0023",
-  "sqKey": "GP0023",
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0138",
+  "sqKey": "GP0138",
   "scope": "Main",
-  "quickfix": "unknown",
+  "quickfix": "infeasible",
   "securityStandards": {
     "CWE": [
-      598
+      209
     ]
   }
 }

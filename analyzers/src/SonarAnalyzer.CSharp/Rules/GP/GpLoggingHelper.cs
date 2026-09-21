@@ -11,6 +11,7 @@ namespace SonarAnalyzer.CSharp.Rules;
 internal static class GpLoggingHelper
 {
     private const string MicrosoftLogger = "Microsoft.Extensions.Logging.ILogger";
+    private const string LoggerMessageAttribute = "Microsoft.Extensions.Logging.LoggerMessageAttribute";
 
     private static readonly HashSet<string> LoggingContainingTypes = new(StringComparer.Ordinal)
     {
@@ -27,7 +28,8 @@ internal static class GpLoggingHelper
         model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
         && (LoggingContainingTypes.Contains(method.ContainingType?.ToDisplayString() ?? string.Empty)
             || IsMicrosoftLogger(method.ContainingType)
-            || IsLoggerExtension(method));
+            || IsLoggerExtension(method)
+            || HasLoggerMessageAttribute(method));
 
     private static bool IsLoggerExtension(IMethodSymbol method) =>
         (method.ReducedFrom ?? method) is { IsExtensionMethod: true, Parameters: { Length: > 0 } parameters }
@@ -37,6 +39,14 @@ internal static class GpLoggingHelper
         type is not null
         && (type.OriginalDefinition.ToDisplayString() is MicrosoftLogger or MicrosoftLogger + "<TCategoryName>"
             || type.AllInterfaces.Any(x => x.OriginalDefinition.ToDisplayString() is MicrosoftLogger or MicrosoftLogger + "<TCategoryName>"));
+
+    private static bool HasLoggerMessageAttribute(IMethodSymbol method) =>
+        HasLoggerMessageAttributeOn(method)
+        || method.PartialDefinitionPart is { } definition && HasLoggerMessageAttributeOn(definition)
+        || method.PartialImplementationPart is { } implementation && HasLoggerMessageAttributeOn(implementation);
+
+    private static bool HasLoggerMessageAttributeOn(IMethodSymbol method) =>
+        method.GetAttributes().Any(x => x.AttributeClass?.ToDisplayString() == LoggerMessageAttribute);
 
     // For a plain identifier/member argument, the candidate is its own name (e.g. "password" in LogInformation(password)).
     // For a message template literal, every {PlaceholderName} is a candidate, since that name is what a structured

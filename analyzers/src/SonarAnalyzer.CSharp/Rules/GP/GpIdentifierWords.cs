@@ -21,7 +21,7 @@ internal static class GpIdentifierWords
     {
         // Deliberately no three-letter abbreviations: matching is per word, so a short token like "nip" fires on any
         // identifier that happens to contain it and drowns the real findings in noise.
-        "email", "pesel", "phone", "iban", "surname", "firstname", "lastname", "birthdate", "dateofbirth", "creditcard"
+        "email", "pesel", "phone", "iban", "surname", "firstname", "lastname", "birthdate", "dateofbirth", "creditcard", "username", "login"
     };
 
     internal static bool ContainsWord(string identifier, string word) =>
@@ -35,11 +35,20 @@ internal static class GpIdentifierWords
         "id", "ids", "reference", "references", "ref", "name", "names", "count", "length", "uri", "url", "path", "type"
     };
 
+    private static readonly HashSet<string> PiiPointerQualifiers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // "name" is deliberately absent: firstName and lastName carry personal data themselves.
+        "id", "ids", "reference", "references", "ref", "count", "length", "uri", "url", "path", "type"
+    };
+
     internal static bool ContainsSecretWord(string identifier) =>
         ContainsAnyWord(identifier, SecretWords) && !IsPointerToSecret(identifier);
 
     internal static bool ContainsPiiWord(string identifier) =>
         ContainsAnyWord(identifier, PiiWords);
+
+    internal static bool ContainsPiiValueWord(string identifier) =>
+        ContainsPiiWord(identifier) && !IsPointerToPii(identifier);
 
     // Method names are PascalCase (e.g. "CreateOrder"): extract the leading capitalized word ("Create").
     internal static string LeadingWord(string identifier)
@@ -83,6 +92,9 @@ internal static class GpIdentifierWords
 
     private static bool IsPointerToSecret(string identifier) =>
         SplitWords(identifier).LastOrDefault() is { } last && PointerQualifiers.Contains(last);
+
+    private static bool IsPointerToPii(string identifier) =>
+        SplitWords(identifier).LastOrDefault() is { } last && PiiPointerQualifiers.Contains(last);
 
     internal static IEnumerable<string> SplitWords(string identifier)
     {

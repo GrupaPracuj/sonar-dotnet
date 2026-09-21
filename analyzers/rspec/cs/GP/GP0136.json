@@ -1,11 +1,11 @@
 {
-  "title": "Secrets should not be passed in URLs",
+  "title": "Whole HTTP and authentication objects should not be logged",
   "type": "VULNERABILITY",
   "code": {
     "impacts": {
-      "SECURITY": "MEDIUM"
+      "SECURITY": "HIGH"
     },
-    "attribute": "CLEAR"
+    "attribute": "TRUSTWORTHY"
   },
   "status": "ready",
   "remediation": {
@@ -14,19 +14,19 @@
   },
   "tags": [
     "gp",
+    "logging",
+    "privacy",
     "security",
-    "api",
-    "rest",
     "cwe"
   ],
-  "defaultSeverity": "Minor",
-  "ruleSpecification": "GP-0023",
-  "sqKey": "GP0023",
+  "defaultSeverity": "Major",
+  "ruleSpecification": "GP-0136",
+  "sqKey": "GP0136",
   "scope": "Main",
-  "quickfix": "unknown",
+  "quickfix": "infeasible",
   "securityStandards": {
     "CWE": [
-      598
+      532
     ]
   }
 }

@@ -19,6 +19,8 @@ public class ActionShouldDeclareAccessPolicyTest
 
     private const string ControllerStubs =
         """
+        using Microsoft.AspNetCore.Builder;
+
         namespace Microsoft.AspNetCore.Authorization
         {
             public class AuthorizeAttribute : System.Attribute { }
@@ -71,6 +73,8 @@ public class ActionShouldDeclareAccessPolicyTest
         namespace Microsoft.AspNetCore.Builder
         {
             public class ControllerActionEndpointConventionBuilder { }
+            public class RouteHandlerBuilder { }
+            public class RouteGroupBuilder : Microsoft.AspNetCore.Routing.IEndpointRouteBuilder { }
 
             public static class ControllerEndpointRouteBuilderExtensions
             {
@@ -78,9 +82,48 @@ public class ActionShouldDeclareAccessPolicyTest
                     this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints) => new ControllerActionEndpointConventionBuilder();
             }
 
+            public static class EndpointRouteBuilderExtensions
+            {
+                public static RouteGroupBuilder MapGroup(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string prefix) => new RouteGroupBuilder();
+
+                public static RouteHandlerBuilder MapGet(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+
+                public static RouteHandlerBuilder MapPost(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+
+                public static RouteHandlerBuilder MapPut(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+
+                public static RouteHandlerBuilder MapPatch(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+
+                public static RouteHandlerBuilder MapDelete(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+
+                public static RouteHandlerBuilder MapMethods(
+                    this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                    string pattern,
+                    string[] httpMethods,
+                    System.Delegate handler) => new RouteHandlerBuilder();
+            }
+
             public static class AuthorizationEndpointConventionBuilderExtensions
             {
                 public static TBuilder RequireAuthorization<TBuilder>(this TBuilder builder) => builder;
+                public static TBuilder AllowAnonymous<TBuilder>(this TBuilder builder) => builder;
             }
         }
         """;
@@ -97,7 +140,7 @@ public class ActionShouldDeclareAccessPolicyTest
                 public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok();
 
                 [Microsoft.AspNetCore.Mvc.HttpGet]
-                public Microsoft.AspNetCore.Mvc.IActionResult GetSettings() // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous]; explicitly declare its access policy.}}
+                public Microsoft.AspNetCore.Mvc.IActionResult GetSettings() // Noncompliant {{Endpoint 'GetSettings' has neither authorization nor anonymous access explicitly declared.}}
                 {
                     return Ok();
                 }
@@ -495,12 +538,202 @@ public class ActionShouldDeclareAccessPolicyTest
     [TestMethod]
     public void ActionShouldDeclareAccessPolicy_NoncompliantForAssemblyApiController() =>
         builder.AddSnippet(
-            "[assembly: Microsoft.AspNetCore.Mvc.ApiController]\n\n" + ControllerStubs + """
+            ControllerStubs.Replace(
+                "namespace Microsoft.AspNetCore.Authorization",
+                "[assembly: Microsoft.AspNetCore.Mvc.ApiController]\n\nnamespace Microsoft.AspNetCore.Authorization") + """
 
             public class UsersController : Microsoft.AspNetCore.Mvc.ControllerBase
             {
                 [Microsoft.AspNetCore.Mvc.HttpGet]
                 public Microsoft.AspNetCore.Mvc.IActionResult GetProfile() => Ok(); // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantForBareMinimalApiEndpoints() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    app.MapGet("/users/{id}", (System.Func<string>)(() => "user")); // Noncompliant {{Endpoint '/users/{id}' has neither authorization nor anonymous access explicitly declared.}}
+                    app.MapPost("/users", (System.Action)(() => { })); // Noncompliant
+                    app.MapPut("/users/{id}", (System.Action)(() => { })); // Noncompliant
+                    app.MapPatch("/users/{id}", (System.Action)(() => { })); // Noncompliant
+                    app.MapDelete("/users/{id}", (System.Action)(() => { })); // Noncompliant
+                    app.MapMethods("/users", new[] { "OPTIONS" }, (System.Action)(() => { })); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantForDirectMinimalApiPolicies() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    app.MapGet("/users/{id}", (System.Func<string>)(() => "user"))
+                        .RequireAuthorization();
+                    app.MapGet("/health", (System.Func<string>)(() => "healthy"))
+                        .AllowAnonymous();
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantForAuthorizedRouteGroupChain() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGroup("/users")
+                        .RequireAuthorization()
+                        .MapGet("/{id}", (System.Func<string>)(() => "user"));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantForStableLocalRouteGroupPolicy() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    var secured = app.MapGroup("/secured");
+                    secured.RequireAuthorization();
+                    secured.MapGet("/profile", (System.Func<string>)(() => "profile"));
+
+                    var publicApi = app.MapGroup("/public").AllowAnonymous();
+                    publicApi.MapGet("/status", (System.Func<string>)(() => "ok"));
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantWhenRouteGroupIsReassigned() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    var group = app.MapGroup("/first").RequireAuthorization();
+                    group = app.MapGroup("/second");
+                    group.MapGet("/status", (System.Func<string>)(() => "ok")); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantForConditionalRouteGroupPolicy() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app, bool secure)
+                {
+                    var group = app.MapGroup("/users");
+                    if (secure)
+                    {
+                        group.RequireAuthorization();
+                    }
+                    group.MapGet("/status", (System.Func<string>)(() => "ok")); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_CompliantForMinimalApiWithFallbackPolicy() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class AuthorizationConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Authorization.AuthorizationOptions options) =>
+                    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+                        .RequireAuthenticatedUser()
+                        .Build();
+            }
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users/{id}", (System.Func<string>)(() => "user"));
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantForMinimalApiDespiteMvcOnlyGlobalProtection() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class MvcConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Mvc.MvcOptions options) =>
+                    options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter());
+            }
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    app.MapGet("/users/{id}", (System.Func<string>)(() => "user")); // Noncompliant
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantForMinimalApiDespiteAuthorizedControllers() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    app.MapControllers().RequireAuthorization();
+                    app.MapGet("/users/{id}", (System.Func<string>)(() => "user")); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void ActionShouldDeclareAccessPolicy_NoncompliantForMinimalApiLookalikes() =>
+        builder.AddSnippet(
+            ControllerStubs + """
+
+            namespace Lookalikes
+            {
+                public static class AuthorizationExtensions
+                {
+                    public static T RequireAuthorization<T>(this T builder) => builder;
+                }
+            }
+
+            public static class EndpointConfiguration
+            {
+                public static void Configure(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app) =>
+                    Lookalikes.AuthorizationExtensions.RequireAuthorization(
+                        app.MapGet("/users/{id}", (System.Func<string>)(() => "user"))); // Noncompliant
             }
             """)
             .Verify();

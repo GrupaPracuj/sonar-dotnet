@@ -1,0 +1,47 @@
+<p>Diagnostics that expose application data or detailed database errors should only be enabled in development.</p>
+<h2>Why is this an issue?</h2>
+<p>Entity Framework Core sensitive-data logging includes values from queries and entity properties in diagnostic messages. Detailed errors add
+database-level context to exceptions. The database developer page renders migration and database failure details for interactive debugging. These
+features are useful locally, but in a shared or production environment they can expose personal data, credentials, schema information and query
+values through logs or error pages.</p>
+<pre>
+options.EnableSensitiveDataLogging();
+services.AddDatabaseDeveloperPageExceptionFilter();
+</pre>
+<p>For this rule, sensitive information is not a fixed list of identifier names. It means the runtime data and implementation details exposed by
+these framework features: query parameter values, entity property values, connection or provider error details, database and schema names, SQL and
+migration details, and any personal data or credentials contained in those values. Consequently, the rule recognizes the diagnostic API being
+enabled rather than trying to infer the contents of every value that the application may process.</p>
+<p>The rule checks EF Core <code>EnableSensitiveDataLogging()</code> and <code>EnableDetailedErrors()</code> when enabled with no argument or with
+the constant value <code>true</code>, and ASP.NET Core <code>AddDatabaseDeveloperPageExceptionFilter()</code>. A call is accepted when the enclosing
+method performs the framework's <code>IsDevelopment()</code> check or when it is inside the conventional <code>StartupDevelopment</code> class.
+Runtime boolean configuration is not reported because the analyzer cannot prove that it enables the feature outside development.</p>
+<p>The official Sonar rule S4507 already covers <code>UseDeveloperExceptionPage()</code>; this rule deliberately does not duplicate it.</p>
+<h2>How to fix it</h2>
+<p>Enable the diagnostic only in a development-specific branch. Keep production diagnostics limited to identifiers and error information that is
+safe to retain.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+options.EnableSensitiveDataLogging(); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+if (environment.IsDevelopment())
+{
+    options.EnableSensitiveDataLogging();
+}
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/ef/core/logging-events-diagnostics/simple-logging#sensitive-data">Sensitive data
+  logging</a></li>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/aspnet/core/data/ef-rp/intro#database-error-page">Database developer page
+  exception filter</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/209.html">CWE-209 - Generation of Error Message Containing Sensitive Information</a></li>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/532.html">CWE-532 - Insertion of Sensitive Information into Log File</a></li>
+</ul>

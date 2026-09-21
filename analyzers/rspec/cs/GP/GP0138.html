@@ -1,0 +1,47 @@
+<p>Exception messages should not include values whose names indicate secrets or personal data.</p>
+<h2>Why is this an issue?</h2>
+<p>Exceptions routinely cross more boundaries than their original author expects. They are logged by global handlers and telemetry libraries,
+attached to traces, returned by background-job dashboards and sometimes exposed by an API error path. A password, token, email address or national
+identifier embedded in the message is therefore likely to be copied into systems with different access and retention policies.</p>
+<pre>
+throw new InvalidOperationException($"Account {email} failed with token {token}");
+</pre>
+<p>The rule analyzes the argument semantically mapped to an exception constructor's <code>message</code> parameter. It checks direct string
+interpolation, string concatenation and <code>string.Format</code>.</p>
+<p>The shared, case-insensitive secret vocabulary is <code>password</code>, <code>pwd</code>, <code>secret</code>, <code>token</code>,
+<code>apiKey</code>, <code>credential</code>, <code>credentials</code>, <code>privateKey</code>, <code>connectionString</code>,
+<code>bearer</code> and <code>sessionId</code>. The shared personal-data vocabulary is <code>email</code>, <code>pesel</code>,
+<code>phone</code>, <code>iban</code>, <code>surname</code>, <code>firstName</code>, <code>lastName</code>, <code>birthDate</code>,
+<code>dateOfBirth</code>, <code>creditCard</code>, <code>username</code> and <code>login</code>. Up to three adjacent camel-case, Pascal-case or
+underscore-separated words are joined before matching, so names such as <code>ApiKey</code>, <code>refresh_token</code> and
+<code>DateOfBirth</code> are recognized.</p>
+<p>Both vocabularies are defined once and shared with the GP logging and URL rules; the secret vocabulary is also used for message contracts. A
+trailing qualifier such as <code>Id</code>, <code>Reference</code>, <code>Name</code>, <code>Count</code>, <code>Length</code>,
+<code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> prevents a secret match because it describes or points to the secret
+rather than containing it. A <code>CancellationToken</code> or date/time value whose name contains a secret word is excluded. An exception object
+whose name contains a personal-data word is also excluded because it carries failure details and a stack trace, not that personal-data value.</p>
+<p>Literal text is not reported. A message such as <code>\"Authentication token is invalid\"</code> describes the problem without disclosing the
+token value.</p>
+<h2>How to fix it</h2>
+<p>Use a non-sensitive business identifier in the message and keep the sensitive value in the protected data store where it belongs. The exception
+type and stable error code should carry the machine-readable meaning.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+throw new InvalidOperationException(
+    $"Account {email} is invalid"); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+throw new InvalidOperationException(
+    $"Account {accountId} is invalid");
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html">Error Handling Cheat Sheet</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/209.html">CWE-209 - Generation of Error Message Containing Sensitive Information</a></li>
+</ul>

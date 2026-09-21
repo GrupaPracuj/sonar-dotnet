@@ -63,9 +63,10 @@ public class DoNotLogPersonalDataTest
             {
                 private readonly ILogger _logger;
 
-                public void Register(string pesel)
+                public void Register(string pesel, string username)
                 {
                     _logger.LogInformation("Received value: {Value}", pesel); // Noncompliant {{Do not log 'pesel' - its name suggests it holds personal data.}}
+                    _logger.LogInformation("User: {Value}", username); // Noncompliant {{Do not log 'username' - its name suggests it holds personal data.}}
                 }
             }
             """)

@@ -1,0 +1,39 @@
+<p>Whole HTTP request, authentication and identity objects should not be passed to a logger.</p>
+<h2>Why is this an issue?</h2>
+<p>These objects are containers rather than individual diagnostic values. Depending on the request and authentication scheme, they may expose
+authorization headers, cookies, query parameters, claims, authentication tokens, redirect addresses and other data that was never intended for
+the logging system.</p>
+<p>Logging the whole object also makes future changes unsafe. A new header, claim or authentication property can begin appearing in logs without
+any change or review at the logging call site.</p>
+<pre>
+logger.LogInformation("Request {Request}", context.Request);
+</pre>
+<p>The rule checks values whose semantic type is an ASP.NET Core <code>HttpContext</code>, <code>HttpRequest</code>, <code>HttpResponse</code>,
+header, cookie, query or form collection, <code>QueryString</code>, <code>ClaimsPrincipal</code>, <code>ClaimsIdentity</code>,
+<code>AuthenticationProperties</code> or <code>AuthenticationTicket</code>. It also follows direct string interpolation and concatenation.
+Logging an explicitly selected scalar field is not reported.</p>
+<h2>How to fix it</h2>
+<p>Log only the fields required for diagnosis, such as the HTTP method, route name, a non-sensitive business identifier or an approved correlation
+identifier. Never log authorization headers, cookies or complete claim sets.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+logger.LogInformation("Request {Request}", context.Request); // Noncompliant
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+logger.LogInformation(
+    "Method {Method}, correlation {CorrelationId}",
+    context.Request.Method,
+    context.Request.Headers["X-Correlation-Id"]);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html#data-to-exclude">Logging Cheat Sheet - Data to
+  exclude</a></li>
+</ul>
+<h3>Standards</h3>
+<ul>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/532.html">CWE-532 - Insertion of Sensitive Information into Log File</a></li>
+</ul>

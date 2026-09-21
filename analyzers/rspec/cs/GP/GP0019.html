@@ -19,9 +19,13 @@ such as <code>ApiKey</code>, <code>clientSecret</code>, <code>refresh_token</cod
 <code>Names</code>, <code>Count</code>, <code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the
 name points at, or describes, a secret rather than containing it. For example, <code>ApiKeyId</code>, <code>CredentialReference</code>,
 <code>SecretUri</code> and <code>PasswordLength</code> are not reported.</p>
-<p><code>System.Threading.CancellationToken</code> values are also ignored. Structured-log placeholders are associated positionally with their
-value arguments, so a placeholder such as <code>{Token}</code> does not produce an issue when its corresponding value is a
-<code>CancellationToken</code>.</p>
+<p><code>System.Threading.CancellationToken</code> values are also ignored. The rule also ignores values whose type makes it clear that they
+describe a date or time rather than contain a secret: <code>System.DateTime</code>, <code>System.DateTimeOffset</code>,
+<code>System.DateOnly</code>, <code>System.TimeOnly</code>, <code>System.TimeSpan</code>, <code>NodaTime.Instant</code>,
+<code>NodaTime.LocalDate</code>, <code>NodaTime.LocalDateTime</code>, <code>NodaTime.OffsetDateTime</code>,
+<code>NodaTime.ZonedDateTime</code> and <code>GP.Juno.Dates.LocalDate</code>. Nullable variants of these value types are ignored as well.</p>
+<p>Structured-log placeholders are associated positionally with their value arguments, so a placeholder such as <code>{Token}</code> does not
+produce an issue when its corresponding value has one of the ignored types.</p>
 <h2>How to fix it</h2>
 <p>Remove the secret from the log call entirely, or replace it with a non-reversible indicator (for example whether a value was present, or its
 length) if that is genuinely useful for diagnostics.</p>

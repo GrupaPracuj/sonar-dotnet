@@ -1,0 +1,36 @@
+<p>Raw AI content should not be passed directly to a logger.</p>
+<h2>Why is this an issue?</h2>
+<p>A prompt or a model response can carry anything a user typed or anything the model generated from it - personal data, secrets pasted into a chat,
+or content shaped by a prompt injection attempt. Logging it wholesale (a <code>ChatMessage</code>, a <code>ChatResponse</code>, an
+<code>AgentRunResponse</code>, a collection of messages, or the raw <code>.Text</code> of a response) moves that same untrusted, potentially
+sensitive content into the logging pipeline, where it is typically retained far longer and accessed far more broadly than the original
+conversation. Metadata about the exchange - a model id, a token count, a duration, a finish reason, a request id - carries none of that risk and is
+unaffected by this rule.</p>
+<pre>
+_logger.LogInformation("Response: {Response}", response);
+</pre>
+<p>The rule recognizes logging through <code>Microsoft.Extensions.Logging.ILogger</code> extensions, Serilog, and methods generated with
+<code>LoggerMessageAttribute</code>. It reports values typed as <code>ChatMessage</code>, <code>ChatResponse</code>,
+<code>AgentRunResponse</code>, <code>UsageContent</code>, collections of chat messages, and the <code>Text</code> property of a known response.
+These types are matched in the <code>Microsoft.Extensions.AI</code> and <code>Microsoft.Agents.AI</code> namespaces.</p>
+<h3>Exceptions</h3>
+<p>Scalar metadata such as <code>response.ModelId</code>, <code>response.Usage.TotalTokenCount</code>, duration, finish reason, and request id is
+not reported.</p>
+<h2>How to fix it</h2>
+<p>Log identifying metadata only - a request id, a model id, a token count, a duration, a finish reason - instead of the message, the response object,
+or its raw text.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+_logger.LogInformation("Response: {Response}", response); // Noncompliant {{Do not log this raw AI chat response directly - log only derived metadata (model id, token counts, duration, finish reason, request id).}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+_logger.LogInformation("Response received, model {Model}, {Tokens} tokens", response.ModelId, response.Usage?.TotalTokenCount);
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://owasp.org/www-project-top-10-for-large-language-model-applications/">OWASP Top 10 for Large Language Model
+  Applications</a></li>
+</ul>

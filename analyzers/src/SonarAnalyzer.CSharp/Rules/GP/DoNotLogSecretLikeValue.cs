@@ -15,6 +15,16 @@ public sealed class DoNotLogSecretLikeValue : SonarDiagnosticAnalyzer
 
     private const string MessageFormat = "Do not log '{0}' - its name suggests it holds a secret.";
 
+    private static readonly HashSet<string> DateAndTimeTypeNames = new(StringComparer.Ordinal)
+    {
+        "GP.Juno.Dates.LocalDate",
+        "NodaTime.Instant",
+        "NodaTime.LocalDate",
+        "NodaTime.LocalDateTime",
+        "NodaTime.OffsetDateTime",
+        "NodaTime.ZonedDateTime",
+    };
+
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -42,7 +52,7 @@ public sealed class DoNotLogSecretLikeValue : SonarDiagnosticAnalyzer
             for (var i = 0; i < Math.Min(placeholders.Length, valueArguments.Length); i++)
             {
                 if (GpIdentifierWords.ContainsSecretWord(placeholders[i])
-                    && !IsCancellationToken(context.Model, valueArguments[i].Expression))
+                    && !IsExcludedType(context.Model, valueArguments[i].Expression))
                 {
                     context.ReportIssue(Rule, arguments[templateIndex], placeholders[i]);
                     return;
@@ -52,7 +62,7 @@ public sealed class DoNotLogSecretLikeValue : SonarDiagnosticAnalyzer
 
         foreach (var argument in arguments.Where((_, index) => index != templateIndex))
         {
-            if (!IsCancellationToken(context.Model, argument.Expression)
+            if (!IsExcludedType(context.Model, argument.Expression)
                 && GpLoggingHelper.CandidateNames(argument.Expression).FirstOrDefault(GpIdentifierWords.ContainsSecretWord) is { } name)
             {
                 context.ReportIssue(Rule, argument, name);
@@ -61,6 +71,21 @@ public sealed class DoNotLogSecretLikeValue : SonarDiagnosticAnalyzer
         }
     }
 
-    private static bool IsCancellationToken(SemanticModel model, ExpressionSyntax expression) =>
-        model.GetTypeInfo(expression).Type.Is(KnownType.System_Threading_CancellationToken);
+    internal static bool IsExcludedType(SemanticModel model, ExpressionSyntax expression)
+    {
+        var type = model.GetTypeInfo(expression).Type;
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T, TypeArguments.Length: 1 } nullable)
+        {
+            type = nullable.TypeArguments[0];
+        }
+
+        return type.IsAny(
+                   KnownType.System_Threading_CancellationToken,
+                   KnownType.System_DateTime,
+                   KnownType.System_DateTimeOffset,
+                   KnownType.System_DateOnly,
+                   KnownType.System_TimeOnly,
+                   KnownType.System_TimeSpan)
+               || type is not null && DateAndTimeTypeNames.Contains(type.ToDisplayString());
+    }
 }

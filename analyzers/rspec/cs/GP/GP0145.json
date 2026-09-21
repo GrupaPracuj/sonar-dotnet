@@ -1,11 +1,12 @@
 {
-  "title": "Endpoints should explicitly declare their access policy",
-  "type": "CODE_SMELL",
+  "title": "Structured AI responses should be deserialized safely",
+  "type": "VULNERABILITY",
   "code": {
     "impacts": {
-      "MAINTAINABILITY": "MEDIUM"
+      "RELIABILITY": "MEDIUM",
+      "SECURITY": "MEDIUM"
     },
-    "attribute": "CONVENTIONAL"
+    "attribute": "TRUSTWORTHY"
   },
   "status": "ready",
   "remediation": {
@@ -14,11 +15,11 @@
   },
   "tags": [
     "gp",
-    "authorization"
+    "ai"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0020",
-  "sqKey": "GP0020",
+  "ruleSpecification": "GP-0145",
+  "sqKey": "GP0145",
   "scope": "Main",
   "quickfix": "unknown"
 }

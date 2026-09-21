@@ -1,0 +1,3367 @@
+ ▐▛███▛█   Claude Code v2.1.250
+▝▜██████▀  Opus 5 · Claude Team
+  ▝▝ ▝▝    C:\Git\sonar-dotnet
+
+
+❯ na czym skonczylismy?                                                         
+
+  Listed 1 directory, ran 10 shell commands (ctrl+o to expand)
+
+● Stan na dziś (repo czyste, master == origin/master, nic niewypchniętego):
+
+  Ostatnia sesja — 28.08, commit 2964aa1b2 „Fix four false positives found in 
+  production analysis”. Był to przegląd weryfikacyjny: każda reguła GP zmieniona
+  od 24.08 sprawdzona na lokalnym SonarQube, poprawione 4 pudła:
+  - GP0073 – porównywał identyfikator tylko z końcówką nazwy i z uwzględnieniem
+    wielkości liter; teraz case-insensitive, po całych słowach PascalCase, plus
+    NIP/PESEL/REGON/VAT jako klucze naturalne.
+  - GP0039 – rozpoznawał composition root tylko po IServiceCollection w
+    sygnaturze.
+  - GP0096 / GP0126 – zgłaszały pętlę po batchach, czyli dokładnie to lekarstwo,
+    do którego namawiają.
+  - GP0022 – emailEx (złapany wyjątek) czytany jako dane osobowe.
+  - Świadomie nie zmienione: GP0035 i GP0043 — wyglądały na FP, ale reguły mają
+    rację.
+
+  Wcześniej, 25.08 – duży przegląd/przycinka korpusu reguł: usunięte GP0001,
+  GP0006, GP0048, GP0056, GP0062, GP0072, GP0095, GP0127, GP0128; GP0057
+  zwinięte w GP0059 (koniec zgadywania po nazwach domenowych); GP0035 rozbite na
+  trzy reguły; GP0110 rozdzielone (nowe GP0131); cztery reguły poszerzone tam,
+  gdzie zasięg był węższy niż temat. Netto: 99 reguł GP, najwyższy zajęty id
+  GP0131.
+
+  Co zostaje otwarte:
+  1. docs/gp-rule-backlog.md — pass „czytany” po 132 repo z C:\Git\runn for 
+     all\repos przerobiony w kilku procentach czterech repozytoriów; dokument
+     sam argumentuje, że yield z czytania jest ~2 rzędy wielkości wyższy niż ze
+     skanowania wzorcami. To naturalny następny krok, jeśli chcesz dalej kopać
+     reguły.
+  2. CancellationToken.None (205 wystąpień) — kandydat świadomie odłożony:
+     problemem była precyzja, nie wolumen.
+  3. Od sierpniowego synca z upstreamem strona Java (mvn) nadal nieweryfikowana
+     — poms i DotNetRulesDefinition.java były ruszane, więc tam może siedzieć
+     niespójność.
+  4. docs/gp-product-findings.md — 8 zgłoszonych issues w produktach; lista
+     „sprawdzone i celowo niezgłoszone” też tam jest, żeby nie badać drugi raz.
+
+  Serwer MCP sonarqube nie podłączył się w tej sesji (CONNECTION_CLOSED) —
+  gdybyś chciał znowu weryfikować reguły na instancji, trzeba go najpierw
+  wskrzesić.
+
+  Od czego ruszamy?
+
+✻ Baked for 3m 18s · done piątek, 18:14
+
+❯ zrob synca do upstremu                                                        
+
+  Ran 12 shell commands (ctrl+o to expand)
+
+● Teraz odtwarzam nasze zmiany GP w sonar-csharp-plugin/pom.xml na treści
+  upstreamu.
+
+  Searched for 2 patterns, ran 25 shell commands (ctrl+o to expand)
+● Background command "Find IsRequired usage and ShimLayer layout" completed
+(exit code 0)
+
+❯ jak idze?                                                                     
+
+● Idzie dobrze — merge zrobiony, build czysty, testy GP zielone. Status w
+  skrócie:
+
+  - 60 commitów z upstreamu, konflikty tylko w 6 pomach (nasze
+    ${revision}/GP-nazwy nałożone na treść upstreamu; wersja poszła 10.33 →
+    10.34-SNAPSHOT, JDK build 17 → 21).
+  - Build wywalił się na dwóch miejscach w GP, oba to zmiana API upstreamu
+    (ShimLayer Generator): nasz shim IFieldSymbolExtensions.Sonar.cs usunięty
+    (upstream sam generuje IFieldSymbol.IsRequired), a ExpressionBody przepięte
+    na SonarAnalyzer.CFG.Extensions.
+  - Testy GP: net10 1013/1013, net48 354 passed / 629 skipped, 0 błędów.
+
+  Lecę dalej: pełny przebieg testów (żeby porównać z znanymi padami od polskiej
+  lokalizacji) i walidacja metadanych reguł, potem commit.
+
+  Committed 615484575c, searched for 1 pattern, read 2 files, listed 1 directory, ran 17 shell commands (ctrl+o to expand)
+
+● Background command "Run full net10 test suite" completed (exit code 0)
+
+● Merge jest już zacommitowany lokalnie (615484575c). W tle dokańczam dwie
+  weryfikacje: pełny przebieg testów z nazwami 6 padających (żeby potwierdzić,
+  że to znane polskie locale) oraz mvn install na stronie Javy — to jedyny
+  obszar, który od poprzedniego synca nigdy nie był sprawdzony.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Czekam na wyniki obu przebiegów w tle (pełne testy z nazwami padających + mvn 
+  install). Odezwę się, gdy skończą.
+
+✻ Brewed for 37m 49s · done piątek, 18:54
+
+● Background command "Build Java side with Maven" completed (exit code 0)
+
+  Read 2 files, ran 8 shell commands (ctrl+o to expand)
+
+● Background command "Wait for maven build to finish" completed (exit code 0)
+● Czekam na oba przebiegi. Tymczasem jedno znalezisko ze strony Javy (pierwszy
+  raz w ogóle uruchomionej): mvn install przechodzi moduły aż do
+  sonar-csharp-plugin, gdzie wywala się license-maven-plugin — plik
+  CSharpSonarWayProfileTest.java ma nagłówek SonarC#, a moduł po naszym
+  przemianowaniu na „GP C#” wymaga GP C# we wszystkich 9 plikach (pozostałe 8
+  już go ma). To nie jest skutek dzisiejszego merge'a — ten plik miał taki
+  nagłówek również przed nim; po prostu mvn nigdy wcześniej nie był puszczony.
+
+✻ Churned for 2m 30s · done piątek, 18:59
+
+● Background command "Re-run full suite capturing failed test names" was stopped
+  ⎿  UserPromptSubmit hook timed out after 60s — output discarded. Raise the 
+     hook's "timeout" to allow more time.
+
+● Background command "Maven install skipping license check" was stopped
+
+● Background command "Wait for full test run with names" was stopped
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Maven doszedł do końca (był zabity dopiero po fakcie) i dał drugie, konkretne
+  znalezisko:
+
+  - license check — 1 plik (CSharpSonarWayProfileTest.java) z nagłówkiem SonarC#
+    w module przemianowanym na „GP C#”.
+  - jar-size gate — gp-sonar-csharp-plugin-10.34-SNAPSHOT.jar waży 4 566 902 B,
+    a okno w pomie to wciąż upstreamowe 5,6–6,0 MB. To jest dokładnie ten
+    nierozwiązany problem, o którym mówi komentarz w pomie (deklaruje pomiar 2
+    855 240 B z 11.08, ale liczb nigdy nie zmieniono). Poza tymi dwiema bramkami
+    cała strona Javy — kompilacja, shade, zip analizatora, packaging —
+    przechodzi.
+
+  Reszta jest gotowa: merge zacommitowany (026651dc65), build .NET czysty, GP
+  1013/1013 (net10) i 354/0 (net48), pełny net10 6467 passed / 6 failed (tyle
+  samo znanych padów od polskiego locale co poprzednio; przebieg, który miał
+  wypisać ich nazwy, został ubity razem z resztą zadań).
+
+● User answered Claude's questions:
+  ⎿  · Nagłówek licencji w CSharpSonarWayProfileTest.java — jak to załatwić? → 
+     Wyłączyć license check w naszym pomie
+     · Okno rozmiaru jara w sonar-csharp-plugin/pom.xml (realnie 4,57 MB vs próg
+     5,6–6,0 MB)? → Ustawić wokół realnego rozmiaru
+     · Co dalej z tym syncem? → Wypchnąć na origin po poprawkach, Usunąć 5 
+     pustych plików-sierot rspec, Powtórzyć pełne testy z nazwami padów
+
+❯ dobra, ostatni raz sprawdzmy czy sa jakies FP                                 
+
+  Pushed to master, searched for 1 pattern, read 3 files, listed 5 directories, ran 47 shell commands (ctrl+o to expand)
+
+● Background command "Verify maven build passes gates" completed (exit code 0)
+● Background command "Clean maven install to re-measure jar sizes" completed
+(exit code 0)
+
+● Background command "Full net10 suite with failing test names" completed (exit
+code 0)
+
+● Background command "Fix size window and verify with clean build" completed
+(exit code 0)
+
+● Znalazłem konkretny FP i mam dane, żeby go dobrze zawęzić — ale to jest
+  właśnie ten kompromis precyzja/recall, o którym wolisz decydować sam.
+
+  GP0043 jest jedyną z reguł HTTP, która nie odróżnia REST API od MVC z
+  widokami. GP0100/0101/0102/0103/0110 używają IsCoreApiController (czyli
+  [ApiController] albo ControllerBase bez Controller), a GP0043 dla ścieżki
+  request/response bierze samo IsControllerActionMethod. Efekt widać w Twoim
+  własnym korpusie: brudna-rzeka/…/MvcOpenApiPrecisionController.cs ma
+  komentarze GP0100 NO_HIT; GP0101 NO_HIT; GP0102 NO_HIT; GP0103 NO_HIT — i mimo
+  to GP0043 zgłasza tam dwa trafienia.
+
+  Skala: z 694 trafień typu REST w GP0043 79 siedzi w kontrolerach 
+  dziedziczących po Controller bez [ApiController]. Tyle że nie wszystkie są FP
+  — GP.Texas/FilesController : Controller ma [Route("files")] i
+  [ProducesResponseType(typeof(UserFiles), 200)], a
+  Service-Auth/ResourcesMaintenanceController : Controller ma
+  [Produces("application/json")]. To prawdziwe REST API napisane na bazie MVC.
+  Prawdziwe FP to np. GP.Pinky.Web/QueueActionsController — aplikacja z
+  katalogiem Views/, bez [Route], zwracająca własne ViewModel.
+
+● User answered Claude's questions:
+  ⎿  · Jak zawęzić GP0043, żeby nie zgłaszał kontrolerów MVC? → Idzimy w 1, ale 
+     moze zrobmy nowa regule ktora wyvchwic kontrolery rest dziediczace po 
+     cotroler i bez atrybutu apicontroller
+     · Dane w SonarQube pochodzą ze skanu sprzed poprawek z 28.08 (najnowsze 
+     trafienie GP0073 z 25.08). Co z tym? → Na razie bez skanu
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+❯ sprawdz porszoe tez opis GP0110, czy da sie tam cos zrobic czytelniej -       
+  akurat ta regula bedzie lda naszych devow dosc nowa, wiec dobrze bya ja       
+  rozumieli, z drguiej storny nie chce aby byla przegadana. Zobacz czy cos      
+  warto poprawic                                                                
+
+  Ran 7 shell commands (ctrl+o to expand)
+
+● Zanim wrócę do GP0132 — poprawiony opis GP0110. Zmiany: wyrzucam akapit o
+  wewnętrznej deduplikacji zgłoszeń (to opis zachowania analizatora, nie kodu),
+  dokładam jak ten format wygląda na drucie i to, że ASP.NET Core sam go już
+  zwraca, oraz drugi przykład dla metadanych.
+
+● Write(analyzers\rspec\cs\GP\GP0110.html)
+  ⎿  Added 42 lines, removed 15 lines
+       1  <p>Explicit HTTP error response bodies should use the standard 
+          <code>ProblemDetails</code> format defined by RFC 9457.</p>
+       2  <h2>Why is this an issue?</h2>
+       3 -<p>Returning unrelated strings, anonymous objects and applicati
+         -on-specific DTOs for different errors forces clients to impleme
+         -nt a separate parser for                                       
+       4 -each endpoint. <code>ProblemDetails</code> provides stable fiel
+         -ds for machine-readable type, status, title and safe detail whi
+         -le still allowing                                              
+       5 -application-specific extensions.</p>                           
+       6 -<p>The rule checks explicit response factories returned from AP
+         -I controllers and inline Minimal API handlers, as well as concr
+         -ete error schemas declared                                     
+       7 -with response metadata. When a returned body and method-level m
+         -etadata violate the rule for the same status, only the returned
+         - body is reported.                                             
+       8 -Controller-level metadata remains a separate shared contract an
+         -d is reported independently. Bodyless errors, framework <code>P
+         -roblem</code> and                                              
+       9 -<code>ValidationProblem</code> factories, middleware-generated 
+         -responses and types derived from <code>ProblemDetails</code> ar
+         -e accepted.</p>                                                
+       3 +<p>An API that answers one error with an anonymous object, the 
+         +next with a bare string and a third with its own DTO forces eve
+         +ry client to write a                                           
+       4 +separate parser for each endpoint, and to know in advance which
+         + shape a given status will carry. <code>ProblemDetails</code> i
+         +s the one shape clients                                        
+       5 +already know how to read:</p>                                  
+       6 +<pre>                                                          
+       7 +HTTP/1.1 400 Bad Request                                       
+       8 +Content-Type: application/problem+json                         
+       9 +                                                               
+      10 +{                                                              
+      11 +  "type": "https://errors.example.com/invalid-order",          
+      12 +  "title": "The order is invalid",                             
+      13 +  "status": 400,                                               
+      14 +  "detail": "The delivery date is in the past.",               
+      15 +  "orderId": "42"                                              
+      16 +}                                                              
+      17 +</pre>                                                         
+      18 +<p>Anything the error needs beyond the standard members - <code
+         +>orderId</code> above - stays allowed as an extension, so the f
+         +ormat costs nothing in                                         
+      19 +expressiveness.</p>                                            
+      20 +<p>ASP.NET Core already returns this format for the errors it p
+         +roduces itself: the automatic model-validation response of an  
+      21 +<code>[ApiController]</code>, the <code>Problem()</code> and <c
+         +ode>ValidationProblem()</code> helpers, and the <code>AddProble
+         +mDetails()</code>                                              
+      22 +middleware. A hand-written error body means the same API report
+         +s errors in two formats, and the framework only documents one o
+         +f them.</p>                                                    
+      23 +<p>The rule looks at error responses - status 400 to 599 - retu
+         +rned from API controller actions and inline Minimal API handler
+         +s, and at the error types                                      
+      24 +declared with <code>ProducesResponseType</code> on an action or
+         + on the controller. An error without a body, the <code>Problem(
+         +)</code> and                                                   
+      25 +<code>ValidationProblem()</code> factories, and any type derive
+         +d from <code>ProblemDetails</code> are accepted.</p>           
+      26  <h2>How to fix it</h2>
+      11 -<p>Return <code>Problem()</code>, <code>ValidationProblem()</co
+         -de>, <code>Results.Problem()</code>, or pass a suitable        
+      12 -<code>ProblemDetails</code> subtype as the error body. Keep int
+         -ernal exception details out of the public fields.</p>          
+      27 +<p>Return one of the framework factories instead of a custom bo
+         +dy, and declare <code>ProblemDetails</code> as the error type. 
+         +Keep exception messages                                        
+      28 +and stack traces out of the members the client sees.</p>       
+      29  <h3>Code examples</h3>
+      30  <h4>Noncompliant code example</h4>
+      15 -<pre>                                                          
+      16 -return BadRequest(new { Code = "invalid-order" }); // Noncompli
+         -ant                                                            
+      31 +<pre data-diff-id="1" data-diff-type="noncompliant">           
+      32 +[ProducesResponseType(typeof(OrderError), StatusCodes.Status400
+         +BadRequest)] // Noncompliant                                   
+      33 +public IActionResult Create(CreateOrder order) =&gt;           
+      34 +    BadRequest(new { Code = "invalid-order" }); // Noncompliant
+      35  </pre>
+      36  <h4>Compliant solution</h4>
+      37 +<pre data-diff-id="1" data-diff-type="compliant">              
+      38 +[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Statu
+         +s400BadRequest)]                                               
+      39 +public IActionResult Create(CreateOrder order) =&gt;           
+      40 +    Problem(                                                   
+      41 +        type: "https://errors.example.com/invalid-order",      
+      42 +        title: "The order is invalid",                         
+      43 +        statusCode: StatusCodes.Status400BadRequest);          
+      44 +</pre>                                                         
+      45 +<p>When the error carries its own fields, derive from <code>Pro
+         +blemDetails</code> rather than replacing it:</p>               
+      46  <pre>
+      20 -return Problem(                                                
+      21 -    type: "https://errors.example.com/invalid-order",          
+      22 -    title: "The order is invalid",                             
+      23 -    statusCode: StatusCodes.Status400BadRequest);              
+      47 +public sealed class OrderProblemDetails : ProblemDetails       
+      48 +{                                                              
+      49 +    public string OrderId { get; init; }                       
+      50 +}                                                              
+      51  </pre>
+      52  <p>A returned <code>ProblemDetails</code> whose <code>Status</c
+          ode> contradicts the HTTP status is the subject of GP0131.</p>
+      53  <h2>Resources</h2>
+
+  Ran 6 shell commands (ctrl+o to expand)
+● Teraz metadane i testy dla GP0132.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Write(analyzers\tests\SonarAnalyzer.Test\Rules\GP\RestControllerShouldBeAnApiC
+       ontrollerTest.cs)
+  ⎿  Wrote 210 lines to analyzers\tests\SonarAnalyzer.Test\Rules\GP\RestCon
+     trollerShouldBeAnApiControllerTest.cs
+      1 /*
+      2  * GP analyzers for SonarAnalyzer .NET
+      3  * Copyright (C) Grupa Pracuj
+      4  *
+      5  * Part of a fork of SonarAnalyzer for .NET; see LICENSE.txt at t
+        he root of this
+      6  * repository for the terms that apply.
+      7  */
+      8 
+      9 using CS = SonarAnalyzer.CSharp.Rules;
+     … +251 lines (ctrl+o to expand)
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+❯ w regule GP0035 , nie wiem czy potrzba wspomninac o tym co robimy dale z      
+  polaczeniem, czyli expres the work. Tu mowimy jak masz tworzyv poaczenie i    
+  tyle. POpraw opisy i przyklady                                                
+
+  Searched for 3 patterns, read 1 file, ran 5 shell commands (ctrl+o to expand)
+
+● Write(analyzers\rspec\cs\GP\GP0035.html)
+  ⎿  Added 22 lines, removed 11 lines
+      1 -<p>A database connection should be created by Juno: either suppl
+        -ied to an <code>IDbExecute</code>, or obtained from             
+      2 -<code>IAdoConnectionFactory.CreateConnection()</code>. The two a
+        -re equivalent as far as this rule is concerned.</p>             
+      1 +<p>A database connection should be created by Juno's <code>IAdoC
+        +onnectionFactory</code>, not constructed by hand.</p>           
+      2  <h2>Why is this an issue?</h2>
+      3  <p>Constructing the connection yourself means supplying the conn
+         ection string yourself, and that is the actual problem: the addr
+         ess, credentials,
+      4  failover target and pooling settings stop coming from the servic
+         e's configured data source and start coming from whatever string
+          happened to be in
+     ...
+       9  <p>Only the act of creating a connection is reported, in the tw
+          o forms it takes: constructing a <code>DbConnection</code>, and
+           taking one from a
+      10  <code>DbProviderFactory</code>. Code that merely receives a con
+          nection is not reported - it did not create it, and it is not w
+          here the fix belongs.</p>
+      11  <h2>How to fix it</h2>
+      13 -<p>Obtain the connection from <code>IAdoConnectionFactory</code
+         ->, or express the work as an <code>IDbExecute</code> and let Ju
+         -no supply one.</p>                                             
+      12 +<p>Inject <code>IAdoConnectionFactory</code> and call <code>Cre
+         +ateConnection()</code>. What the code then does with the connec
+         +tion is outside this                                           
+      13 +rule.</p>                                                      
+      14  <h3>Code examples</h3>
+      15  <h4>Noncompliant code example</h4>
+      16  <pre data-diff-id="1" data-diff-type="noncompliant">
+      17 -public async Task&lt;Order&gt; Find(int id)                    
+      17 +public sealed class OrdersRepository(string connectionString)  
+      18  {
+      19 -    using var connection = new SqlConnection(_connectionString)
+         -; // Noncompliant                                              
+      20 -    return await connection.QuerySingleAsync&lt;Order&gt;("sele
+         -ct * from Orders where Id = @id", new { id });                 
+      19 +    public async Task&lt;Order&gt; Find(int id)                
+      20 +    {                                                          
+      21 +        using var connection = new SqlConnection(connectionStri
+         +ng); // Noncompliant                                           
+      22 +        return await connection.QuerySingleAsync&lt;Order&gt;("
+         +select * from Orders where Id = @id", new { id });             
+      23 +    }                                                          
+      24  }
+      25  </pre>
+      26  <h4>Compliant solution</h4>
+      27  <pre data-diff-id="1" data-diff-type="compliant">
+      25 -public async Task&lt;Order&gt; Find(int id)                    
+      28 +public sealed class OrdersRepository(IAdoConnectionFactory conn
+         +ectionFactory)                                                 
+      29  {
+      27 -    await using var connection = connectionFactory.CreateConnec
+         -tion();                                                        
+      28 -    return await connection.QuerySingleAsync&lt;Order&gt;("sele
+         -ct * from Orders where Id = @id", new { id });                 
+      30 +    public async Task&lt;Order&gt; Find(int id)                
+      31 +    {                                                          
+      32 +        await using var connection = connectionFactory.CreateCo
+         +nnection();                                                    
+      33 +        return await connection.QuerySingleAsync&lt;Order&gt;("
+         +select * from Orders where Id = @id", new { id });             
+      34 +    }                                                          
+      35  }
+      36  </pre>
+      37 +<p>A method that is handed a connection has nothing to fix:</p>
+      38 +<pre>                                                          
+      39 +public Task&lt;Order&gt; Find(IDbConnection connection, int id)
+         + =&gt;                                                         
+      40 +    connection.QuerySingleAsync&lt;Order&gt;("select * from Ord
+         +ers where Id = @id", new { id });                              
+      41 +</pre>                                                         
+      42  <h2>Resources</h2>
+      43  <h3>Documentation</h3>
+      44  <ul>
+      34 -  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a>
+         - - <code>src/Juno/Examples/Ado/</code> shows both shapes this r
+         -ule points at:                                                 
+      35 -  <code>IAdoConnectionFactory</code> for a connection you use d
+         -irectly, and <code>IDbExecute</code> for work Juno runs.</li>  
+      45 +  <li><a href="https://github.com/GrupaPracuj/juno">GP.Juno</a>
+         + - <code>src/Juno/Examples/Ado/</code> shows <code>IAdoConnecti
+         +onFactory</code> in                                            
+      46 +  use.</li>                                                    
+      47  </ul>
+
+  Ran 7 shell commands (ctrl+o to expand)
+
+● Background command "Find GP0035 message usages" completed (exit code 0)
+
+● Zrobione. Podsumowanie tej rundy:
+
+  GP0110 — opis przepisany pod dev, który widzi ProblemDetails pierwszy raz
+  - Wyleciał akapit o tym, którą z dwóch nakładających się diagnoz analizator
+    tłumi („When a returned body and method-level metadata violate the rule for
+    the same status, only the returned body is reported…") — to opis zachowania
+    narzędzia, nie kodu, i czytelnik nic z tym nie zrobi.
+  - Doszło: jak ten format wygląda na drucie (nagłówek application/problem+json
+    + 6-liniowy JSON), zdanie o tym, że pola własne (orderId) zostają dozwolone
+    jako rozszerzenie, oraz że ASP.NET Core już zwraca ten format sam z siebie
+    (walidacja modelu w [ApiController], Problem(), ValidationProblem(),
+    AddProblemDetails()) — czyli ręczny błąd oznacza dwa formaty w jednym API.
+  - Przykład noncompliant/compliant pokazuje teraz obie połowy reguły naraz:
+    zwrócone ciało i [ProducesResponseType(typeof(...), 400)]. Plus krótka
+    wskazówka, że własne pola robi się przez dziedziczenie po ProblemDetails.
+  - Zakres opisany jednym zdaniem zamiast trzech.
+
+  GP0035 — zawężone do tego, o czym reguła faktycznie mówi
+  - Komunikat był: „Obtain the connection from Juno: express the work as an
+    IDbExecute, or use Dapper on a connection created by IAdoConnectionFactory."
+    Teraz: „Obtain the connection from Juno's IAdoConnectionFactory instead of 
+    constructing it here."
+  - Z opisu i „How to fix it" zniknął wątek IDbExecute — zgodnie z tym, co
+    mówisz: tu ustalamy, skąd bierzesz połączenie, a nie co z nim robisz dalej.
+    Zostało zdanie wprost: „What the code then does with the connection is
+    outside this rule."
+  - Przykłady: noncompliant/compliant pokazują teraz różnicę w konstruktorze
+    klasy (string connectionString → IAdoConnectionFactory), bo to jest realna
+    zmiana; doszedł trzeci przykład — metoda dostająca IDbConnection z zewnątrz,
+    czyli „tu nie ma czego naprawiać".
+
+  GP0043 + nowa GP0132 (zgodnie z Twoją decyzją)
+  - GP0043 używa teraz IsCoreApiController tak jak GP0100–0103/0110/0115.
+    Ścieżki messagingowe bez zmian.
+  - GP0132 łapie to, co przez to zawężenie by wypadło: kontroler po Controller,
+    bez [ApiController], którego akcje deklarują [Produces] albo
+    [ProducesResponseType(typeof(...))] i który nigdy nie renderuje widoku.
+    Dowód musi być pozytywny — samo Ok() nie wystarcza, bo tak samo zwraca
+    kontroler MVC dla JS-a swojej strony. Na produkcji trafiłoby m.in.
+    GP.Texas.FilesController i Service-Auth.ResourcesMaintenanceController.
+
+  Testy: GP 1024/1024 (net10), 354 passed / 640 skipped (net48), RuleCatalogTest
+  i ConcurrentExecutionTest zielone, metadane OK (793 reguły). Commit
+  e1b34e2e49 leży lokalnie — nie wypchnąłem go, bo poprzednia zgoda na push
+  dotyczyła commitów samego synca. Powiedz słowo i wypycham.
+
+✻ Sautéed for 38m 9s · done poniedziałek, 10:24
+
+※ recap: Sync forka z upstreamem jest zrobiony i wypchnięty, a potem doszły poprawki reguł: zawężenie GP0043, nowa GP0132 oraz przepisane opisy GP0110 i GP0035. Commit e1b34e2e49 czeka lokalnie — powiedz, czy mam go wypchnąć. (disable recaps in /config)
+
+❯ a jescze z ciekawosci, mamy jakies reguly bez hitow? lubz hitami tylko z      
+  brudnej?                                                                      
+
+  Searched for 4 patterns, ran 3 shell commands (ctrl+o to expand)
+
+● Sprawdziłem — policzyłem trafienia per reguła na lokalnym SonarQube (te same
+  dane co wcześniej, czyli skan z ~25.08, 234 repo + korpus brudna-rzeka).
+
+  Reguł bez żadnego trafienia praktycznie nie ma. Jedyna z zerem to GP0132,
+  którą dodaliśmy dzisiaj — jej po prostu nie było w tamtym skanie.
+
+  27 reguł trafia wyłącznie w brudna-rzeka, czyli nigdy nie odezwały się w
+  prawdziwym kodzie:
+
+  GP0005, GP0011, GP0021
+  claims / status kodów autoryzacji / połykane wyjątki wokół access checków
+  ────────────────────────────────────────
+  GP0017, GP0042, GP0083, GP0084, GP0088, GP0092, GP0093, GP0124
+  klasyczne defekty: Utc w nazwie date-only, niatomowy volatile, duplikaty w
+  inicjalizatorach, [ThreadStatic] na polu niestatycznym, capture zmiennej
+  pętli, Enum.IsDefined na flagach, throw w filtrze wyjątku, konwersje nullable
+  ────────────────────────────────────────
+  GP0025, GP0058, GP0066, GP0074
+  kontrakty: nieserializowalne składowe, niestabilne kolekcje, encja jako
+  kontrakt, logowanie całego kontraktu
+  ────────────────────────────────────────
+  GP0040, GP0047
+  polityka Juno: lock międzyprocesowy, service discovery zamiast klienta Consula
+  ────────────────────────────────────────
+  GP0028, GP0046, GP0078, GP0080, GP0086, GP0096, GP0111, GP0113, GP0122, GP0131
+  reszta: URL z requestu w wywołaniu wychodzącym, GET z efektem ubocznym, throw
+  w
+  konstruktorze statycznym, null jako sender zdarzenia, EF.Functions poza
+  lambdą, HTTP w pętli w ścieżce synchronicznej, catch unique-constraint,
+  CreatedAtAction na nieroutowalną akcję, indeksowana kolumna string bez
+  długości, ProblemDetails.Status ≠ status odpowiedzi
+
+  Do tego drugi poziom — 14 reguł z 1–3 realnymi trafieniami: GP0009, GP0010,
+  GP0015, GP0018, GP0019, GP0023, GP0027, GP0031, GP0037, GP0045, GP0094,
+  GP0104, GP0107, GP0123.
+
+  Czy „cisza" znaczy „reguła nie działa"? Sprawdziłem kilka gremi po repo i w
+  tych przypadkach cisza jest zdrowa:
+  - Enum.IsDefined — 0 wystąpień poza korpusem → GP0092 nie ma czego łapać.
+  - EF.Functions — 0 poza korpusem → GP0086 tak samo.
+  - [ThreadStatic] / volatile — 0 poza korpusem → GP0042 i GP0084 tak samo.
+  - CreatedAtAction/CreatedAtRoute — 9 wystąpień w 7 realnych plikach, a GP0113
+    milczy: reguła zgłasza tylko nazwę akcji, której nie da się wyroutować, więc
+    to jest poprawny wynik.
+
+  Cztery, którym bym się przyjrzał (to podejrzenia, nie werdykty — nie
+  weryfikowałem ich implementacji):
+  - GP0096 (HTTP w pętli w ścieżce synchronicznej) — 1 trafienie w korpusie,
+    podczas gdy bliźniacza GP0126 (DB w pętli) ma 23 realne. Ta asymetria
+    wygląda na zbyt wąską bramkę „ścieżki synchronicznej", a nie na czysty kod.
+  - GP0122 (indeksowana kolumna string bez ograniczonej długości) — przy
+    repozytoriach pełnych migracji FluentMigrator zero trafień jest zaskakujące.
+  - GP0025 / GP0058 (serializacja kontraktów) — przy setkach typów kontraktowych
+    też.
+  - GP0046 (GET z efektem ubocznym) — 234 repo z API i ani jednego trafienia.
+
+  Zastrzeżenie: brudna-rzeka jest korpusem syntetycznym pisanym po to, żeby
+  trafiać każdą regułę, więc „tylko tam" nie znaczy „reguła zła" — dla reguł
+  defektowych to dokładnie ten wynik, o który chodzi. Chętnie sprawdzę te cztery
+  podejrzane (grep po wzorcu + celowy test), jeśli chcesz.
+
+✻ Brewed for 3m 16s · done poniedziałek, 10:47
+
+※ recap: Zsynchronizowaliśmy fork z upstreamem (10.34) i naprawiliśmy reguły GP; commit e1b34e2e49 z GP0043/GP0132 i poprawionymi opisami GP0110/GP0035 leży lokalnie. Następny krok: powiedz, czy go wypchnąć na origin. (disable recaps in /config)
+❯ zrob reviu tych podjerzanych                                                  
+
+  Made 2 scratchpad edits +80, searched for 5 patterns, read 1 file, ran 17 shell commands (ctrl+o to expand)
+
+❯ i jak?                                                                        
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● Mam już wyniki dla czterech z pięciu; skan do GP0096 jeszcze się miele.
+
+  GP0122 (indeksowana kolumna NVARCHAR(MAX)) — cisza uczciwa, ale reguła jest 
+  węższa niż myśli
+  - Przejrzałem 2 644 pliki migracji: AsString(int.MaxValue) / AsCustom("…max…")
+    występuje 85 razy w 44 plikach, więc materiał jest.
+  - Dopasowanie po trójce (schemat, tabela, kolumna): ani jednego przypadku, w
+    którym kolumna MAX jest indeksowana — ani w tej samej klasie migracji (czego
+    reguła wymaga), ani w innej migracji tego samego projektu (czego i tak by
+    nie zobaczyła). Pierwsze podejście dało 133 „trafienia", ale to był artefakt
+    mojego regexa — Delete.Column("X") wyglądało jak indeks.
+  - Powód jest prozaiczny: SQL Server odrzuca taki indeks przy deploy, więc ten
+    błąd nie przeżywa w repo. Reguła zostaje jako prewencja, tylko z natury
+    będzie milczeć.
+  - Dwa realne zawężenia warte zapisania: klucz kolumny zawiera klasę migracji,
+    więc indeks założony w kolejnej migracji nigdy się nie skojarzy; i zbierane
+    są tylko OnColumn/Column/Columns, więc
+    WithColumn(...).AsString(int.MaxValue).Indexed() przechodzi bokiem.
+
+  GP0025 i GP0058 (kontrakty) — cisza w pełni uczciwa
+  - Kontrakt rozpoznawany jest po namespace (*.Contracts albo zagnieżdżony
+    Contracts.), więc w projekcie kontraktów reguły widzą typy normalnie — nie
+    ma blokady strukturalnej, której się obawiałem.
+  - W repo: zero publicznych właściwości IQueryable<>/IAsyncEnumerable<> w
+    kontraktach (GP0058) i zero zbanowanych typów w namespace'ach kontraktowych
+    (GP0025). Znalezione public Exception, public ClaimsPrincipal, public 
+    CancellationToken siedzą w FileStore.Core,
+    GP.Auth.UserInterface.Infrastructure i w testach Workflow-Service — poza
+    zakresem reguły i słusznie.
+
+  GP0046 (GET z efektem ubocznym) — tu jest realny problem
+  - Reguła wymaga, żeby zmiana stanu była leksykalnie w ciele akcji [HttpGet].
+    Nie ma analizy międzyproceduralnej — w odróżnieniu od GP0096/GP0126, które
+    mają graf wywołań (GpSynchronousApiReachability).
+  - W całym korpusie SaveChanges/SaveChangesAsync w plikach *Controller*.cs pada
+    2 razy: raz w brudnej-rzece, raz w teście. Czyli EF-owa połowa reguły nie
+    ma szans się odpalić, bo kontrolery delegują do handlerów.
+  - Sprawdziłem 103 miejsca „zmiana stanu tuż po [HttpGet]" — to praktycznie w
+    całości _mediator.Send(query), czyli MediatR, którego reguła słusznie nie
+    liczy (wymaga MassTransit/GP.Juno). Najbardziej podejrzany kandydat
+    (Service-Onboarding/MonitorController →
+    CreateUserForCandidateMaintenanceCommand) okazał się [HttpPost].
+  - Żeby ta reguła cokolwiek łapała, musiałaby albo iść za wywołaniem w głąb
+    (tak jak GP0096/GP0126), albo traktować komendę MediatR wysłaną z akcji GET
+    jako sygnał.
+
+  GP0096 (HTTP w pętli) — mechanizm już widać: GpHttpCallHelper.IsHttpCall
+  uznaje wyłącznie bezpośrednie wywołania na HttpClient lub Junowym IHttpClient.
+  W tej bazie HTTP prawie zawsze idzie przez typowane klienty (RickApiClient,
+  SanApiClient, MessageFlowApiClient — takich plików jest 106), więc w pętli
+  reguła widzi wywołanie klienta, a nie metodę HTTP. GP0126 ma identyczną
+  konstrukcję, ale IsDatabaseCall rozpoznaje Dappera wołanego wprost w
+  repozytoriach — stąd 23 trafienia. Do tego dochodzi wymóg, żeby wywołanie było
+  osiągalne z akcji API w tej samej kompilacji, a klienty HTTP mieszkają zwykle
+  w osobnym projekcie niż kontroler. Skan liczy teraz, ile realnie jest
+  bezpośrednich wywołań HTTP wewnątrz pętli — dam znać, jak skończy.
+
+✻ Cooked for 23m 19s · done poniedziałek, 11:24
+
+❯ co ztym robimy?                                                               
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Stop Task
+  ⎿  cd "C:/Git/sonar-dotnet" && python
+     "C:/Users/KAMIL~1.PIE/AppData/Local/Temp/claude/C--Git-sonar-dotnet/e7
+     29b88a-578b-49c9-9a97-b0c2e116a6e6/scratchpad/loopscan.… · stopped
+
+  Ran 1 shell command (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ nie licz mi GP0096, tylko powiedz co znia robimy?                             
+
+● Nie liczę. Rekomendacje:
+
+  GP0025 i GP0058 — nic nie robimy. Cisza jest uczciwa: wzorzec nie występuje w
+  kodzie, a reguły widzą kontrakty poprawnie. Zamknięte.
+
+  GP0122 — albo mały fix, albo zostawiamy świadomie. Dziś reguła jest
+  praktycznie nieodpalalna z dwóch powodów, które da się usunąć w pół godziny:
+  klucz kolumny zawiera klasę migracji (indeks założony w kolejnej migracji
+  nigdy się nie skojarzy) i zbierane są tylko OnColumn/Column/Columns (fluentowe
+  .Indexed() przechodzi bokiem). Po fixie pokryje układ, który w tej bazie jest
+  normą — kolumna w jednej migracji, indeks w następnej. Warto pamiętać, że i
+  tak broni przed błędem, który wysypuje się przy deployu, a nie na produkcji.
+
+  GP0046 — to jest realna luka i wymaga decyzji. Reguła patrzy tylko w ciało
+  akcji, a kontrolery delegują do handlerów, więc EF-owa połowa nie ma prawa się
+  odpalić. Naprawa to dołożenie osiągalności międzyproceduralnej — dokładnie
+  ten mechanizm, który GP0096/GP0126 już mają (GpSynchronousApiReachability),
+  tylko użyty w drugą stronę: z akcji GET w głąb wywołań. Dwa zastrzeżenia:
+  działa w obrębie jednej kompilacji (handler w osobnym projekcie Application
+  nie zostanie zobaczony), i trzeba się liczyć z FP na GET-ach, które legalnie
+  zapisują — audyt, licznik odsłon, zapis do cache. Bez listy wyjątków to będzie
+  hałas.
+
+  GP0096 — moim zdaniem zostawiamy jak jest albo usuwamy, ale nie rozszerzamy.
+  Żeby złapała realny wzorzec, musiałaby rozpoznać, że
+  _rickApiClient.GetCustomer(id) to HTTP — a implementacja klienta siedzi w
+  innym projekcie, więc graf wywołań w kompilacji jej nie zobaczy. Jedyna droga
+  to heurystyka po nazwie (*ApiClient), czyli dokładnie to, czego AGENTS.md
+  zabrania („decide by Roslyn semantics, not identifier spelling"). Zostawienie
+  kosztuje zero i broni bezpośredniego HttpClient w pętli; usunięcie jest spójne
+  z tym, co zrobiliśmy z GP0116–GP0118, które padły z tego samego powodu — nie
+  da się ich domknąć bez mocniejszego kontekstu semantycznego.
+
+● User answered Claude's questions:
+  ⎿  · GP0122 — indeksowana kolumna NVARCHAR(MAX) → Mały fix (rekomendacja)
+     · GP0046 — GET z efektem ubocznym → Dodać osiągalność międzyproceduralną 
+     (rekomendacja)
+     · GP0096 — HTTP w pętli → Zostawić jak jest (rekomendacja)
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Teraz implementuję fix GP0122.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ GP0096, a jak to jest ze analgoiczna zasada po DB dziala?                     
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Odpowiadając na pytanie o GP0126: obie reguły mają identyczny szkielet — ten
+  sam GpLoopCallHelper.DependsOnDirectLoopVariable, ten sam
+  GpSynchronousApiReachability.IsReachable. Różnica siedzi wyłącznie w
+  rozpoznaniu samego wywołania:
+
+  - GpDatabaseCallHelper.IsDatabaseCall rozpoznaje API dostępu do danych:
+    rozszerzenia Dappera (Dapper.SqlMapper), metody wykonujące EF na IQueryable
+    (ToList, First, Count…) i Junowe IDbExecute. Tak wygląda kod, który realnie
+    piszą — connection.QueryAsync<T>(sql, …) stoi wprost w repozytorium, a
+    repozytorium jest osiągalne z akcji kontrolera w tej samej kompilacji. Stąd
+    23 trafienia.
+  - GpHttpCallHelper.IsHttpCall rozpoznaje transport: HttpClient,
+    IHttpClient/HttpSender z Juno. A takiego kodu nikt nie pisze w pętli — w
+    pętli stoi _rickApiClient.GetCustomer(id), czyli wywołanie typowanego
+    klienta. Żeby reguła wiedziała, że to HTTP, musiałaby wejść w implementację
+    klienta, która najczęściej mieszka w innym projekcie (innej kompilacji).
+
+  Czyli to nie jest różnica w konstrukcji reguły, tylko w tym, na jakim poziomie
+  abstrakcji zespół pisze jedno i drugie: SQL wprost, HTTP przez warstwę
+  klienta. Dlatego rozszerzenie GP0096 nie ma dobrego wyjścia — zostawiamy, jak
+  ustaliliśmy.
+
+  Wracam do implementacji GP0122.
+
+  Made 1 scratchpad edit +245, ran 1 shell command (ctrl+o to expand)
+
+❯ Ale rownoczenie mamy regule aby kontrolery nie zuywaly bezporednio rzeczy     
+  zwaizanych z DB, czyli jelsi ktos przestrzgea tamtej reguly, to ta go nie     
+  zlapie                                                                        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Twoja uwaga trafia w sedno — sprawdziłem to na danych. Wszystkie 23 trafienia 
+  GP0126 pochodzą z repozytoriów leżących w tym samym assembly co API:
+
+  GP.Wierzbiak:  src/GP.Wierzbiak.Api/Repositories/…            4
+  service-vacancy: eRS.Service.Vacancy.Api/…/Repositories/…     1
+  GP.PostHire.Api: src/GP.PostHire.Api/…/Repositories/…         1
+  GP.Wisla:      src/GP.Wisla.Api/…/WalletReservationsStore.cs  1
+  Service-Recruitments: eRS.Service.Recruitments/… (monolit)   11
+
+  Ani jednego z osobnego projektu *.Infrastructure. Czyli dokładnie tak, jak
+  mówisz: GP0126 odpala się tam, gdzie ktoś nie przestrzega GP0032 i trzyma
+  dostęp do bazy w projekcie API. Kto rozdzieli warstwy zgodnie z GP0032, staje
+  się dla GP0126 niewidoczny — graf wywołań GpSynchronousApiReachability
+  budowany jest z drzew składni jednej kompilacji, więc repozytorium w osobnym
+  projekcie nie jest osiągalne z akcji kontrolera.
+
+  To ma dwie konsekwencje:
+
+  1. GP0096 i GP0126 mają ten sam sufit — nie tylko GP0096. Różnica w liczbie
+     trafień bierze się z tego, że SQL pisze się wprost w klasie leżącej często
+     w tym samym projekcie, a HTTP przez klienta z innego projektu. Bramka
+     „ścieżka synchroniczna" została dodana świadomie 24.08, żeby nie hałasować
+     na konsumentach i jobach, więc jej zdjęcie to powrót do tamtego szumu — nie
+     proponuję.
+  2. To samo ograniczenie zje część zysku z GP0046. Jeśli handler MediatR siedzi
+     w osobnym projekcie Application, analiza międzyproceduralna go nie
+     zobaczy. Zysk będzie tam, gdzie kod jest w jednym assembly — czyli w
+     monolitach typu eRS.Service.Recruitments, skąd zresztą pochodzi 11 z 23
+     trafień GP0126. Nie zero, ale i nie pełne pokrycie.
+
+  GP0122 mam już przepisane (kompiluje się): klucz bez klasy migracji,
+  rozpoznawanie .Indexed(), kolumny z AddColumn/AlterColumn, plus kasowanie
+  kandydata, gdy ta sama kolumna jest gdziekolwiek zadeklarowana z ograniczoną
+  długością (to broni przed FP „migracja A robi MAX, migracja B skraca, migracja
+  C indeksuje"). Teraz testy do tego, potem GP0046 — chyba że w świetle punktu
+  2 wolisz GP0046 odpuścić.
+
+✻ Churned for 5m 47s · done poniedziałek, 11:42
+
+❯ robimy GP0046.                                                                
+
+  Made 1 scratchpad edit +174, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+❯ nie mam dobrego pomyslu na GP0096 i GP0126, albo ty cos zaporponuj albo       
+  usniemy                                                                       
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ przerwalem?                                                                   
+
+● Tak, przerwałeś przebieg testów GP0122 — patch testów jest zapisany, ale nie
+  zweryfikowany. Wrócę do tego.
+
+  Co do GP0096/GP0126 — mam propozycję, która atakuje dokładnie tę dziurę, o
+  której mówiłeś, i nie wymaga zdejmowania bramki „ścieżki synchronicznej".
+
+  Dodać drugi, lokalny warunek zamiast polegać tylko na grafie wywołań. Dziś
+  jedynym sposobem, żeby reguła uznała wywołanie za istotne, jest osiągalność z
+  akcji API w tej samej kompilacji — i to jest ten sufit. Proponuję, żeby
+  wystarczał albo dzisiejszy warunek, albo to, że pętla iteruje po kolekcji,
+  która sama pochodzi z zapytania do bazy (lub z wywołania HTTP) w tym samym
+  ciele metody. To jest klasyczne N+1:
+
+  var allocations = await connection.QueryAsync<Allocation>(SelectAll);   // 
+  jedno zapytanie
+  foreach (var allocation in allocations)                                  // 
+  pętla po jego wyniku
+      await connection.QueryAsync<Product>(SelectProducts, new { allocation.Id
+  }); // N zapytań
+
+  Zalety: jest to sygnał lokalny, więc działa w *.Infrastructure niezależnie od
+  tego, kto wywołuje metodę — czyli znika ślepa plamka, którą wykryłeś, i to bez
+  karania kodu, który zgodnie z GP0032 wyprowadził dostęp do bazy z API.
+  Jednocześnie nie otwiera furtki „każda pętla z zapytaniem", bo wymaga, żeby
+  źródło pętli było wynikiem zapytania — a to jest właśnie ten defekt, o który
+  chodzi. Da się zbudować z tego, co już mamy (GpDatabaseCallHelper /
+  GpHttpCallHelper + prześledzenie wyrażenia pętli do zmiennej lokalnej).
+
+  Koszt: jeden wspólny helper plus testy dla obu reguł, powiedzmy pół dnia z
+  weryfikacją.
+
+  Co to zmienia dla każdej z reguł:
+  - GP0126 ma dziś 23 realne trafienia, więc usunięcie jej wyrzuca konkretne
+    znaleziska. Z tym rozszerzeniem dojdą przypadki z projektów
+    infrastrukturalnych, których dziś w ogóle nie widzimy.
+  - GP0096 bez tego zostaje martwa (HTTP idzie przez typowane klienty, a te są w
+    innym assembly). Z tym rozszerzeniem złapie „pobierz listę, potem strzel
+    HTTP po każdym elemencie" — o ile obie strony są w jednej metodzie. To
+    realny wzorzec, ale rzadszy niż DB-owy.
+
+● User answered Claude's questions:
+  ⎿  · Co robimy z GP0126 i GP0096? → Rozszerzyć obie o warunek N+1 
+     (rekomendacja)
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+❯ na koniec upewnij sie ze poisy wszytkich regul ktorych dotykales sa prawdziwe 
+  i zgodne z aktulana implementacja                                             
+
+  Made 2 scratchpad edits +227, ran 10 shell commands (ctrl+o to expand)
+● Teraz refaktor osiągalności i podpięcie jej pod GP0046.
+
+  Made 3 scratchpad edits +291, ran 14 shell commands (ctrl+o to expand)
+
+● API Error: Connection lost mid-response. The response above may be 
+  incomplete.
+
+✻ Cooked for 19m 21s · done poniedziałek, 12:08
+
+※ recap: Sync z upstreamem (10.34) i przegląd reguł GP są zrobione i wypchnięte; teraz poprawiam GP0122, kod już się kompiluje. Następny krok: dopisać testy do GP0122, a potem decyzja, czy robimy GP0046. (disable recaps in /config)
+
+❯ iii?                                                                          
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Gotowe, wszystko zacommitowane lokalnie jako fc9dcbd296.
+
+  Co weszło w tej rundzie:
+
+  - GP0046 — idzie teraz grafem wywołań z akcji GET w głąb, tym samym
+    mechanizmem co reguły pętlowe. GpSynchronousApiReachability przyjmuje
+    predykat korzeni jako argument: dla GP0046 korzeniami są akcje [HttpGet] i
+    handlery MapGet, dla GP0096/GP0126 wszystkie akcje. Zapis w serwisie wołanym
+    z GET-a jest łapany. Testy: 10/10, w tym nowy przypadek „SaveChanges +
+    Publish w OrdersService wołanym z GET-a" i kontrprzykład „ten sam serwis
+    wołany tylko z POST-a".
+  - GP0122 — klucz bez klasy migracji, AddColumn/AlterColumn obok WithColumn,
+    Indexed() obok Create.Index/PrimaryKey(), plus kasowanie kandydata, gdy
+    jakakolwiek migracja deklaruje tę kolumnę z ograniczoną długością. Testy:
+    7/7, stary test DoesNotCorrelateAcrossMigrationHistory zamieniony na
+    CorrelatesAcrossMigrationHistory.
+  - GP0096 i GP0126 — drugi, lokalny warunek: pętla iterująca wynik innego
+    zapytania/requestu w tej samej metodzie. Wspólny
+    GpLoopCallHelper.IteratesFetchedSequence, który śledzi wyrażenie pętli przez
+    await, łańcuch wywołań i lokalną zmienną. Testy: 26/26, doszły przypadki
+    N+1 w klasach spoza API oraz kontrprzykłady „kolekcja z parametru".
+
+  Weryfikacja opisów, o którą prosiłeś — przeszedłem każdą regułę, której
+  dotykałem, i porównałem z implementacją. Dwie rzeczy naprawdę się rozjeżdżały:
+
+  - GP0110 — mój wcześniejszy przykład oznaczał jako Noncompliant zarówno
+    zwrócone ciało, jak i [ProducesResponseType(typeof(OrderError), 400)] w tej
+    samej akcji. Analizator tłumi metadane, gdy dla tego samego statusu zgłosił
+    już ciało — więc przykład kłamał. Rozbiłem na dwa osobne przykłady i
+    dopisałem jedno zdanie o tym tłumieniu.
+  - GP0043 — pisałem „typ dziedziczący po ControllerBase", a IsCoreApiController
+    wymaga ControllerBase bez Controller. Poprawione.
+
+  Reszta się zgadza: sprawdziłem w kodzie, że GP0035 faktycznie zgłasza tylko
+  konstrukcję DbConnection i CreateConnection na DbProviderFactory (a Junowe
+  IAdoConnectionFactory.CreateConnection() nie jest zgłaszane, czyli przykład
+  compliant jest prawdziwy), że GP0110 patrzy wyłącznie na API kontrolery i
+  handlery Minimal API, i że GP0132 pomija klasy abstrakcyjne — to ostatnie
+  dopisałem do opisu, bo było w kodzie i w teście, a nie w rspec. GP0078 i
+  GP0089 dotknąłem tylko mechanicznie przy syncu, ich opisy nic nie twierdzą o
+  warstwie shimów.
+
+  Stan testów: GP 1032/1032 (net10), 354 passed / 648 skipped (net48),
+  RuleCatalogTest i ConcurrentExecutionTest zielone, metadane OK (793 reguły).
+
+  Do wypchnięcia zostały dwa commity: e1b34e2e49 (GP0043 + GP0132) i fc9dcbd296.
+  Wypycham?
+
+✻ Worked for 1m 12s · done poniedziałek, 12:19
+
+❯ wypychaj i buduj plugin                                                       
+
+  Pushed to master (ctrl+o to expand)
+
+❯ wypychaj i buduj plugin                                                       
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Wypchnięte — 01fdaea224..fc9dcbd296 na origin/master. Build pluginu leci w tle
+  (build-gp-csharp-plugin.bat: walidacja metadanych → Release
+  SonarAnalyzer.CSharp → odświeżenie binarki w analyzers/packaging/binaries →
+  mvn package). Dam znać z wersją i ścieżką jara.
+
+  Read 1 file, listed 1 directory, ran 5 shell commands (ctrl+o to expand)
+
+● Background command "Build the GP C# plugin" completed (exit code 0)
+
+● Background command "Wait for plugin build to finish" completed (exit code 0)
+
+● Background command "Run the plugin build script" failed with exit code 1
+
+● Background command "Wait for and read plugin build output" completed (exit
+code 0)
+
+● Build pluginu wystartował (poprzednie podejście poszło z bosą nazwą pliku i
+  cmd go nie znalazł — teraz pełna ścieżka). Czekam na wynik.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Background command "Run plugin build with full path" completed (exit code 0)
+
+● Background command "Wait for plugin build" completed (exit code 0)
+
+● Wypchnięte i zbudowane.
+
+  Push: 01fdaea224..fc9dcbd296 → origin/master (dwa commity: GP0043+GP0132, oraz
+  GP0046/GP0122/GP0096/GP0126 z poprawkami opisów).
+
+  Plugin:
+  C:\Git\sonar-dotnet\sonar-csharp-plugin\target\gp-sonar-csharp-plugin-10.34.0.
+  20260831122641.jar
+  3 111 696 B, BUILD SUCCESS w 1:07. Sprawdziłem zawartość jara: 200 plików
+  rspec GP (100 reguł × json+html), w tym GP0132, oraz
+  static/SonarAnalyzer-GP-csharp-10.34.0.20260831122641.zip z analizatorem.
+  Rozmiar mieści się w oknie 2,8–3,6 MB, które ustawiliśmy dziś rano — choć
+  zwróć uwagę, że skrypt buduje fazą package, więc sam enforcer i tak się nie
+  uruchamia; zweryfikowany był osobno przy mvn clean install.
+
+  Pierwsze podejście do buildu poszło na bosej nazwie pliku i cmd go nie znalazł
+  — druga próba z pełną ścieżką przeszła bez zmian w samym skrypcie.
+
+  Do wgrania na SonarQube: podmiana jara w extensions/plugins i restart
+  instancji. Jeśli chcesz, po restarcie mogę puścić Analyze-All.bat i zrobić
+  przegląd FP na świeżych danych — wtedy zobaczymy, ile realnie wyciągną GP0046,
+  GP0122 i nowy warunek N+1 w GP0096/GP0126.
+
+✻ Worked for 6m 6s · done poniedziałek, 12:30
+❯ 50 porjektow przeanlizowane, mysle ze mozemy sprawdzic zmianien reguly czy sa 
+  ok                                                                            
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● Sprawdzone na świeżych danych (80 projektów w SQ, skan w toku):
+
+  GP0043 — zawężenie działa dokładnie tak, jak miało
+  - 138 trafień, z tego 0 w kontrolerach renderujących widoki (wcześniej 79 na
+    pełnym korpusie).
+  - Service-Auth, który miał 22 trafienia REST na bazie Controller, ma teraz 0 w
+    GP0043 — i 4 w GP0132, czyli w regule, która wskazuje właściwy problem.
+  - Rozkład: 83 REST request, 39 REST response, 10 sent command, 6 published
+    message.
+
+  GP0132 — 11 trafień, wszystkie wyglądają na prawdziwe
+  Service-Auth   4   (ResourcesMaintenance, PermissionsAdmin,
+  PermissionsAdminV2, OnboardingPermissions)
+  GP.Helfer      6   (Users, UserEmail, UserActions, UserAgreements,
+  UserApplications, Emails)
+  GP.Auth        1   (StatusController)
+  Obejrzałem pięć z bliska — każdy to : Controller z [Route(...)], część z
+  [Produces("application/json")], w projektach *.Api, bez śladu widoku. Czyli
+  REST napisany na bazie MVC, dokładnie ten wzorzec, dla którego zrobiliśmy tę
+  regułę. Zero trafień w aplikacjach z widokami.
+
+  GP0126 — 8 trafień, wszystkie przez starą ścieżkę (repozytoria w assembly API,
+  osiągalne z akcji): GP.Wierzbiak 4, GP.Kentucky 4. Obejrzałem
+  SkillsRepository — foreach (var skill in skills) await connection.Execute(new 
+  AddSkillCommand(...)), czyli jedno round-trip na element. Prawidłowo. Nowy
+  warunek N+1 jeszcze się nie odezwał, ale to naturalne: wymaga, żeby pobranie
+  kolekcji i pętla po niej były w jednej metodzie.
+
+  GP0046, GP0096, GP0122 — po 0. Dla GP0122 i GP0096 to jest oczekiwane,
+  sprawdzaliśmy wcześniej, że wzorce nie występują. Dla GP0046 zero jest zgodne
+  z tym, co mierzyliśmy (kontrolery delegują, a GET-y faktycznie czytają), ale
+  nie odróżnia „nie ma czego łapać" od „nowa ścieżka nie działa na żywym kodzie"
+  — testy jednostkowe przechodzą, natomiast end-to-endu na wtyczce nie mam.
+
+  Proponuję domknąć to jednym probe'em: dopisać do brudna-rzeka kontroler z
+  akcją [HttpGet], która woła serwis robiący SaveChangesAsync i Publish — jeśli
+  po najbliższym skanie GP0046 pokaże te dwa trafienia, mamy potwierdzone, że
+  graf wywołań działa na wtyczce, a zero w produkcyjnych repo jest prawdziwym
+  zerem. Mam to dopisać?
+
+✻ Brewed for 2m 4s · done poniedziałek, 15:11
+
+※ recap: Sync z upstreamem, poprawki reguł GP i nowa GP0132 są wypchnięte, plugin zbudowany i przeanalizowany na 50 projektach: GP0043 i GP0132 działają poprawnie, GP0046 ma zero trafień. Czekam na zgodę, żeby dopisać probe GET-z-zapisem do brudna-rzeka.
+
+❯ ok, popraw brudna rzeka i odpla jej analize                                   
+
+  Ran 8 shell commands (ctrl+o to expand)
+
+❯ GP0126 jednak usuniemy. Jak http byla do niej podobna?                        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Struktura obu jest praktycznie identyczna — to były bliźniaki:
+
+  // GP0126                                        // GP0096
+  DependsOnDirectLoopVariable(...)
+  DependsOnDirectLoopVariable(...)      // ten sam helper
+  && GpDatabaseCallHelper.IsDatabaseCall(...)      &&
+  GpHttpCallHelper.IsHttpCall(...)   // JEDYNA różnica
+  && (IsReachable(...)                             && (IsReachable(...)
+          // ta sama bramka
+      || IteratesFetchedSequence(...))                 ||
+  IteratesFetchedSequence(...))  // ten sam nowy warunek
+
+  Różnią się wyłącznie klasyfikatorem wywołania. Cała reszta — wykrycie
+  zależności od zmiennej pętli, wykluczenie pętli po batchach, bramka
+  osiągalności z akcji API, dzisiejszy warunek N+1 — jest wspólna, w dwóch
+  helperach dzielonych przez obie.
+
+  Dlatego jeśli GP0126 wypada, to GP0096 tym bardziej: GP0126 miała 8 trafień na
+  50 projektach (23 na pełnym korpusie), a GP0096 nie odezwała się nigdy poza
+  brudna-rzeka i wiemy dlaczego — HTTP idzie przez typowane klienty z innego
+  assembly. Zostawienie samego GP0096 to zostawienie słabszej połowy pary.
+
+  Co zniknie przy okazji: GpLoopCallHelper (używany tylko przez te dwie reguły)
+  i GpDatabaseCallHelper (używany tylko przez GP0126 i przez ten helper).
+  Zostają: GpHttpCallHelper — potrzebują go GP0119-owy „transakcja z wywołaniem
+  sieciowym" i reguła o propagacji CancellationToken; oraz
+  GpSynchronousApiReachability — od dziś używa go GP0046 z korzeniami na akcjach
+  GET.
+
+● User answered Claude's questions:
+  ⎿  · Usuwamy GP0126 - co z GP0096? → Usunąć obie (rekomendacja)
+
+  Searched for 2 patterns, ran 2 shell commands (ctrl+o to expand)
+
+❯ GP0122 tez usuwamy                                                            
+
+  Made 1 scratchpad edit +91, ran 17 shell commands (ctrl+o to expand)
+
+● Background command "Run the brudna-rzeka SonarQube analysis" completed (exit
+code 0)
+❯ w tle zbuduj mi plugin jar                                                    
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Buduję jar w tle. Stan na teraz:
+
+  Usunięte reguły (commit 15d120b7ae): GP0096, GP0122, GP0126 wraz z
+  analizatorami, testami i osieroconymi helperami (GpLoopCallHelper,
+  GpDatabaseCallHelper). Zostało 97 reguł; testy GP 999/999, metadane OK (790
+  reguł łącznie z upstreamowymi). Id nie są odzyskiwane — trzy luki zostają.
+
+  Korpus brudna-rzeka: usunąłem przykłady trzech skasowanych reguł
+  (DatabaseLoopController, LoopHttpController, LoopCallExamples,
+  IndexedColumnMigration) i ich wpisy z expectations.json, a dodałem probe dla
+  GP0046 — Services/OrderTouchService.cs z zapisem w serwisie wołanym z akcji
+  [HttpGet] (marker GP0046 HIT) i tą samą klasą wołaną tylko z [HttpPost]
+  (GP0046 NO_HIT), plus DelegatedOrdersController. Solucja się kompiluje,
+  analiza wysłana.
+
+  Czego jeszcze nie wiem: raport z korpusu wisi w kolejce SonarQube ze statusem
+  PENDING — pewnie za pełnym skanem, który puściłeś. Dopóki się nie przemieli,
+  GP0046 pokazuje 0, ale to znaczy „nie policzone", a nie „nie działa". Czekam
+  na przetworzenie w tle i wtedy sprawdzę, czy trafienie siedzi dokładnie na
+  linii SaveChanges w Touch i czy w Archive jest czysto.
+
+  Jedna rzecz do zaplanowania: jar, który buduję, nie ma już
+  GP0096/GP0122/GP0126, więc po wgrraniu i restarcie SonarQube stare trafienia
+  tych reguł znikną same przy kolejnym skanie.
+
+✻ Churned for 44m 16s · done poniedziałek, 16:04
+
+❯ z racji ze analiza idzie caigle w tle sprawdz czy jest cos nowego cieakwegfo  
+  jakies FP                                                                     
+
+  Ran 14 shell commands (ctrl+o to expand)
+
+● Background command "Build plugin jar in background" completed (exit code 0)
+
+● Analiza doszła do 94 projektów. Trzy rzeczy z tego wyszły.
+
+  1. GP0046 złapało pierwszy prawdziwy przypadek — i to dobry.
+  Service-AiDataAnalyzer, GET /conversation/{id}:
+  // Update status if output waiting.
+  if (conversation.Status == ConversationStatus.OutputWaiting)
+      await _conversationQueryService.UpdateConversationStatusAsync(
+          conversation.Id, ConversationStatus.InputWaiting, cancellationToken);
+  Zapis siedzi dwie warstwy niżej, w
+  ConversationQueryService.UpdateConversationStatusAsync (Update +
+  SaveChangesAsync) — czyli dokładnie tam, gdzie stara wersja reguły nie
+  sięgała. Prześledziłem: metoda jest wołana z pięciu miejsc, cztery to POST-y i
+  background service'y, ale linia 619 to ciało akcji [HttpGet("{id:guid}")].
+  Prawdziwy defekt: każdy prefetch, retry albo crawler przestawia status
+  rozmowy. Zmiana z dzisiaj działa end-to-end na wtyczce.
+
+  2. GP0132 — 11 trafień, bez zmian, wszystkie w projektach *.Api. GP0043 urósł
+  do 212 i nadal ma zero trafień REST w kontrolerach z widokami.
+
+  3. Znalazłem dużą klasę FP, ale w regule, której dziś nie ruszaliśmy — GP0032.
+
+  Jest teraz największą regułą GP w skanie: 358 trafień przy 94 projektach,
+  czyli więcej niż na poprzednim pełnym skanie 188 projektów. Rozbiłem je:
+
+  ┌────────────────────────────────────────────────────────────────────┬─────┐
+  │                              kształt                               │ ile │
+  ├────────────────────────────────────────────────────────────────────┼─────┤
+  │ zadeklarowana klasa implementująca Junowe IDbExecute w projekcie   │ 287 │
+  │ *.Api                                                              │     │
+  ├────────────────────────────────────────────────────────────────────┼─────┤
+  │ faktyczne użycie SqlConnection / DbConnection (pole, parametr,     │ 71  │
+  │ lokalna)                                                           │     │
+  └────────────────────────────────────────────────────────────────────┴─────┘
+
+  Te 287 to zgłoszenia na deklaracji klasy, z komunikatem „Do not use
+  infrastructure type 'GetSectionsQuery' directly in an API project". Klasa nie
+  jest tam używana — ona jest tam definiowana, a IDbExecute to jest dokładnie ta
+  abstrakcja, do której wysyła ludzi GP0035. W kodzie to osobna gałąź:
+
+  if (isApiProject && IsPersistenceOperation(type))          // implements 
+  GP.Juno.Abstractions.Ado.IDbExecute
+      context.ReportIssue(Rule, classDeclaration.Identifier, type.Name, "an API 
+  project");
+
+  Czyli technicznie działa jak zaprojektowano — to opinia architektoniczna
+  „operacje bazodanowe nie mieszkają w projekcie API", powtórzona raz na każdą
+  klasę zapytania — ale komunikat ją opisuje nieprawdziwie, a wolumen robi z
+  GP0032 zalew.
+
+  Przy okazji: jar gotowy — gp-sonar-csharp-plugin-10.34.0.20260831160354.jar,
+  już bez GP0096/GP0122/GP0126.
+
+● User answered Claude's questions:
+  ⎿  · Co robimy z gałęzią GP0032, która zgłasza deklaracje klas IDbExecute w 
+     projektach *.Api (287 z 358 trafień)? → moze trzba podzielic ta regule na 
+     dwa, deklaracje i uzycie. i zakazywac obi z trafnym komunikatem
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Teraz rozdzielam GP0032 na dwie reguły.
+
+  Made 1 scratchpad edit +152, ran 1 shell command (ctrl+o to expand)
+
+● Write(analyzers\tests\SonarAnalyzer.Test\Rules\GP\PersistenceOperationShouldNo
+       tBeDeclaredInApiProjectTest.cs)
+  ⎿  Wrote 75 lines to analyzers\tests\SonarAnalyzer.Test\Rules\GP\Persiste
+     nceOperationShouldNotBeDeclaredInApiProjectTest.cs
+      1 /*
+      2  * GP analyzers for SonarAnalyzer .NET
+      3  * Copyright (C) Grupa Pracuj
+      4  *
+      5  * Part of a fork of SonarAnalyzer for .NET; see LICENSE.txt at t
+        he root of this
+      6  * repository for the terms that apply.
+      7  */
+      8 
+      9 using CS = SonarAnalyzer.CSharp.Rules;
+     … +81 lines (ctrl+o to expand)
+
+  Made 1 scratchpad edit +106, ran 41 shell commands (ctrl+o to expand)
+❯ z tracji ze analiza nadal idze, zobacz cyz mamy jakies nowe findingi kazace   
+  nam cos zminic? Aha ma nadzieje ze opisy w tych dwoch regulach poprawiles i   
+  sa jasne, przyklady tytuly pdtytuly calosc                                    
+
+● Background command "Rebuild plugin jar with GP0133" completed (exit code 0)
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Write(analyzers\rspec\cs\GP\GP0032.html)
+  ⎿  Added 18 lines, removed 18 lines
+       1  <p>Transport code - a controller, or any runtime type in an <co
+          de>*.Api</code> assembly - should depend on application abstrac
+          tions rather than on
+       2  infrastructure types directly.</p>
+       3 -<h2>What counts as an infrastructure type</h2>                 
+       4 -<p>In a controller, all of these:</p>                          
+       5 -<ul>                                                           
+       6 -  <li><code>DbContext</code> - EF Core's <code>Microsoft.Entity
+         -FrameworkCore.DbContext</code> or EF6's <code>System.Data.Entit
+         -y.DbContext</code>, and                                        
+       7 -  anything deriving from either</li>                           
+       8 -  <li><code>DbConnection</code> - <code>System.Data.Common.DbCo
+         -nnection</code> and anything deriving from it, such as <code>Sq
+         -lConnection</code></li>                                        
+       9 -  <li><code>HttpClient</code></li>                             
+      10 -  <li>a type implementing Juno's <code>IDbExecute</code> or <co
+         -de>ITransactional</code></li>                                  
+      11 -</ul>                                                          
+      12 -<p>In a non-controller type inside an assembly whose name ends 
+         -with <code>.Api</code>, the list is narrower: only <code>DbCont
+         -ext</code> and                                                 
+      13 -<code>DbConnection</code>. Declaring a persistence operation in
+         - such an assembly is a separate question, and the subject of GP
+         -0133.</p>                                                      
+      14 -<p>Types are resolved semantically. A name such as <code>OrderS
+         -ervice</code> is never used as evidence, and a wrapper around  
+      15 -<code>DbContext</code> is not reported for its name alone.</p> 
+      16 -<h2>Where the rule looks</h2>                                  
+      17 -<p>The three ways infrastructure reaches transport code: a fiel
+         -d, a constructor parameter - including a primary constructor - 
+         -or a local variable.                                           
+      18 -Action method parameters are excluded, because model binding is
+         - a separate concern. A type appearing only as a type argument i
+         -s not a declaration                                            
+      19 -either, so DI registration such as <code>services.AddDbContext&
+         -lt;ShopDbContext&gt;()</code> is left alone: wiring an implemen
+         -tation up is the                                               
+      20 -composition root's job.</p>                                    
+       3  <h2>Why is this an issue?</h2>
+       4  <p>A controller belongs to the layer that handles HTTP: bind th
+          e request, call something, turn the result into a response. Mic
+          rosoft's layering guidance
+       5  draws the line explicitly:</p>
+     ...
+      15  and the two drift apart - one remembers the <code>IsDeleted</co
+          de> filter or the <code>Include</code>, the other does not. Tes
+          ting the endpoint now
+      16  means standing up a context, so the logic worth testing is reac
+          hable only through a database. And a change to the model has to
+           be chased through every
+      17  controller that happened to query it.</p>
+      18 +<h3>What counts as an infrastructure type</h3>                 
+      19 +<p>In a controller, all of these:</p>                          
+      20 +<ul>                                                           
+      21 +  <li><code>DbContext</code> - EF Core's <code>Microsoft.Entity
+         +FrameworkCore.DbContext</code> or EF6's <code>System.Data.Entit
+         +y.DbContext</code>, and                                        
+      22 +  anything deriving from either</li>                           
+      23 +  <li><code>DbConnection</code> - <code>System.Data.Common.DbCo
+         +nnection</code> and anything deriving from it, such as <code>Sq
+         +lConnection</code></li>                                        
+      24 +  <li><code>HttpClient</code></li>                             
+      25 +  <li>a type implementing Juno's <code>IDbExecute</code> or <co
+         +de>ITransactional</code></li>                                  
+      26 +</ul>                                                          
+      27 +<p>In a non-controller type inside an assembly whose name ends 
+         +with <code>.Api</code>, the list is narrower: only <code>DbCont
+         +ext</code> and                                                 
+      28 +<code>DbConnection</code>. Declaring a persistence operation in
+         + such an assembly is a separate question, and the subject of GP
+         +0133.</p>                                                      
+      29 +<p>Types are resolved semantically. A name such as <code>OrderS
+         +ervice</code> is never used as evidence, and a wrapper around <
+         +code>DbContext</code> is                                       
+      30 +not reported for its name alone.</p>                           
+      31 +<h3>Where the rule looks</h3>                                  
+      32 +<p>The three ways infrastructure reaches transport code: a fiel
+         +d, a constructor parameter - including a primary constructor - 
+         +or a local variable.                                           
+      33 +Action method parameters are excluded, because model binding is
+         + a separate concern. A type appearing only as a type argument i
+         +s not a declaration                                            
+      34 +either, so DI registration such as <code>services.AddDbContext&
+         +lt;ShopDbContext&gt;()</code> is left alone: wiring an implemen
+         +tation up is the                                               
+      35 +composition root's job.</p>                                    
+      36  <h2>How to fix it</h2>
+      37  <p>Move the query behind a service or repository that the contr
+          oller depends on through an interface, and let the controller c
+          all that. The query then
+      38  lives in one place, can be tested without a database, and the c
+          ontroller is left with the HTTP concerns that are actually its 
+          job.</p>
+
+● Write(analyzers\rspec\cs\GP\GP0133.html)
+  ⎿  Added 16 lines, removed 14 lines
+       1 -<p>A class implementing Juno's <code>IDbExecute</code> or <code
+         ->ITransactional</code> belongs in the data access project, not 
+         -in an assembly whose                                           
+       2 -name ends with <code>.Api</code>.</p>                          
+       1 +<p>A class implementing Juno's <code>IDbExecute</code> or <code
+         +>ITransactional</code> belongs in the data access project, not 
+         +in an assembly whose name                                      
+       2 +ends with <code>.Api</code>.</p>                               
+       3  <h2>Why is this an issue?</h2>
+       4 -<p>A persistence operation carries the SQL, the table names and
+         - the shape of a row. Declared next to the endpoints, it puts al
+         -l of that in the assembly                                      
+       5 -whose job is HTTP, and every consumer of the same data either r
+         -eferences the API assembly to reuse it or writes the query a se
+         -cond time. The second                                          
+       6 -copy is the usual outcome, and the two drift: one remembers the
+         - soft-delete filter, the other does not.</p>                   
+       7 -<p>It also decides what can be tested without a database, and w
+         -hat a change to the schema costs. A query that lives in the dat
+         -a access project is                                            
+       8 -reachable from a background service, a consumer and a second AP
+         -I alike, and a column rename is chased through one project rath
+         -er than through whichever                                      
+       9 -assemblies happened to declare their own operations.</p>       
+      10 -<p>The rule reports the declaration of a concrete class impleme
+         -nting <code>GP.Juno.Abstractions.Ado.IDbExecute</code> or Juno'
+         -s transactional interface,                                     
+      11 -in a compilation whose assembly name ends with <code>.Api</code
+         ->. Abstract base operations are left alone: what they are depen
+         -ds on the classes deriving                                     
+      12 -from them. Using such an operation from transport code is a sep
+         -arate question, and the subject of GP0032.</p>                 
+       4 +<p>A persistence operation carries the SQL, the table names and
+         + the shape of a row. Declared next to the endpoints, all of tha
+         +t lives in the assembly                                        
+       5 +whose job is HTTP, and the next caller that needs the same data
+         + has two options: reference the API assembly to reuse the opera
+         +tion, or write the query                                       
+       6 +again. The second is what usually happens, and the two copies d
+         +rift - one remembers the soft-delete filter, the other does not
+         +.</p>                                                          
+       7 +<p>The placement also decides what can be tested without a data
+         +base and what a schema change costs. An operation that lives in
+         + the data access project                                       
+       8 +is available to a background service, a consumer and a second A
+         +PI alike, and a renamed column is chased through one project in
+         +stead of through whichever                                     
+       9 +assemblies happened to declare their own queries.</p>          
+      10 +<h3>What the rule reports</h3>                                 
+      11 +<p>The declaration of a concrete class implementing <code>GP.Ju
+         +no.Abstractions.Ado.IDbExecute</code> or Juno's transactional i
+         +nterface, in a compilation                                     
+      12 +whose assembly name ends with <code>.Api</code>. An abstract ba
+         +se operation is left alone - what it is depends on the classes 
+         +deriving from it, and each                                     
+      13 +of those is reported on its own. Using an operation from transp
+         +ort code is a separate question, and the subject of GP0032.</p>
+      14  <h2>How to fix it</h2>
+      14 -<p>Move the operation to the project that owns data access, and
+         - let the API assembly depend on it.</p>                        
+      15 +<p>Move the operation to the project that owns data access, and
+         + let the API assembly depend on that project.</p>              
+      16  <h3>Code examples</h3>
+      17  <h4>Noncompliant code example</h4>
+      18  <pre data-diff-id="1" data-diff-type="noncompliant">
+      18 -// GP.Shop.Api/Orders/GetOrderQuery.cs                         
+      19 +// GP.Shop.Api/Orders/GetOrderQuery.cs - the assembly that serv
+         +es HTTP                                                        
+      20  public sealed class GetOrderQuery(int orderId) : IDbExecute&lt;
+          Order&gt; // Noncompliant
+      21  {
+      22      public Task&lt;Order&gt; Execute(IDbConnection connection, 
+          IDbTransaction transaction = null) =&gt;
+     ...
+      25  </pre>
+      26  <h4>Compliant solution</h4>
+      27  <pre data-diff-id="1" data-diff-type="compliant">
+      27 -// GP.Shop.DataAccess/Orders/GetOrderQuery.cs                  
+      28 +// GP.Shop.DataAccess/Orders/GetOrderQuery.cs - the assembly th
+         +at owns the schema                                             
+      29  public sealed class GetOrderQuery(int orderId) : IDbExecute&lt;
+          Order&gt;
+      30  {
+      31      public Task&lt;Order&gt; Execute(IDbConnection connection, 
+          IDbTransaction transaction = null) =&gt;
+      32          connection.QuerySingleAsync&lt;Order&gt;("select * from
+           Orders where Id = @orderId", new { orderId });
+      33  }
+      34  </pre>
+      35 +<p>The operation itself does not change. What changes is which 
+         +assembly declares it, and therefore who can call it without dep
+         +ending on the API.</p>                                         
+      36  <h2>Resources</h2>
+      37  <h3>Documentation</h3>
+      38  <ul>
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Background command "Wait for corpus report processing" completed (exit code 0)
+
+● Analiza doszła do 116 projektów. Co z niej wyszło:
+
+  GP0132 — 14 trafień (było 11), trzy nowe w GP.Rick. Sprawdziłem dwa:
+  CustomerSalesmenController : Controller z dwoma [Route(...)] i
+  [ProducesResponseType(typeof(ValidationError), 400)], oraz UsersController : 
+  Controller z [Route] +
+  [ProducesResponseType(typeof(IEnumerable<BasicCustomerInfo>), 200)].
+  GP.Rick.Api nie ma katalogu Views. Czyli znowu REST na bazie MVC — prawdziwe.
+  Reguła trzyma 14/14.
+
+  GP0046 — potwierdzone end-to-end na wtyczce. Raport z korpusu się przemielił i
+  probe zadziałał dokładnie tak, jak miał:
+  OrderTouchService.cs:13   SaveChanges   <- serwis wołany z [HttpGet]
+  OrderTouchService.cs:14   Publish
+  OrdersController.cs:62    SaveChanges   <- stary, bezpośredni przykład
+  a metoda Archive w tym samym serwisie, osiągalna tylko z [HttpPost], jest
+  czysta. Do tego produkcyjne trafienie w Service-AiDataAnalyzer — GET 
+  /conversation/{id} przestawiający status rozmowy. Nic więcej się nie doszło,
+  GP0046 stoi na 2 trafieniach produkcyjnych.
+
+  Nic nowego niepokojącego. GP0032 urósł do 381, ale to te same deklaracje
+  IDbExecute, które właśnie wydzieliliśmy do GP0133 — po wgraniu nowego jara
+  ~80% z nich przeniesie się tam z właściwym komunikatem.
+
+  Opisy obu reguł poprawione (commit 219ab1393d):
+
+  - GP0032 — miał dwie sekcje zakresu przed wyjaśnieniem, po co to w ogóle jest;
+    został po podziale w takim układzie. Teraz idzie standardową kolejnością:
+    zdanie wstępne → Why is this an issue? z argumentem o warstwach i cytatami z
+    Microsoft Learn → podsekcje What counts as an infrastructure type i Where 
+    the rule looks → How to fix it z parą przykładów → Resources. Lista typów
+    zweryfikowana z kodem: w kontrolerze DbContext, DbConnection, HttpClient i
+    typy Junowe; poza kontrolerem w *.Api tylko DbContext i DbConnection.
+    Dopisane, że deklaracja operacji to temat GP0133.
+  - GP0133 — tytuł „Persistence operations should not be declared in an API
+    project", zdanie wstępne mówi wprost, gdzie taka klasa należy. Why tłumaczy
+    konsekwencję, którą widać w kodzie: następny konsument albo referencuje
+    assembly API, albo pisze zapytanie drugi raz, i kopie się rozjeżdżają.
+    Osobna sekcja What the rule reports nazywa interfejs, warunek nazwy assembly
+    i wyjątek dla klas abstrakcyjnych, plus odesłanie do GP0032 po stronie
+    użycia. Przykłady mają teraz ścieżkę pliku nad klasą, żeby było widać, że to
+    ta sama operacja w innym projekcie, i zamykające zdanie, które to nazywa.
+
+  Jar: gp-sonar-csharp-plugin-10.34.0.20260831163839.jar — z GP0133, bez
+  GP0096/GP0122/GP0126. Jedno zastrzeżenie: powstał przed commitem z poprawkami
+  opisów, a opisy są zaszyte w jarze. Jeśli chcesz mieć w SonarQube dopieszczoną
+  wersję tekstów, zbuduję jeszcze raz — powiedz słowo.
+
+  Drobiazg do zapisania: validate-corpus.ps1 bywa flaky — potrafi zgłosić
+  „Active rules without an integration hit: GP0041", choć ta reguła w tym samym
+  buildzie wypisuje ostrzeżenie (sprawdziłem, 554 dopasowania, GP0041 wśród
+  nich). Wygląda na to, że czasem gubi ostrzeżenia z projektu
+  GP.BrudnaRzeka.Tests przy -t:Rebuild. Nie ruszałem tego, ale to jest w ich
+  harnessie, nie w regułach.
+
+✻ Brewed for 40m 13s · done poniedziałek, 16:48
+
+❯ zrob porsze ostni raz reviu naszych regul, ich opisow, sampli, podopisow,     
+  przypadkow zlaman. NIe chodzi o to aby robic zmiany na sile, ale jelsi gdzies 
+  klamiemy, jestemsy zagadatlii lub nieprecyzjni to to skorygujmy. najlpiej     
+  dopytuj                                                                       
+
+● Zacznę od przejścia mechanicznego, które łapie kłamstwa najtaniej: odwołania
+  do reguł, których już nie ma, oraz komunikaty cytowane w opisach niezgodne z
+  MessageFormat w kodzie.
+
+  Ran 1 shell command (ctrl+o to expand)
+  ⎿  You've hit your session limit · resets 7:30pm (Europe/Warsaw)
+     /usage-credits to request more usage from your admin.
+● Usage limit reached · continuing automatically at 7:30pm · esc or type
+  to cancel
+
+✻ Cooked for 31s · done poniedziałek, 16:50
+
+● Usage limit has reset · press enter to continue
+
+❯ dzialaj                                                                       
+
+  Made 4 scratchpad edits +124, ran 13 shell commands (ctrl+o to expand)
+
+● Sprawdzanie mechaniczne dało trzy prawdziwe kłamstwa w cytowanych komunikatach
+  — poprawione: GP0020 (opis cytował starą, kontekstową wersję o „other actions
+  … protected with [Authorize]"), GP0026 („looks like it creates a resource…"
+  zamiast „POST action … is named for creation"), GP0059 („a contract assembly
+  should not depend on" zamiast „a contract must not depend on"). Plus martwe
+  odwołanie do usuniętej GP0007 w komentarzu w kodzie GP0027. GP0088 i GP0089
+  wyglądały na niezgodne, ale to artefakt mojego skryptu — ich komunikaty są
+  sklejane z dwóch literałów i zgadzają się co do znaku.
+
+  Teraz przegląd strukturalny całości, żeby zobaczyć, gdzie jest „zagadane" albo
+  brakuje sekcji:
+
+  Made 1 scratchpad edit +38, ran 2 shell commands (ctrl+o to expand)
+
+● Struktura wygląda zdrowo: wszystkie 98 reguł mają Why is this an issue?, How 
+  to fix it, przykład niezgodny i zgodny. Mediana długości opisu to 283 słowa,
+  ale ogon jest długi — GP0054 ma 626 słów, GP0075/GP0028/GP0031/GP0004 po
+  ~510–550. 18 reguł nie ma sekcji Resources (to głównie krótkie, GP-specyficzne
+  reguły, gdzie nie ma sensownego linku poza naszym repo).
+
+  Przykład tego, co uznaję za kandydata do „zagadania" — GP0054 ma pięć akapitów
+  samych wyjątków, m.in.:
+
+  ▎ „Guarantees" is read through the filter's boolean structure, not by looking 
+  ▎ for the negation anywhere in it. In A && B it is enough that one side 
+  ▎ guarantees it; in A || B both sides must…
+
+  To jest prawdziwe i precyzyjne, ale czyta to człowiek, któremu SonarQube
+  pokazał jedno trafienie w swoim kodzie.
+
+  Zanim wejdę w resztę, trzy pytania — bo od odpowiedzi zależy, co w ogóle
+  ruszam:
+
+● User answered Claude's questions:
+  ⎿  · Jak szeroki ma być przegląd meritum (opis vs faktyczna implementacja)? → 
+     Priorytetowo: ~45 reguł (rekomendacja)
+     · Co z długimi sekcjami wyjątków (GP0054 i podobne)? → Skrócić do tego, co 
+     zmienia decyzję (rekomendacja)
+     · 18 reguł bez sekcji Resources → Zostawić (rekomendacja)
+
+  Made 1 scratchpad edit +33, ran 1 shell command (ctrl+o to expand)
+
+● Lista wyszła za szeroka (97/98 — frazy typu „is not reported" są wszędzie),
+  więc idę po realnej wadze: najpierw reguły z największą liczbą trafień, potem
+  najdłuższe opisy. Zaczynam od rodziny OpenAPI, która daje najwięcej trafień w
+  skanie.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Write(analyzers\rspec\cs\GP\GP0115.html)
+  ⎿  Added 9 lines, removed 2 lines
+      1 +<p>An action behind an authorization requirement should declare 
+        +the <code>401</code> - and, where a policy or role is named, <co
+        +de>403</code> - that                                            
+      2 +requirement can produce.</p>                                    
+      3  <h2>Why is this an issue?</h2>
+      4  <p>An action behind <code>[Authorize]</code> or a global MVC <co
+         de>AuthorizeFilter</code> can answer <code>401 Unauthorized</cod
+         e>, and - when the authorization names a policy or a role - also
+      5  <code>403 Forbidden</code>. Those responses are produced by the 
+         authorization middleware, not by a <code>return</code> statement
+          in the action, so nothing in
+     ...
+      10  <p>This is exactly the gap rules that inspect returned statuses
+           cannot close: they only see what the action itself returns.</p
+          >
+      11  <h3>What is the potential impact?</h3>
+      12  <p>Generated clients and API documentation silently omit the au
+          thorization failure contract of a protected endpoint.</p>
+      13 +<h3>Exceptions</h3>                                            
+      14 +<p><code>[AllowAnonymous]</code> on the action or its controlle
+         +r wins over every <code>[Authorize]</code> that would otherwise
+         + apply - the framework                                         
+      15 +skips authorization entirely - so such an action is not reporte
+         +d. Actions excluded from API Explorer, actions covered by ASP.N
+         +ET API conventions, and                                        
+      16 +controllers that are not API controllers are outside the rule a
+         +s well.</p>                                                    
+      17  <h2>How to fix it</h2>
+      18  <p>Declare the responses the action's authorization can produce
+          . Add <code>401</code> for any authorization requirement, and <
+          code>403</code> as well when a
+      19  policy or a role is named. An attribute may sit on the action o
+          r controller; a global <code>AuthorizeFilter</code> registered 
+          in MVC options is also
+      20  honoured.</p>
+      15 -<h3>Noncompliant code example</h3>                             
+      21 +<h3>Code examples</h3>                                         
+      22 +<h4>Noncompliant code example</h4>                             
+      23  <pre data-diff-id="1" data-diff-type="noncompliant">
+      24  [ApiController]
+      25  [Authorize(Policy = "RoleReadAccess")]
+     ...
+      30      public IActionResult GetRoleDefinitions() =&gt; Ok(definiti
+          ons); // Noncompliant: 401 and 403 are reachable but undeclared
+      31  }
+      32  </pre>
+      26 -<h3>Compliant solution</h3>                                    
+      33 +<h4>Compliant solution</h4>                                    
+      34  <pre data-diff-id="1" data-diff-type="compliant">
+      35  [ApiController]
+      36  [Authorize(Policy = "RoleReadAccess")]
+
+  Ran 10 shell commands (ctrl+o to expand)
+● Zamiast czytać wszystko po kolei, jeszcze jedno przejście mechaniczne — dwie
+  rzeczy, w których łatwo skłamać i trudno to zauważyć: deklarowany quick fix w
+  metadanych vs istnienie klasy CodeFix, oraz parametry konfiguracyjne reguł vs
+  to, czy opis w ogóle o nich mówi.
+
+  Made 4 scratchpad edits +143, ran 14 shell commands (ctrl+o to expand)
+
+● Pierwsza partia zrobiona i zacommitowana (862c647cf0). Co znalazłem i
+  poprawiłem:
+
+  Kłamstwa (4)
+  - GP0020 — przykład cytował komunikat, którego analizator już nie emituje:
+    „…but other actions in 'UsersController' are explicitly protected with
+    [Authorize]". Realny komunikat to „…; explicitly declare its access policy".
+  - GP0026 — cytat „Method 'CreateOrder' looks like it creates a resource…"
+    zamiast „POST action 'CreateOrder' is named for creation…".
+  - GP0059 — „which a contract assembly should not depend on" zamiast „which a
+    contract must not depend on".
+  - GP0051 — opis mówił, że wyjątek dla CloudEvents to sprawdzenie kształtu
+    (członkowie koperty), i dodawał „the type name alone is not enough". Kod
+    dodatkowo wymaga, żeby typ bazowy nazywał się CloudEventsEnvelope — czyli
+    równoważna koperta pod inną nazwą nie jest zwolniona. Teraz opis mówi obie
+    rzeczy.
+
+  Metadane (5) — GP0060, GP0080, GP0088, GP0108 mają zaimplementowany code fix,
+  a w rspec stało "quickfix": "targeted". GP0089 też ma fix, ale obsługuje tylko
+  formę using var x = new T { ... } — to "partial". SonarQube z tego pola robi
+  oznaczenie reguły, więc to było wprowadzanie w błąd.
+
+  Braki (2) — GP0115 nie miała zdania wstępnego (plik zaczynał się od <h2>Why is
+  this an issue?</h2>, więc reguła nie miała linii podsumowania) i nie
+  wspominała, że [AllowAnonymous], wykluczenie z API Explorera ani konwencje API
+  ją wyciszają. GP0101 nie mówiła, że <inheritdoc> liczy się jako dokumentacja.
+
+  Zagadanie (1) — GP0054 miała 626 słów, z czego pięć akapitów samych wyjątków.
+  Zostały: jeden akapit o rethrow i lista czterech sytuacji, w których to nie
+  jest anulowanie od wołającego. Akapit o czytaniu struktury boolowskiej filtra
+  when przeniosłem do komentarza przy kodzie, który to implementuje.
+
+  Martwe odwołanie (1) — komentarz w GP0027 wciąż powoływał się na GP0007,
+  usuniętą w sierpniu.
+
+  Sprawdzone i czyste: cała rodzina OpenAPI (GP0100/0101/0102/0103/0115 —
+  deklaracje zgodne z GpOpenApiMetadata, łącznie z globalnym AuthorizeFilter w
+  GP0115), GP0012, GP0075 (słownik 6+4+9 słów zgadza się z tabelą Microsoftu co
+  do wpisu), GP0028, GP0129, GP0004. Testy GP 1003/1003, metadane OK.
+
+  Zostały mi jeszcze reguły ze środka listy — GP0073, GP0071, GP0061, GP0033,
+  GP0099, GP0039, GP0041, GP0044, GP0015, GP0031, GP0085, GP0029, GP0089 i kilka
+  drobniejszych. Zanim ruszę dalej, dwa pytania:
+
+● User answered Claude's questions:
+  ⎿  · GP0051 wymaga, żeby typ bazowy koperty nazywał się dokładnie 
+     'CloudEventsEnvelope'. AGENTS.md mówi: decydować semantyką, nie pisownią. 
+     Co z tym? → Zostawić kod, opis już mówi prawdę (rekomendacja)
+     · Jak daleko ciągnąć przegląd? → Dokończyć resztę listy priorytetowej 
+     (rekomendacja)
+
+  Made 1 scratchpad edit +27, ran 14 shell commands (ctrl+o to expand)
+
+● Przegląd skończony. Dwa commity: 862c647cf0 i 69909afdea.
+
+  Co było nieprawdą i jest poprawione
+
+  ┌──────────────┬──────────────────────────┬──────────────────────────────┐
+  │              │      co mówił opis       │      jak jest naprawdę       │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │              │ cytat komunikatu o       │                              │
+  │ GP0020       │ „other actions …         │ „…; explicitly declare its   │
+  │              │ protected with           │ access policy"               │
+  │              │ [Authorize]"             │                              │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │ GP0026       │ „looks like it creates a │ „POST action … is named for  │
+  │              │  resource…"              │ creation…"                   │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │ GP0059       │ „a contract assembly     │ „a contract must not depend  │
+  │              │ should not depend on"    │ on"                          │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │              │ wyjątek CloudEvents to   │ kod dodatkowo wymaga nazwy   │
+  │ GP0051       │ sprawdzenie kształtu     │ CloudEventsEnvelope          │
+  │              │ koperty                  │                              │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │ GP0060,      │                          │                              │
+  │ GP0080,      │ "quickfix": "targeted"   │ code fix istnieje → covered  │
+  │ GP0088,      │                          │                              │
+  │ GP0108       │                          │                              │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │              │                          │ fix obsługuje tylko formę    │
+  │ GP0089       │ "targeted"               │ using var x = new T {…} →    │
+  │              │                          │ partial                      │
+  ├──────────────┼──────────────────────────┼──────────────────────────────┤
+  │ GP0027 (kod) │ komentarz powołuje się   │ reguła usunięta w sierpniu   │
+  │              │ na GP0007                │                              │
+  └──────────────┴──────────────────────────┴──────────────────────────────┘
+
+  Czego brakowało
+  - GP0115 nie miała zdania wstępnego — plik zaczynał się od <h2>, więc reguła
+    nie miała linii podsumowania w SonarQube. Dopisane, razem z wyjątkami
+    ([AllowAnonymous], wykluczenie z API Explorera, konwencje API), o których
+    milczała.
+  - GP0101 nie mówiła, że <inheritdoc> liczy się jako dokumentacja.
+  - GP0073 nie mówiła, gdzie zgłasza. Zgłasza przy każdej rejestracji/wywołaniu
+    publish, więc kontrakt publikowany z trzech miejsc daje trzy trafienia —
+    odwrotnie niż GP0051, która deduplikuje na deklaracji typu. Dwie bliźniacze
+    reguły zachowywały się inaczej i nikt nie mógł tego wiedzieć z opisu.
+
+  Co było zagadane
+  - GP0054 — 626 słów, z tego pięć akapitów wyjątków. Teraz akapit o rethrow
+    plus lista czterech sytuacji („to nie jest anulowanie od wołającego").
+    Akapit o parsowaniu struktury boolowskiej filtra when przeniesiony do
+    komentarza przy kodzie, który to robi.
+  - GP0099 — sześć niezwiązanych wyjątków w jednym dwunastowierszowym akapicie
+    rozdzielonych średnikami. Ta sama treść, teraz lista.
+
+  Mediana długości opisu spadła z 283→290 słów przy maksimum 626→547 (najdłuższa
+  jest teraz GP0075, gdzie długość to sam słownik poprawnych pisowni —
+  zostawiam).
+
+  Co sprawdziłem i jest zgodne z kodem: cała rodzina OpenAPI
+  (GP0100/0101/0102/0103/0115, łącznie z globalnym AuthorizeFilter), GP0012,
+  GP0028, GP0129, GP0004, GP0033, GP0039, GP0041, GP0044, GP0061 (lista nazw
+  metadanych transportu co do znaku), GP0071, GP0073, GP0075 (słownik 6+4+9
+  zgodny z tabelą Microsoftu), GP0085, GP0099, GP0015, GP0029, GP0031. Struktura
+  wszystkich 98: każda ma Why, How to fix it, przykład niezgodny i zgodny.
+
+  Testy GP 1003/1003, metadane OK (791 reguł). Do wypchnięcia zostały trzy
+  commity — powiedz, kiedy mam je wysłać, i czy przebudować jara, żeby
+  poprawione opisy trafiły do SonarQube.
+
+✻ Crunched for 20m 44s · done poniedziałek, 20:01
+
+※ recap: Przeglądaliśmy i porządkowaliśmy reguły GP; przegląd opisów skończony, wszystko zacommitowane lokalnie (trzy commity), testy i metadane zielone. Następny krok: powiedz, czy wypchnąć commity i przebudować jara, żeby poprawione opisy trafiły do SonarQube.
+
+❯ przejrzyj pozostale reguly                                                    
+
+  Made 2 scratchpad edits +57, ran 12 shell commands (ctrl+o to expand)
+❯ Mediana długości opisu spadła z 283→290 ? co pierniczysz                      
+
+● Masz rację — napisałem bzdurę. Mediana wzrosła z 283 do 290 słów, bo w kilku
+  regułach dopisałem brakujące zdania (GP0115, GP0101, GP0073). Spadło maksimum:
+  626 → 547, i to dzięki skróceniu GP0054.
+
+  Kończąc przegląd pozostałych 62 reguł: merytorycznie wszystkie opisują to, co
+  robią — sprawdziłem deklaracje zakresu przy każdej i zweryfikowałem w kodzie
+  te, które dało się sfalsyfikować (m.in. lista zbanowanych typów GP0025 z
+  obsługą typów pochodnych i własnych delegatów, nazwy metadanych transportu
+  GP0061, atrybuty testowe GP0041). Została jedna rzecz strukturalna:
+
+  Made 1 scratchpad edit +29, ran 3 shell commands (ctrl+o to expand)
+
+● Przejrzane wszystkie pozostałe 62 reguły. Commit 2c76458428.
+
+  Merytorycznie nic nie kłamie. Przy każdej sprawdziłem deklaracje zakresu, a te
+  falsyfikowalne zweryfikowałem w kodzie:
+  - GP0025 — lista zbanowanych typów w opisie zgadza się z kodem co do wpisu,
+    łącznie z tym, że kod chodzi po typach bazowych (pochodne Exception,
+    DbContext), łapie Task<T> i dowolny delegat, nie tylko Action/Func.
+  - GP0061 — jedenaście nazw metadanych transportu w opisie to dokładnie
+    zawartość TransportMetadataNames.
+  - GP0041 — atrybuty testowe trzech frameworków, wyjątki na lifecycle
+    (Dispose/DisposeAsync, implementacje interfejsów) i reguła „wywoływana z
+    innego miejsca w klasie = helper" są w kodzie tak, jak w opisie.
+  - Reszta — GP0027, GP0034, GP0038, GP0040, GP0042, GP0045, GP0047, GP0053,
+    GP0055, GP0058, GP0060, GP0066, GP0068, GP0074, GP0077–GP0086,
+    GP0090–GP0094, GP0104–GP0114, GP0119–GP0131 — opisuje kształty, które
+    faktycznie zgłasza.
+
+  Trzy wady prezentacji, poprawione:
+  - GP0119 nie miała zdania podsumowującego — plik zaczynał się od <h2>Why is 
+    this an issue?</h2>, czyli dokładnie ta sama wada co w GP0115. SonarQube nie
+    miał czego pokazać jako pierwszej linii reguły. Teraz zaczyna się od tego,
+    czego reguła chce.
+  - GP0119, GP0120, GP0124 używały <h3> na przykłady, gdy wszystkie pozostałe
+    mają <h3>Code examples</h3> + <h4>.
+
+  Po tej rundzie wszystkie 98 reguł ma: zdanie podsumowujące, Why is this an 
+  issue?, How to fix it oraz przykład niezgodny i zgodny pod jednolitymi
+  nagłówkami. Metadane OK (791 reguł).
+
+  Stan repo: cztery commity lokalnie (862c647cf0, 69909afdea, 2c76458428 z
+  przeglądu opisów + wcześniejsze). Jar 10.34.0.20260831163839 jest starszy niż
+  te poprawki, więc jeśli chcesz mieć w SonarQube aktualne teksty — przebuduję.
+  Powiedz, czy wypychać i budować.
+
+✻ Crunched for 5m 52s · done poniedziałek, 20:38
+
+❯ commituj i buduj jar                                                          
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Drzewo robocze jest czyste — wszystko z przeglądu opisów zostało zacommitowane
+  wcześniej, więc nie ma czego dodawać. Sześć commitów czeka lokalnie na
+  wypchnięcie (od 15d120b7ae po 2c76458428); nie wypychałem, bo tym razem
+  prosiłeś tylko o commit i jara.
+
+  Jar leci w tle — dam znać z wersją.
+
+  Made 1 scratchpad edit +17, ran 3 shell commands (ctrl+o to expand)
+
+● Background command "Build the plugin jar" completed (exit code 0)
+
+● Gotowe.
+
+  Jar: C:\Git\sonar-dotnet\sonar-csharp-plugin\target\gp-sonar-csharp-plugin-10.
+  34.0.20260831203909.jar (3 101 802 B, mieści się w oknie 2,8–3,6 MB).
+
+  Sprawdziłem zawartość, żeby nie wgrywać czegoś w ciemno:
+  - 98 reguł GP w środku, z GP0132 i GP0133, bez GP0096/GP0122/GP0126;
+  - static/SonarAnalyzer-GP-csharp-10.34.0.20260831203909.zip z analizatorem na
+    miejscu;
+  - poprawki opisów faktycznie weszły do artefaktu: GP0115, GP0119 i GP0133
+    otwierają się zdaniem podsumowującym, a GP0020 cytuje aktualny komunikat
+    („explicitly declare its access policy").
+
+  Commit: nie było czego commitować — drzewo robocze czyste, cały przegląd
+  opisów poszedł w commitach wcześniej. Lokalnie czeka sześć commitów, od
+  15d120b7ae (usunięcie trzech reguł) po 2c76458428 (przegląd 62 opisów). Nie
+  wypychałem, bo tym razem prosiłeś o commit i jara — powiedz słowo i wyślę na
+  origin/master.
+
+✻ Cogitated for 3m 33s · done poniedziałek, 20:42
+
+※ recap: Reviewing the GP rule set: today I synced the fork with upstream, removed three rules, added GP0132/GP0133, and corrected the rule descriptions. Jar 10.34.0.20260831203909 is built; six commits await your go-ahead to push.
+
+❯ poszlo nieco analiz jakies nowe FP?                                           
+
+  Made 1 scratchpad edit +61, ran 12 shell commands (ctrl+o to expand)
+
+● Tak, jeden prawdziwy FP — i to dokładnie w regule, którą wczoraj
+  rozszerzyliśmy. Naprawiony, commit 72f2140664.
+
+  FP: GP0046 na Junowym kliencie HTTP
+  GP.Stygian/Api/Extensions/HttpRequestPropertiesExtensions.cs:17 —
+  client.Send(HttpMethod.Post, …) na GP.Juno.HttpClient, czyli wywołanie HTTP,
+  zgłoszone jako publikacja wiadomości z GET-a. Przyczyna: GP0046 miała własny,
+  luźny predykat — „dowolny typ z namespace zaczynającego się od GP.Juno" plus
+  nazwa metody Send/Publish/PublishBatch/RespondAsync. Tymczasem w repo jest już
+  dokładny wspólny helper GpMessageContracts.IsMessagingMethod, którego własny
+  komentarz ostrzega przed tym błędem: „Juno contains unrelated Send methods for
+  HTTP, email and tracing". GP0046 używa go teraz zamiast swojej kopii. Doszedł
+  test regresyjny. Ten FP wyszedł dopiero, gdy reguła zaczęła iść grafem
+  wywołań — wcześniej klient HTTP był poza jej zasięgiem.
+
+  Podział GP0032/GP0133 zadziałał tak, jak miał
+  - GP0032: 385 → 56, i każde trafienie nazywa realny typ infrastruktury w
+    użyciu: SqlConnection 47, DbConnection 5, AppDbContext 3,
+    FakeSqlConnection 1. Komunikatów typu „Do not use infrastructure type
+    'GetSectionsQuery'" już nie ma.
+  - GP0133: 211 trafień.
+
+  Dwie rzeczy do decyzji, nie FP, ale warte spojrzenia:
+
+  1. GP0133 — 185 z 211 trafień siedzi w jednym repo, GP.Kentucky. To prawda z
+     definicji reguły, ale to jedna decyzja architektoniczna zgłoszona 185 razy.
+     AGENTS.md mówi wprost, że reguła zalewająca bazę
+     prawdziwymi-ale-mało-wartościowymi trafieniami nie jest warta wysyłki.
+  2. 11 trafień GP0046 pochodzi z projektu juno — z przykładów w samej
+     bibliotece (GP.Juno.Examples.OutboxPattern/OutboxController,
+     [HttpGet("publish")] wołające _eventStream.Publish(msg)). Technicznie
+     prawda, ale to demo w bibliotece, którą nasze reguły mają wspierać, a nie
+     oceniać. Pytanie, czy juno w ogóle powinien być w skanie.
+
+● User answered Claude's questions:
+  ⎿  · GP0133: 185 z 211 trafień w jednym repo (GP.Kentucky). Co z tym? → Sa 
+     lepsze mechanizmy do pilnowania tego?
+     · Projekt `juno` w skanie SonarQube → Zostawić w skanie
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Tak, i część już macie u siebie.
+
+  Co znalazłem w waszych repo: GP.Bobr i GP.Francesca używają NetArchTest.Rules 
+  1.3.2 oraz Microsoft.CodeAnalysis.BannedApiAnalyzers 3.3.4. Czyli mechanizm
+  jest w domu, tylko nie tam, gdzie boli. A w GP.Kentucky projekt
+  GP.Kentucky.Database istnieje, ale trzyma wyłącznie migracje — klasy zapytań
+  siedzą w GP.Kentucky.Api, który ma własny <PackageReference Include="Dapper" 
+  Version="2.1.44" />.
+
+  Cztery mechanizmy, od najmocniejszego:
+
+  1. Zabrać projektowi API referencję do Dappera / Juno.Ado. Wtedy
+     zadeklarowanie tam IDbExecute przestaje się kompilować. To nie jest linter,
+     który da się wyciszyć komentarzem — to graf zależności. W Kentucky to
+     jedna linia w csproj plus przeniesienie klas do istniejącego
+     GP.Kentucky.Database. Najskuteczniejsze i jednorazowe.
+  2. Test architektoniczny NetArchTest — dokładnie to, co GP.Bobr już robi.
+     Jeden test: „żaden typ implementujący IDbExecute nie leży w assembly
+     kończącym się na .Api". Efekt: jedna czerwona lampka w CI z listą typów, a
+     nie 185 issues w SonarQube. Da się zbaseline'ować istniejący dług i
+     pilnować tylko nowych.
+  3. BannedApiAnalyzers — też już u was jest. BannedSymbols.txt w projekcie API
+     z rozszerzeniami Dappera; błąd kompilacji w miejscu użycia, per projekt,
+     bez centralnej reguły.
+  4. Clean-as-You-Code w SonarQube — zostawić GP0133 włączoną, ale bramka
+     jakości patrzy na nowy kod. Te 185 to dług, który niczego nie blokuje; nowe
+     wystąpienie owszem. To jest dokładnie ten mechanizm, który rozdziela
+     „stare" od „nowego", i nie wymaga niczego zmieniać w regule.
+
+  Moja rekomendacja: 1 + 2 tam, gdzie zależy wam na twardym egzekwowaniu
+  (Kentucky ma już do tego strukturę), a GP0133 zostawić jako detektor dla
+  repozytoriów, które tego nie zrobiły — z gatingiem na nowym kodzie, żeby
+  wolumen nie przeszkadzał. Przejście reguły na „jedno trafienie na assembly"
+  bym odpuścił: schowałoby nowe naruszenia w projekcie, który już raz jest
+  oznaczony.
+
+  juno zostaje w skanie zgodnie z Twoją decyzją — 11 trafień GP0046 tam to
+  prawdziwe [HttpGet("publish")] wołające _eventStream.Publish(...) w
+  przykładach outboxa.
+
+✻ Crunched for 9m 59s · done wtorek, 01:15
+
+❯ przyjmimy ze ta regula nie pasuje i ja usuniemy, jest jakas inna bazujaca na  
+  wartwach?                                                                     
+● Usuwam GP0133.
+
+  Made 1 scratchpad edit +29, ran 3 shell commands (ctrl+o to expand)
+
+❯ a ta blizniacza regula?                                                       
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● GP0133 usunięta (5b546f74fb, plus commit w korpusie). Testy GP 1000/1000,
+  metadane OK, GP0032 nie odsyła już do nieistniejącej reguły, id zostaje luką.
+
+  A teraz o bliźniaczce — GP0032 wygląda gorzej, niż myślałem. Rozbiłem jej 56
+  trafień na dwie połowy, którymi mówi:
+
+  ┌───────────────────┬───────────┬─────────────────────────────────────────┐
+  │ połowa komunikatu │ trafienia │                  gdzie                  │
+  ├───────────────────┼───────────┼─────────────────────────────────────────┤
+  │ „…directly in a   │ 2         │ oba w brudna-rzeka, czyli w naszym      │
+  │ controller"       │           │ syntetycznym korpusie                   │
+  ├───────────────────┼───────────┼─────────────────────────────────────────┤
+  │ „…directly in an  │ 54        │ Service-CandidateAISearch 29,           │
+  │ API project"      │           │ service-vacancy 18, reszta pojedynczo   │
+  └───────────────────┴───────────┴─────────────────────────────────────────┘
+
+  Czyli ostra, bezdyskusyjna teza reguły — kontroler nie trzyma DbContext — nie 
+  ma ani jednego trafienia w 126 realnych projektach. Wszystko, co GP0032 dziś
+  zgłasza, to ta sama opinia o warstwach, którą przed chwilą usunęliśmy razem z
+  GP0133, tylko liczona per użycie zamiast per klasa. Widać to gołym okiem w
+  próbce:
+
+  …Api/BlobIngestion/Repositories/DeferredIncrementalCommandRepository.cs:24,
+  44, 58, 68, 78 …
+  Do not use infrastructure type 'SqlConnection' directly in an API project
+  Jedna klasa repozytorium leżąca w assembly API, zgłoszona raz na każdą metodę,
+  która otwiera połączenie.
+
+● User answered Claude's questions:
+  ⎿  · Skoro GP0133 wypada, co robimy z GP0032? → Usunąć GP0032 w całości
+
+  Made 1 scratchpad edit +28, ran 4 shell commands (ctrl+o to expand)
+
+❯ jakies inne reguly z tym patternem?                                           
+
+  Made 2 scratchpad edits +78, ran 6 shell commands (ctrl+o to expand)
+
+● GP0032 usunięta (a37fcddc99 + commit w korpusie). Zostało 96 reguł, testy
+  991/991, metadane OK. IsDbExecute przeniosłem do GpJunoTypes — potrzebowała go
+  jeszcze GP0129 do rozpoznawania operacji, którym runner podaje transakcję.
+
+  Odpowiadając na pytanie: nie, żadna inna reguła nie ma tego kształtu.
+  Przeliczyłem wszystkie 5 362 trafienia GP i policzyłem dwie rzeczy —
+  koncentrację w jednym projekcie i liczbę trafień na plik:
+
+  ┌────────┬─────────┬────────┬─────────┬────────────────┐
+  │ reguła │ trafień │ plików │ na plik │ najgorszy plik │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0100 │ 484     │ 125    │ 3,9     │ 6%             │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0110 │ 430     │ 120    │ 3,6     │ 6%             │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0101 │ 772     │ 282    │ 2,7     │ 2%             │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0115 │ 693     │ 255    │ 2,7     │ 3%             │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0043 │ 429     │ 158    │ 2,7     │ 7%             │
+  ├────────┼─────────┼────────┼─────────┼────────────────┤
+  │ GP0012 │ 287     │ 108    │ 2,7     │ 8%             │
+  └────────┴─────────┴────────┴─────────┴────────────────┘
+
+  Te sześć ma po ~3 trafienia na plik, ale rozsypane po 100–280 plikach i
+  kilkudziesięciu projektach — to nie jedna decyzja powtórzona, tylko realna
+  luka konwencji w całej bazie. Inne zwierzę niż GP0032.
+
+  Jedna reguła jest blisko: GP0112 („Controller code should not inspect claims
+  directly") — 39 trafień, z czego 16 w jednym pliku:
+  Service-Auth/Controllers/AuthenticationController.cs, i 74% w całym
+  Service-Auth. Czyli reguła mówiąca „kontroler nie grzebie w claimach, użyj
+  polityk albo [FromToken]" trafia głównie w serwis uwierzytelniający, którego
+  zadaniem jest właśnie wystawianie i czytanie claimów. To nie jest ten sam
+  defekt co w GP0032 (tam sedno reguły nigdy nie strzeliło) — teza GP0112 jest
+  jedna i ostra — ale efekt bywa podobny: prawda, która nie stosuje się do
+  jednej klasy serwisów.
+
+  Drugi przypadek koncentracji to GP0055 (21 trafień, 71% w juno) i GP0046 (16,
+  z czego 11 w przykładach outboxa w juno) — obie wynikają z tego, że juno jest
+  w skanie, co świadomie zostawiłeś.
+
+  Chcesz, żebym przyjrzał się GP0112 pod kątem wyłączenia serwisu
+  uwierzytelniającego, czy zostawiamy?
+
+✻ Churned for 31m 55s · done wtorek, 01:59
+
+❯ zostawiamy, buduj jar                                                         
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Background command "Find GP0032 dependencies and corpus references" completed
+(exit code 0)
+
+● Background command "Build the plugin jar" completed (exit code 0)
+
+● Jar gotowy: C:\Git\sonar-dotnet\sonar-csharp-plugin\target\gp-sonar-csharp-plu
+  gin-10.34.0.20260901020156.jar (3 095 626 B).
+
+  Sprawdzone w artefakcie:
+  - 96 reguł GP; nie ma już GP0032 ani GP0133, tak samo jak wcześniej usuniętych
+    GP0096/GP0122/GP0126;
+  - GP0046 w środku — z wczorajszą poprawką na Junowy klient HTTP
+    (IHttpClient.Send przestaje uchodzić za publikację wiadomości);
+  - static/SonarAnalyzer-GP-csharp-10.34.0.20260901020156.zip z analizatorem;
+  - poprawione opisy weszły — GP0115 i GP0119 otwierają się zdaniem
+    podsumowującym.
+
+  (Skrypt weryfikujący rzucił na końcu wyjątkiem, bo próbował odczytać opis
+  GP0133 — reguły, której już nie ma. Nie ruszałem go, bo to jednorazówka ze
+  scratchpada.)
+
+  Stan repo: dziewięć commitów lokalnie na master, od 15d120b7ae po a37fcddc99 —
+  plus dwa w korpusie brudna-rzeka. Nadal nic nie wypchnięte; powiedz, kiedy
+  wysłać.
+
+✻ Worked for 9m 31s · done wtorek, 02:11
+
+※ recap: Porządkujemy zestaw reguł GP: dziś usunęliśmy GP0032 i GP0133, poprawiliśmy FP w GP0046 i opisy reguł, a jar 10.34.0.20260901020156 jest już zbudowany. Zostało wypchnąć dziewięć commitów na origin i dwa w brudna-rzeka.
+
+❯ pushuj                                                                        
+
+  Pushed to master, main, ran 1 shell command (ctrl+o to expand)
+
+● Wypchnięte, oba repozytoria czyste względem zdalnych.
+
+  GrupaPracuj/sonar-dotnet — fc9dcbd296..a37fcddc99 na master, dziewięć
+  commitów:
+  - 15d120b7ae usunięcie GP0096, GP0122, GP0126
+  - 6f9673e29a + 219ab1393d podział GP0032 na GP0133 i uporządkowanie obu opisów
+  - 862c647cf0, 69909afdea, 2c76458428 przegląd opisów wszystkich reguł
+  - 72f2140664 poprawka FP w GP0046 na Junowym kliencie HTTP
+  - 5b546f74fb usunięcie GP0133
+  - a37fcddc99 usunięcie GP0032
+
+  GrupaPracuj/brudna-rzeka — 0aeb919..75cf633 na main, cztery commity:
+  dostosowanie korpusu do zmienionego zestawu reguł, probe dla GP0046,
+  regeneracja .editorconfig z katalogu rspec oraz usunięcie przykładów do
+  skasowanych reguł.
+
+  Bilans zestawu: 96 reguł GP (było 99 na starcie tej sesji), jar
+  10.34.0.20260901020156 zbudowany i zweryfikowany, testy GP 991/991.
+
+✻ Sautéed for 55s · done wtorek, 11:51
+
+※ recap: Cel: uporządkować zestaw reguł GP po syncu z upstreamem. Zestaw ma teraz 96 reguł, wszystko zacommitowane i wypchnięte do obu repo, jar 10.34.0.20260901020156 zbudowany. Następny krok: wgrać ten jar do SonarQube i zrestartować instancję.
+
+❯ kurcze dostaje teraz taki blad https://github.com/GrupaPracuj/GP.OwlEye/actio 
+  ns/runs/33240611423/job/99826352569                                           
+
+  Ran 11 shell commands (ctrl+o to expand)
+● Zdiagnozowałem, na ile da się bez dostępu do tego serwera.
+
+  Co dokładnie się dzieje: krok dotnet-sonarscanner begin przewraca się
+  natychmiast po linii Fetching analysis configuration settings..., z kodem 1 i
+  bez żadnego komunikatu. Druga czerwona linia — „analysis configuration file
+  could not be found: .sonarqube/conf/SonarQubeAnalysisConfig.xml" — to tylko
+  konsekwencja: end szuka pliku, którego begin nie zdążył zapisać. Buduje się i
+  testuje nic, oba kroki są skipped.
+
+  Co ustaliłem:
+  - To jest cotygodniowy run z cron 10 7 * * 6 utworzony 29.08, ale wykonany
+    dzisiaj o 12:41 — czyli ktoś go przepuścił ponownie. Ten sam workflow
+    przeszedł 08.08, 15.08 i 22.08.
+  - sonar2.pracuj.pl żyje: {"status":"UP","version":"2026.2.1.121354"}.
+  - Każdy endpoint API tego serwera wymaga uwierzytelnienia (401 bez tokena),
+    więc nie sprawdzę stamtąd ani listy wtyczek, ani profilu jakości. Twojego
+    lokalnego SONAR_TOKEN tam nie wysyłałem — to token do localhost, nie do
+    produkcyjnego Sonara.
+  - Akcja GrupaPracuj/Actions/dotnet/sonarqube@master uruchamia scanner wprost i
+    niczego nie połyka — brak komunikatu to zachowanie samego scannera, który
+    szczegóły pokazuje dopiero z /d:sonar.verbose=true.
+
+  Najbardziej prawdopodobne przyczyny, w tej kolejności:
+  1. Token — secrets.SONAR_TOKEN wygasł albo stracił uprawnienie Execute 
+     Analysis na GP.OwlEye. Pasuje idealnie: to jest krok, w którym scanner
+     pierwszy raz pyta serwer o konfigurację, a run z 22.08 przeszedł na tym
+     samym sekrecie. Sprawdzisz w pięć sekund: curl -u TOKEN: 
+     https://sonar2.pracuj.pl/api/authentication/validate i
+     .../api/settings/values?component=GP.OwlEye.
+  2. Coś po stronie projektu lub profilu C# na serwerze.
+  3. Nasza wtyczka — tylko jeśli ktoś wgrał ją dziś na sonar2. Ale serwer jest
+     UP, więc jeśli wgrał, to się załadowała; wtyczka z niepoprawnymi metadanymi
+     nie pozwoliłaby wstać SonarQube.
+
+  Żeby zobaczyć prawdziwy błąd, wystarczy jednorazowo dorzucić
+  /d:sonar.verbose=true do begin w akcji (albo odpalić te same dwie komendy
+  lokalnie z tokenem CI) — wtedy scanner wypisze status i treść odpowiedzi HTTP.
+
+  Jedno pytanie, które rozstrzyga punkt 3: czy nowy jar trafił dziś na 
+  sonar2.pracuj.pl, czy tam nadal stoi wersja sprzed naszych zmian? Jeśli tak,
+  sprawdziłbym też, czy profil „GP way" na tym serwerze nie ma jeszcze aktywnych
+  GP0032/GP0096/GP0122/GP0126/GP0133.
+
+✻ Worked for 3m 31s · done wtorek, 12:46
+
+❯ https://github.com/GrupaPracuj/GP.OwlEye/actions/runs/33240611423/job/9982635 
+  2569                                                                          
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Pobrałem surowy log przez API (nie tylko widok w przeglądarce) — nie ma tam 
+  nic więcej. Cały ślad po błędzie to:
+
+  12:41:53.902  Updating build integration targets...
+  12:41:54.773  Fetching analysis configuration settings...
+  12:41:55.444  Pre-processing failed. Exit code: 1
+
+  Żadnego statusu HTTP, żadnego wyjątku, żadnej linii o autoryzacji. Job nie był
+  ponawiany od czasu, gdy patrzyłem — updatedAt to nadal 10:42:00Z, więc to ten
+  sam przebieg.
+
+  Scanner w wersji 7.1.1 domyślnie loguje na poziomie INFO i treść nieudanego
+  żądania pokazuje dopiero przy sonar.verbose. Z tego, co jest w logu, po prostu
+  nie da się orzec, czy serwer odpowiedział 401, 403, 404 czy 500 — a to jest
+  cała różnica między „token", „uprawnienia do projektu" a „coś po stronie
+  profilu/wtyczki".
+
+  Trzy sposoby, żeby wyciągnąć prawdziwy powód — każdy zajmuje minutę:
+
+  1. Log serwera. Ktoś z dostępem do sonar2.pracuj.pl patrzy w access.log na
+     2026-09-01 10:41:54–10:41:55 UTC i szuka żądań z projektem GP.OwlEye —
+     zobaczy dokładny endpoint i kod odpowiedzi. To najszybsza droga, bo nie
+     wymaga niczego zmieniać w CI.
+  2. Token. Z tokenem CI w ręku:
+  curl -u TOKEN: https://sonar2.pracuj.pl/api/authentication/validate
+  curl -u TOKEN: -o /dev/null -w "%{http_code}\n"
+  "https://sonar2.pracuj.pl/api/settings/values?component=GP.OwlEye"
+     Pierwsze powie, czy token żyje, drugie — czy ma prawo do tego projektu.
+  3. Verbose. Dorzucić /d:sonar.verbose=true do kroku SonarScanner begin w
+     GrupaPracuj/Actions/dotnet/sonarqube i puścić workflow ręcznie
+     (workflow_dispatch jest włączony). Scanner wypisze wtedy adres, status i
+     treść odpowiedzi.
+
+  Mogę przygotować zmianę z punktu 3 jako PR do GrupaPracuj/Actions — ale to
+  repozytorium współdzielone przez wszystkie pipeline'y, więc wolę tego nie
+  ruszać bez Twojej zgody. Powiedz, czy mam to zrobić.
+
+  I nadal aktualne pytanie, które odsiewa naszą wtyczkę: czy nowy jar był dziś 
+  wgrywany na sonar2.pracuj.pl? Jeśli nie — nasze zmiany nie mają z tym nic
+  wspólnego, bo to serwer, którego dziś nie dotykaliśmy.
+
+✻ Churned for 53s · done wtorek, 12:47
+
+※ recap: Porządkowaliśmy reguły GP w forku sonar-dotnet — wszystko zacommitowane, wypchnięte i zbudowane jako jar. Teraz diagnozujemy błąd CI w GP.OwlEye; czekam na Twoją odpowiedź, czy nowy jar trafił dziś na sonar2.pracuj.pl.
+
+❯ tak jar byl wgrywany i widze ze uzywamy tam socnascanera starego, moze to to  
+  https://github.com/GrupaPracuj/GP.Magneto/blob/master/actions-runners/runners 
+  -images/actions-runner-build.dockerfile                                       
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● To zmienia obraz — teraz nasza wtyczka jest głównym podejrzanym, i mam
+  konkretny mechanizm.
+
+  Jak to działa u nas (opisane w komentarzu w CSharpPlugin.java, mechanizm z
+  SonarQube Roslyn SDK): nasza wtyczka rejestruje trzy ukryte properties:
+
+  GPcsharp.cs.pluginKey          = GPcsharp
+  GPcsharp.cs.pluginVersion      = 10.34.0.<build>
+  GPcsharp.cs.staticResourceName = SonarAnalyzer-GP-csharp-10.34.0.<build>.zip
+
+  SonarScanner dla .NET w fazie begin — dokładnie w kroku „Fetching analysis 
+  configuration settings" — bierze z profilu jakości wszystkie aktywne reguły,
+  których repozytorium zaczyna się od roslyn. (nasze to roslyn.GPcsharp.cs),
+  odczytuje te trzy properties i pobiera z serwera wskazany zasób statyczny.
+  Jeśli tego zasobu nie ma albo wersja się nie zgadza, begin pada właśnie tam.
+  To jest ten krok, w którym wam padło, i to jest dzień, w którym wgraliście
+  jar.
+
+  Co porównałem lokalnie: na localhost:9000 stoi oficjalny csharp 10.28 i nasz
+  GPcsharp 10.34 (build 20260831203909) obok siebie — i tam analiza działa. Na
+  sonar2 jest SonarQube 2026.2.1, czyli inny (nowszy) oficjalny analizator C#,
+  plus nasza wtyczka wgrana dzisiaj.
+
+  Trzy sprawdzenia, każde na minutę, w kolejności rozstrzygalności:
+
+  1. Czy zasób istnieje. Tokenem CI:
+  curl -u TOKEN: -o /dev/null -w "%{http_code}\n" \
+    "https://sonar2.pracuj.pl/api/static/GPcsharp/SonarAnalyzer-GP-csharp-<wersj
+  a-wgranego-jara>.zip"
+     To jest dokładnie to żądanie, które robi scanner. 200 — zasób jest, szukamy
+     dalej. 404 — mamy przyczynę.
+  2. Czy inne repo z C# też pada teraz. Jeśli tak, to nie jest problem OwlEye,
+     tylko całego serwera — i wskazuje na wtyczkę albo profil.
+  3. Rollback test. Wyłączyć wtyczkę GP na sonar2 (albo dezaktywować reguły GP w
+     profilu, którego używa GP.OwlEye) i puścić job ponownie. Przejdzie — to
+     nasze.
+
+  Do tego web.log z momentu startu serwera po wgraniu jara pokaże, czy wtyczka w
+  ogóle się załadowała, a access.log z 10:41:54–10:41:55 UTC — który endpoint
+  zwrócił błąd.
+
+  Dwie rzeczy, których potrzebuję od Ciebie, żeby to domknąć: którą wersję jara 
+  wgraliście na sonar2 (10.34.0.2026083116…, …20260831203909 czy dzisiejszą
+  …20260901020156) i czy profil jakości używany przez GP.OwlEye ma aktywne 
+  reguły GP. Jeśli profil ma aktywne reguły z wersji, której zip nie odpowiada
+  wgranemu jarowi — to jest dokładnie ta awaria.
+
+✻ Worked for 2m 34s · done wtorek, 13:05
+
+❯ dzisiejsza, priofil jescze nie uzywal naszych regul                           
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ samo wgranie jara popsulo analize                                             
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Znalazłem. To jest w naszym pomie i pasuje do objawu co do joty.
+
+  sonar-csharp-plugin/pom.xml:155 — odziedziczone po upstreamie:
+  <requiredForLanguages>cs</requiredForLanguages>
+  z czego bierze się w manifeście naszego jara Plugin-RequiredForLanguages: cs.
+  U SonarSource to prawda: ich wtyczka jest analizatorem C#. U nas to kłamstwo —
+  jesteśmy wtyczką towarzyszącą, dokładającą reguły Roslyna obok oficjalnej. Ta
+  linia mówi serwerowi „bez mnie nie da się analizować C#", więc po wgrraniu
+  jara każda analiza C# na sonar2 musi się z naszą wtyczką liczyć — także taka,
+  której profil nie ma ani jednej reguły GP. Czyli dokładnie to, co widzisz:
+  samo wgranie popsuło analizę.
+
+  Ran 5 shell commands (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ iiiii?                                                                        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ jak idzie chyba zawisles                                                      
+
+● Nie zawisłem — build leci w tle (widzę 8 procesów java/dotnet), tylko zgubiłem
+  jego log, bo przekierowałem wyjście do /dev/null. Mój błąd, nie mam z czego
+  pokazać postępu. Nowy jar jeszcze się nie pojawił.
+
+  Najważniejsze i tak już jest — znalazłem przyczynę.
+
+  W sonar-csharp-plugin/pom.xml siedziała odziedziczona po upstreamie linia:
+  <requiredForLanguages>cs</requiredForLanguages>
+  Trafia ona do manifestu jara jako Plugin-RequiredForLanguages: cs. U
+  SonarSource to prawda — ich wtyczka jest analizatorem C#. U nas to nieprawda:
+  dokładamy tylko reguły Roslyna obok oficjalnej wtyczki. Ta deklaracja mówi
+  serwerowi „bez tej wtyczki nie da się analizować C#", więc od momentu wgrania
+  jara każda analiza C# na sonar2 musi ją uwzględnić — również taka, której
+  profil nie aktywuje ani jednej reguły GP. To dokładnie pasuje do tego, co
+  powiedziałeś: samo wgranie popsuło analizę, mimo że profil nas nie używa.
+
+  Usunąłem tę linię, dopisałem powód w komentarzu w pomie i w tabeli świadomych
+  rozbieżności w AGENTS.md. Build jara z poprawką jest w toku.
+
+  Zastrzeżenie, żeby było uczciwie: nie mam dowodu z logu serwera, że to jest ta
+  przyczyna — log CI nie zawiera żadnego komunikatu, a do sonar2 nie mam
+  dostępu. Wiem tyle, że to jedyna rzecz w naszym jarze, która wpływa na analizy
+  nieużywające naszych reguł, i że po jej usunięciu wtyczka przestaje być
+  częścią cudzych analiz. Weryfikacja zajmie minutę: wgrać nowy jar i puścić
+  joba OwlEye ponownie.
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Build faktycznie leci — widzę cmd.exe z maszynerią maven i pracujące procesy
+  java. Poprzedni jar jeszcze leży w target, bo mvn clean do tego modułu jeszcze
+  nie doszedł. Czekam na nowy artefakt (mam ustawiony nasłuch w tle) i dam
+  znać, gdy będzie — razem z potwierdzeniem, że w manifeście nie ma już
+  Plugin-RequiredForLanguages.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Czekam na artefakt — dam znać, jak tylko się pojawi.
+
+✻ Crunched for 1m 26s · done wtorek, 13:31
+
+※ recap: Cel: naprawić analizę SonarQube, którą popsuło samo wgranie naszego jara. Usunąłem z pomu deklarację `requiredForLanguages=cs` i przebudowuję wtyczkę. Czekam na nowy jar, potem sprawdzę manifest i wypchnę zmianę.
+
+● Background command "Wait briefly for the rebuilt jar" completed (exit code 0)
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Poprawka: mój poprzedni build w ogóle nie ruszył — artefakty w target/ mają
+  znacznik 02:10, a jest 13:42. Uruchomiłem go przez cmd.exe … > /dev/null z
+  powłoki bash i to się zawiesiło bez śladu; wcześniej działało wywołanie przez
+  PowerShell. Właśnie odpaliłem ponownie tą działającą drogą, z przechwyconym
+  logiem.
+
+  Sama diagnoza stoi niezmieniona i jest już w kodzie:
+  <requiredForLanguages>cs</requiredForLanguages> usunięte z
+  sonar-csharp-plugin/pom.xml, powód opisany w pomie i w AGENTS.md.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Czekam na build — odezwę się z nową wersją jara i weryfikacją manifestu.
+
+✻ Baked for 58s · done wtorek, 13:42
+
+※ recap: Wgranie naszego jara na sonar2 popsuło analizy C#; usunąłem z pomu `requiredForLanguages=cs`, przez które wtyczka wchodziła w każdą analizę C#. Trwa przebudowa jara — potem sprawdzę manifest i zostanie go wgrać oraz puścić joba OwlEye.
+
+● Background command "Rebuild the plugin jar the way that worked before"
+completed (exit code 0)
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Background command "Wait for the rebuild to finish" completed (exit code 0)
+
+● Background command "Wait for the new jar artifact" completed (exit code 0)
+
+● Jest.
+
+  Nowy jar: C:\Git\sonar-dotnet\sonar-csharp-plugin\target\gp-sonar-csharp-plugi
+  n-10.34.0.20260901134215.jar
+
+  Zweryfikowane w manifeście i zawartości:
+  - Plugin-RequiredForLanguages — nie ma go już. To była ta jedna linia, przez
+    którą wtyczka wchodziła w drogę każdej analizie C# na serwerze, niezależnie
+    od profilu.
+  - Plugin-Key: GPcsharp, Sonar-Version: 9.14.0.375 — bez zmian.
+  - 96 reguł GP, static/SonarAnalyzer-GP-csharp-10.34.0.20260901134215.zip na
+    miejscu.
+
+  Reszta mechanizmu została nietknięta: wtyczka nadal rejestruje swoje reguły,
+  profil „GP way" i trzy properties GPcsharp.cs.*, z których scanner korzysta,
+  gdy profil ma aktywną którąś z naszych reguł. Zmienia się tylko to, że
+  przestaje się ogłaszać jako wymagana do analizy C#.
+
+  Commit 30c9200252, w treści zapisałem też uczciwe zastrzeżenie: przyczynę
+  wnioskuję z tego, co deklaruje jar, a nie z logu serwera — log CI nie zawiera
+  żadnego komunikatu, a do sonar2 nie mam dostępu.
+
+  Weryfikacja po Twojej stronie, dwa kroki: wgrać ten jar na sonar2,
+  zrestartować i puścić joba GP.OwlEye ponownie. Jeśli przejdzie — mamy
+  potwierdzone. Jeśli dalej padnie, następnym krokiem jest access.log z momentu
+  awarii albo begin z /d:sonar.verbose=true, bo wtedy przyczyna leży gdzie
+  indziej i zgadywanie nic nie da.
+
+  Commit czeka lokalnie — mam go wypchnąć?
+
+✻ Crunched for 42s · done wtorek, 13:47
+
+※ recap: Cel: uporządkować zestaw reguł GP i odblokować analizę na sonar2. Zbudowałem jar 10.34.0.20260901134215 bez deklaracji `Plugin-RequiredForLanguages`, commit `30c9200252` leży lokalnie. Następny krok: wgrać ten jar na sonar2 i puścić joba GP.OwlEye ponownie.
+
+❯ a jar zbudowany?                                                              
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Tak, leży na dysku:
+
+  C:\Git\sonar-dotnet\sonar-csharp-plugin\target\gp-sonar-csharp-plugin-10.34.0.
+  20260901134215.jar
+  3 095 753 B, zbudowany dziś o 13:46
+
+  Build poszedł do końca (Plugin ready w logu), a zawartość sprawdziłem po
+  fakcie: brak Plugin-RequiredForLanguages w manifeście, 96 reguł GP, zip
+  analizatora SonarAnalyzer-GP-csharp-10.34.0.20260901134215.zip w środku.
+
+  To jest ten jar do wgrania na sonar2 — poprzedni (…20260901020156), który dziś
+  rano popsuł analizę, ma jeszcze tę feralną deklarację języka.
+
+✻ Brewed for 31s · done wtorek, 14:06
+
+※ recap: Cel: fork z regułami GP dla SonarQube. Zbudowany jest jar gp-sonar-csharp-plugin-10.34.0.20260901134215.jar bez deklaracji języka C#, która popsuła analizę na sonar2. Następny krok: wgrać go tam i puścić joba GP.OwlEye ponownie.
+
+● Background command "Record the divergence and rebuild the jar" was stopped
+
+● Background command "Wait for the rebuilt jar" was stopped
+
+● Te dwa zabite zadania to zawieszona pierwsza próba buildu i jej nasłuch — nic
+  z nich nie wynikało. Aktualny jar pochodzi z drugiego, udanego przebiegu i
+  stoi bez zmian:
+
+  gp-sonar-csharp-plugin-10.34.0.20260901134215.jar   3 095 753 B, 13:46
+
+  Do zrobienia zostało tylko wypchnięcie commita 30c9200252 (usunięcie
+  requiredForLanguages) — czekam na Twoje słowo.
+
+✻ Sautéed for 19s · done wtorek, 14:39
+
+※ recap: Naprawialiśmy zestaw reguł GP i awarię analizy na sonar2 — przyczyną było, że nasza wtyczka ogłaszała się jako wymagana do C#. Poprawka jest zbudowana w jarze 10.34.0.20260901134215. Zostało wypchnąć commit 30c9200252 i wgrać jar.
+
+❯ commituj                                                                      
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Nie ma czego commitować — drzewo robocze jest czyste, poprawka poszła już do
+  commita 30c9200252 („Stop claiming the C# language in the plugin manifest")
+  zaraz po zbudowaniu jara. Zawiera trzy pliki: usunięcie
+  <requiredForLanguages>cs</requiredForLanguages> z sonar-csharp-plugin/pom.xml,
+  komentarz wyjaśniający dlaczego, oraz wpis w tabeli świadomych rozbieżności w
+  AGENTS.md.
+
+  Ten jeden commit czeka na wypchnięcie na origin/master. Wcześniejsze dziewięć
+  jest już na zdalnym.
+✻ Crunched for 23s · done wtorek, 16:02
+
+※ recap: Porządkowaliśmy zestaw reguł GP; teraz naprawiona jest wtyczka, która po wgraniu na sonar2 psuła analizę C#. Jar 10.34.0.20260901134215 zbudowany, commit 30c9200252 gotowy. Następny krok: wypchnąć go i wgrać jar na sonar2.
+
+❯ zminilem wersje sonar scannera tak jak tu,                                    
+  https://github.com/GrupaPracuj/GP.Magneto/pull/704/changes, i teraz analiza   
+  dziala, ale anlizuje np raport coverletowy i yamle z definicja workflowow dla 
+  github action. przed zmiana tak nie bylo. zobacz jakie smiany soanrqube       
+  zrobil w dontetowym scanerze i jak to kontrolowac aby przywrocic wczesnijesze 
+  zachowanie                                                                    
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Skok jest duży: dotnet-sonarscanner 7.1.1 → 11.2.1 (i CLI 6.1 → 8.1).
+  Zweryfikuję w dokumentacji, co dokładnie zmieniło się w zakresie indeksowanych
+  plików, zamiast zgadywać z pamięci.
+
+● Fetch(https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/scan
+       ners/sonarscanner-for-dotnet/)
+  ⎿  Received 2.4KB (200 OK)
+
+● Fetch(https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/dotn
+       et-environments/sonarscanner-for-dotnet.md)
+  ⎿  Received 2.2KB (200 OK)
+
+● Fetch(https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/dotn
+       et-environments/sonarscanner-for-dotnet.md?ask=what+does+sonar.scanner.sc
+       anAll+do+what+is+its+default+and+which+version+introduced+it)
+  ⎿  Received 3.7KB (200 OK)
+
+● Fetch(https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/dotn
+       et-environments/sonarscanner-for-dotnet.md?ask=which+file+types+are+index
+       ed+by+multi-language+analysis+and+how+to+exclude+files+with+sonar.exclusi
+       ons)
+  ⎿  Received 6.5KB (200 OK)
+
+● Zweryfikowane w dokumentacji SonarSource — to nie przypadek, tylko celowa
+  zmiana w scannerze.
+
+  Co się zmieniło: w SonarScanner for .NET v8.0 doszła multi-language analysis,
+  sterowana parametrem sonar.scanner.scanAll, domyślnie włączonym. Wasza 7.1.1
+  była sprzed tej zmiany — indeksowała wyłącznie pliki należące do projektów
+  MSBuild. Wersja 11.2.1 dokłada do analizy pliki z katalogu bazowego,
+  niezależnie od tego, czy są w jakimkolwiek .csproj.
+
+  Lista typów, które doszły (za dokumentacją):
+  - v8.0 — YAML (Ansible/CloudFormation/Helm/Kubernetes), CSS/LESS/SCSS,
+    HTML/CSHTML, JS/JSX/Vue, JSON, PL/SQL, TS
+  - v10.0 — Bicep, Dockerfile, Go, *app*.properties/yaml/yml, PHP, Python,
+    Secrets (*.sh, *.ps1, *.properties, *.conf, *.pem, *.config, .env),
+    Terraform
+
+  Stąd dokładnie to, co widzisz: .github/workflows/*.yml łapie się jako YAML, a
+  pliki coverleta jako JSON.
+
+  Jak przywrócić poprzednie zachowanie — jeden parametr w kroku begin:
+
+  dotnet-sonarscanner begin ... /d:sonar.scanner.scanAll=false
+
+  To jest dokładny odpowiednik zachowania z 7.1.1: analizowane są tylko pliki z
+  projektów MSBuild.
+
+  Alternatywa, jeśli chcecie zostawić multi-language i tylko odciąć śmieci:
+  sonar.exclusions, np. .github/**,.coverage-reports/**. Ale uwaga na
+  ograniczenie, które dokumentacja stawia wprost: „the scanner can't filter 
+  excluded files/folders during the build; sonar.exclusions filters only what 
+  gets sent to SonarQube Server during the end step" — czyli pliki i tak zostaną
+  zebrane, oszczędzicie tylko na tym, co ląduje na serwerze.
+
+  Gdzie to wpiąć u was. Akcja GrupaPracuj/Actions/dotnet/sonarqube składa
+  argumenty w kroku prepare-args i ma już input sonar-exclusions, ale nie ma 
+  przepustki na dowolne /d: — więc z poziomu pojedynczego repo tego nie
+  ustawisz. Dwie sensowne drogi:
+
+  1. Dopisać /d:sonar.scanner.scanAll=false na stałe w kroku SonarScanner begin
+     w akcji — przywraca stan sprzed bumpa dla wszystkich pipeline'ów naraz.
+  2. Wystawić input (np. scan-all, domyślnie false) — repozytoria, które chcą
+     analizy YAML-i czy JS-a, włączają go świadomie.
+
+  Rekomendowałbym drugą: to samo natychmiastowe wyciszenie, ale bez zamykania
+  drogi tym zespołom, którym analiza Dockerfile'i czy Terraforma faktycznie się
+  przyda.
+
+  Mogę przygotować PR do GrupaPracuj/Actions z wariantem 2 — powiedz tylko, czy
+  mam to zrobić, bo to repozytorium wspólne dla wszystkich buildów.
+
+  Źródło: SonarScanner for .NET — dokumentacja SonarQube Server
+
+✻ Sautéed for 3m 17s · done wtorek, 16:23
+
+※ recap: Cel: utrzymanie i przegląd reguł GP w forku sonar-dotnet. Właśnie ustaliłem, że nowy scanner .NET analizuje YAML-e i raporty coverleta przez domyślnie włączone sonar.scanner.scanAll. Następny krok: Twoja zgoda na PR do GrupaPracuj/Actions dodający ten przełącznik.
+
+❯ jakies inn ebraking changes na ktore mam uwazac (scannall=false juz           
+  przetestowalem i pomoglo)                                                     
+
+● Fetch(https://docs.sonarsource.com/sonarqube-server/analyzing-source-code/dotn
+       et-environments/sonarscanner-for-dotnet.md?ask=what+are+the+prerequisites
+       +java+version+and+breaking+changes+in+versions+8+9+10+11)
+  ⎿  Error: timeout of 60000ms exceeded
+
+● Web Search("SonarScanner for .NET 11 release notes breaking changes since
+            version 8 9 10")
+  ⎿  Did 1 search in 6s
+
+  Made 3 scratchpad edits +48, ran 6 shell commands (ctrl+o to expand)
+
+● Przeszedłem release notes scannera od 8.0 do 11.2 — poza scanAll są cztery
+  rzeczy warte uwagi, a jedna z nich może Was ugryźć niezależnie od tej flagi.
+
+  v9.0.0 — sonar.sources i sonar.tests w kroku begin są odrzucane. Cytat z
+  release note: „The following properties are not taken into account when 
+  specified in the begin step: sonar.sources, sonar.tests. The reason for this 
+  is that the scanner automatically populates them, and user-defined values 
+  result in an execution error." To jest twardy błąd wykonania, nie ostrzeżenie.
+  Wasza wspólna akcja tych parametrów nie przekazuje, ale jeśli któreś repo ma
+  je w sonar-project.properties albo dokłada własne /d:, wywali się po bumpie.
+  Warto przelecieć repozytoria grepem.
+
+  v11.0.0 — scanner-cli nie jest już dołączony do paczki. „In this release, the 
+  SonarScanner CLI is no longer bundled… the SonarScanner CLI is now downloaded 
+  on demand from https://binaries.sonarsource.com/…". Pobranie następuje, gdy
+  serwer jest starszy niż 10.6 albo ktoś poda
+  /d:sonar.scanner.useSonarScannerCLI=true. Wasz sonar2 to 2026.2, więc
+  normalnie nie pobiera — ale na self-hosted runnerach za proxy warto mieć
+  binaries.sonarsource.com osiągalne jako ścieżkę awaryjną. Doszło też
+  ostrzeżenie, że wsparcie dla scanner-cli zostanie w przyszłości usunięte.
+
+  v10.0.0 — kolejna porcja języków w multi-language: Python (z Jupyterem),
+  Docker, Terraform, Go, PHP, AzureResourceManager/Bicep, CloudFormation,
+  konfiguracje JVM i SonarText (sekrety). Przy scanAll=false to Was nie dotyczy,
+  ale gdyby ktoś kiedyś tę flagę odkręcił, dostanie znacznie więcej niż same
+  YAML-e — łącznie ze skanem *.sh, *.ps1, .env i *.pem pod kątem sekretów.
+
+  Truststore (10.0 i 10.1.2). W 10.0 poprawiono, że
+  sonar.scanner.truststorePassword jest wymagane w kroku end, a w 10.1.2
+  dołożono fallback na domyślne hasło sonar. Istotne tylko, jeśli sonar2 ma
+  certyfikat z wewnętrznego CA i podajecie własny truststore — wtedy po bumpie
+  sprawdźcie, czy oba kroki dostają komplet parametrów.
+
+  Dwa drobiazgi na marginesie:
+  - 8.0.3 wyrzuciło XML z multi-language. To wyjaśnia, czemu widzieliście raport
+    coverleta — pliki *.opencover.xml już nie są analizowane jako XML, więc to
+    szedł raczej coverage.json.
+  - 9.2.0 i 9.2.1 są oznaczone jako deprecated z powodu podatności. Jesteście na
+    11.2.1, więc bez znaczenia — po prostu nigdy nie cofajcie się do 9.2.x.
+
+  I jedna uwaga do samego scanAll=false, skoro już zadziałało: jeśli ustawicie
+  to na sztywno w akcji, wyłączycie analizę JS/TS/YAML wszystkim repozytoriom,
+  także tym, które mogły z niej dziś korzystać i nikt tego nie zauważył. Dlatego
+  wolałbym input z domyślnym false — zachowanie sprzed bumpa dla wszystkich,
+  ale z możliwością świadomego włączenia.
+
+  Źródła: SonarScanner for .NET 8.0.0, 9.0.0, 10.0.0, 11.0.0, dokumentacja 
+  scannera
+
+✻ Baked for 4m 5s · done wtorek, 16:46
+
+※ recap: Cel: uporządkować reguły GP w forku sonar-dotnet i utrzymać działającą analizę w CI. Ostatnio zdiagnozowałem bumpa scannera; `scanAll=false` już pomogło. Następny krok: wypchnąć commit `30c9200252` i wgrać jar `10.34.0.20260901134215` na sonar2.
+
+❯ dobra , jak zmonetyzowac te reguly (pomysl bardziej niz sam engine) w GH      
+  amrketplace?                                                                  
+
+● Zanim odpowiem strategicznie, dwie rzeczy sprawdzę w danych i w regulaminach,
+  żeby to nie było gadanie: ile z tych reguł jest przenośnych poza GP, i czy
+  GitHub Marketplace w ogóle pozwala brać pieniądze za to, co chcecie wystawić.
+
+  Made 1 scratchpad edit +33, ran 1 shell command (ctrl+o to expand)
+
+● Fetch(https://docs.github.com/en/apps/publishing-apps-to-github-marketplace/se
+       lling-your-app-on-github-marketplace/setting-a-github-marketplace-listing
+       -pricing-plan)  ⎿  Received 0 bytes (404 Not Found)
+
+● Web Search("GitHub Marketplace paid plans only GitHub Apps not Actions
+            requirements publisher verification")
+  ⎿  Did 1 search in 7s
+
+● Fetch(https://www.sonarsource.com/license/ssal/)
+  ⎿  Received 514.1KB (200 OK)
+
+● Zebrałem twarde dane, zanim zacznę doradzać — bo w tym przypadku dwa fakty
+  ustawiają całą strategię.
+
+  1. Licencja jest pierwszym ograniczeniem, nie ostatnim. Wasze reguły żyją w
+  forku sonar-dotnet na licencji SSALv1. Ta licencja pozwala używać, modyfikować
+  i dystrybuować kod wyłącznie w „Non-competitive Purpose", a competing
+  definiuje szeroko: „marketing a product or service as a substitute for the 
+  functionality or value of SonarQube… regardless of how it is designed or 
+  deployed" — również za darmo. Sprzedaż czegokolwiek, co zawiera ten fork i
+  jest pozycjonowane jako analiza jakości kodu, jest poza tą licencją. To nie
+  jest formalność do obejścia: to przesądza, że monetyzować da się pomysł, nie 
+  ten silnik — dokładnie tak, jak to nazwałeś.
+
+  2. GitHub Marketplace płaci tylko za aplikacje. Akcje może opublikować każdy,
+  ale płatne plany są dostępne wyłącznie dla GitHub Apps, aplikacja musi należeć
+  do organizacji, a do wystawienia płatnego planu wymagana jest weryfikacja
+  wydawcy: 2FA w organizacji i zweryfikowana domena. Czyli Action może być co
+  najwyżej darmowym wejściem, a kasa idzie przez App.
+
+  3. Co realnie macie do sprzedania. Policzyłem wasze 96 reguł pod kątem
+  przenośności: 25 w ogóle wspomina Juno (część tylko w przykładach), 3 to
+  czysta polityka GP, 68 jest przenośnych bez zmian. Największa wartość — i
+  największy wolumen trafień w waszym skanie — siedzi w dwóch paczkach, które
+  nie mają nic wspólnego z waszą platformą:
+
+  - HTTP/OpenAPI: GP0100, GP0101, GP0102, GP0103, GP0110, GP0115, GP0125, GP0131
+    — kontrakt endpointu, statusy, ProblemDetails, odpowiedzi autoryzacyjne. To
+    jest ~2 500 trafień w 126 projektach i nikt tego tak nie pilnuje.
+  - Kontrakty komunikatów: GP0043, GP0051, GP0055, GP0058, GP0060, GP0061,
+    GP0066, GP0068, GP0073 — zdarzenia, identyfikatory, metadane transportu,
+    wersjonowalność.
+
+  To jest realny towar: nie „jeszcze jeden linter", tylko skodyfikowana 
+  dyscyplina kontraktów w systemie rozproszonym — z uzasadnieniami, cytatami z
+  RFC i Microsoft Learn, przykładami i, co rzadkie, historią przycinania FP na
+  126 repozytoriach.
+
+  4. Jak to opakować, żeby dało się sprzedać.
+
+  - Silnik od zera na czystym Roslynie. Microsoft.CodeAnalysis, zero kodu z
+    sonar-dotnet, własny NuGet z analizatorami. Logika reguł jest wasza i
+    przenosi się jeden do jednego, ale infrastruktura (SonarDiagnosticAnalyzer,
+    DescriptorFactory, helpery) musi zostać napisana na nowo. To jest kilka
+    tygodni pracy, nie weekend — i to jest cena wejścia.
+  - Dystrybucja dwutorowo: darmowy NuGet z podstawową paczką (buduje adopcję i
+    wiarygodność) + GitHub App z płatnym planem, który daje to, czego NuGet nie
+    da: adnotacje w PR, baseline dla istniejącego długu, bramkę na nowym kodzie,
+    raport per organizacja.
+  - Pozycjonowanie z dala od słowa „SonarQube": nie „static analysis", tylko
+    „API and messaging contract conventions for .NET services". To jest uczciwie
+    inna kategoria i jednocześnie zdejmuje ryzyko z punktu 1.
+  - Paczki zamiast monolitu: HTTP/OpenAPI, kontrakty komunikatów, dostęp do
+    danych. Paczka „Juno" zostaje wewnętrzna — i to jest wzorzec, który możecie
+    sprzedawać dalej jako adapter platformy: klient dostaje szkielet do
+    zakodowania własnych konwencji („nasze HTTP idzie przez X", „nasza baza
+    przez Y").
+
+  5. Czego bym się wystrzegał. Rynek generycznych analizatorów C# jest zajęty i
+  darmowy — Roslynator, Meziantou, SonarLint. Z waszych 68 przenośnych reguł
+  spora część to konwencje, nie defekty, i sama w sobie nikogo nie skłoni do
+  płacenia. Sprzedaje się wąska obietnica: „twoje API i twoje eventy przestaną 
+  się rozjeżdżać między serwisami", poparta liczbami z prawdziwego wdrożenia — a
+  te akurat macie.
+
+  Zastrzeżenie: czytam SSALv1 jako inżynier, nie prawnik. Jeśli w grę wchodzą
+  pieniądze, ta jedna strona tekstu musi przejść przez prawnika — zwłaszcza
+  definicja „Competing", bo jest szersza, niż wygląda na pierwszy rzut oka.
+
+  Chcesz, żebym rozpisał któryś wątek konkretniej — na przykład jak wyglądałby
+  port jednej paczki reguł na czysty Roslyn (co się przenosi, co trzeba napisać
+  od nowa), albo szkic modelu cenowego i darmowego progu?
+
+  Źródła: Sonar Source-Available License v1, Setting pricing plans for your 
+  listing, Applying for publisher verification, Requirements for listing an app
+
+✻ Churned for 3m 0s · done wtorek, 23:07
+
+※ recap: Cel: utrzymać i dopieścić zestaw reguł GP, a teraz rozważyć ich monetyzację. Właśnie przedstawiłem strategię: licencja SSALv1 wyklucza sprzedaż forka, więc trzeba przepisać reguły na czysty Roslyn i sprzedawać jako GitHub App. Czekam, który wątek rozwinąć.
+
+❯ zakaldajac ze piszemy wszystko tak aby licencja nie byla problemem, to        
+  myslisz iz naal warto unikac slowa „static analysis"                          
+
+● Nie. Po zdjęciu wątku licencyjnego zostaje wyłącznie argument marketingowy, a
+  ten mówi coś innego niż „unikaj": nie rób z tego nagłówka, ale nie chowaj tego
+  z metadanych.
+
+  Rozdzieliłbym trzy warstwy.
+
+  Obietnica — tu „static analysis" nie ma czego szukać. Nie dlatego, że to
+  brzydkie słowo, tylko dlatego, że nazywa mechanizm, a nie efekt. Kupujący,
+  który słyszy „static analysis", odruchowo odpowiada „mamy Sonara" i rozmowa
+  się kończy. Nagłówek ma mówić, co przestanie się psuć: kontrakty API i zdarzeń
+  przestaną się rozjeżdżać między serwisami, GET przestanie zmieniać stan,
+  event bez czasu wystąpienia nie wejdzie na produkcję. Tego nikt inny nie
+  obiecuje tymi słowami.
+
+  Opis techniczny — tu „Roslyn analyzer, static analysis, runs in your build"
+  powinno być wprost i wcześnie. Dla inżyniera, który to instaluje, to jest
+  sygnał zaufania: działa w kompilacji, deterministycznie, bez agenta i bez
+  wysyłania kodu na zewnątrz. W 2026 roku, przy zalewie „AI code review", ta
+  konkretność jest przewagą, nie balastem. Chowanie jej sprawia, że wyglądacie
+  na kolejnego bota do PR-ów.
+
+  Metadane i wyszukiwanie — tu bez dyskusji: kategoria w Marketplace, tagi,
+  description w NuGet, SEO. Ludzie szukają frazy „static analysis", „code
+  analysis", „roslyn analyzer", „.NET analyzers" — nie „konwencje kontraktów".
+  Rezygnacja z tych słów to rezygnacja z ruchu z intencją zakupową. Marketplace
+  i tak każe wybrać kategorię, więc wylądujecie obok inkumbentów niezależnie od
+  tego, co napiszecie.
+
+  Fraza, której bym faktycznie unikał, to nie „static analysis", tylko „code 
+  quality". To jest dokładnie ta etykieta, pod którą siedzi SonarQube — a ona
+  uruchamia porównanie na cudzych warunkach: liczba reguł, liczba języków, cena
+  za seat. Na tym polu przegracie z darmowym. „Static analysis for API and
+  messaging contracts" jest zawężeniem, które broni się samo; „code quality for
+  .NET" jest zaproszeniem do zestawienia tabelarycznego.
+
+  Praktycznie wyglądałoby to tak:
+
+  ▎ Contract drift, caught in the pull request.
+  ▎ Roslyn-based static analysis for .NET services: HTTP endpoints, OpenAPI 
+  ▎ metadata and message contracts. Runs in your build, no server, no code 
+  ▎ leaves your CI.
+
+  Nagłówek sprzedaje ból, druga linia sprzedaje kategorię i mechanizm, słowo
+  kluczowe jest tam, gdzie potrzebne — tylko nie na pierwszym miejscu.
+
+✻ Brewed for 38s · done wtorek, 23:18
+
+❯ i co masz na mysli mowiac Paczki zamiast monolitu                             
+
+  Made 1 scratchpad edit +52, ran 1 shell command (ctrl+o to expand)
+
+● Konkretnie: zamiast jednego NuGeta/aplikacji z 96 regułami — kilka
+  niezależnych paczek, każda z własnym analizatorem, wersjonowaniem i ceną.
+  Cztery powody, każdy inny.
+
+  1. Techniczny. Osobne pakiety, osobne assembly, wspólna biblioteka pomocnicza
+  pod spodem (u Was to byłyby Gp* helpery). Projekt konsolowy nie ściąga reguł o
+  OpenAPI, biblioteka domenowa nie ściąga reguł o Dapperze. Wersjonujecie i
+  wypuszczacie każdą paczkę osobno — poprawka w regułach HTTP nie zmusza nikogo
+  do przyjmowania zmian w regułach kontraktów.
+
+  2. Adopcyjny — i to jest najważniejszy. Mamy na to twarde dane z Waszego
+  skanu: 5 362 trafienia GP na 126 projektach, z czego same GP0101, GP0115,
+  GP0100 i GP0110 to około 2 400. Zespół, który dostaje to jednym wgraniem, nie
+  naprawia niczego — wyłącza całość. Paczki pozwalają powiedzieć „w tym kwartale
+  bierzemy kontrakty komunikatów", i to jest jedyna wersja, która się wdraża.
+
+  3. Handlowy. Różne paczki mają różną wartość i różnych kupujących. Paczka z
+  generycznymi defektami .NET konkuruje z darmowym Roslynatorem — więc ją
+  oddajecie za darmo jako wejście. Płacicie za to, czego nikt inny nie ma:
+  dyscyplinę kontraktów HTTP i komunikatów.
+
+  4. Adapter platformy. Reguły „idź przez Juno" (GP0033, GP0034, GP0035, GP0038,
+  GP0040, GP0047, GP0090, GP0129, GP0130) nie są towarem — są wzorcem
+  najdroższej pozycji w ofercie: „zakodujemy konwencje waszej platformy".
+  Mechanizm już macie, to parametry reguł: contractAssemblyNames,
+  entityBaseTypes, identifierSuffixes. Klient konfiguruje, zamiast forkować.
+
+  Jak to wychodzi na Waszym zestawie — pogrupowałem 96 reguł i wyszło mniej
+  więcej tak:
+
+  ┌────────────────────┬─────┬──────────────────────────────────────────────┐
+  │       paczka       │ ile │                  przykłady                   │
+  ├────────────────────┼─────┼──────────────────────────────────────────────┤
+  │                    │     │ GP0100–GP0104, GP0110, GP0113–GP0115,        │
+  │ HTTP / OpenAPI     │ ~27 │ GP0125, GP0131, GP0132, GP0009–GP0015,       │
+  │                    │     │ GP0024, GP0026                               │
+  ├────────────────────┼─────┼──────────────────────────────────────────────┤
+  │ Kontrakty i        │     │ GP0002, GP0003, GP0004, GP0043, GP0051,      │
+  │ komunikaty         │ ~20 │ GP0055, GP0058, GP0059, GP0060, GP0061,      │
+  │                    │     │ GP0066, GP0068, GP0073, GP0074, GP0106       │
+  ├────────────────────┼─────┼──────────────────────────────────────────────┤
+  │ Bezpieczeństwo /   │ ~8  │ GP0019, GP0022, GP0023, GP0028, GP0031,      │
+  │ dane wrażliwe      │     │ GP0044, GP0112, GP0123                       │
+  ├────────────────────┼─────┼──────────────────────────────────────────────┤
+  │ Defekty ogólne     │     │ GP0042, GP0054, GP0078–GP0085, GP0088,       │
+  │ .NET               │ ~28 │ GP0089, GP0092, GP0093, GP0099, GP0105,      │
+  │                    │     │ GP0124                                       │
+  ├────────────────────┼─────┼──────────────────────────────────────────────┤
+  │ Adapter platformy  │ ~9  │ reguły „idź przez Juno" — u Was wewnętrzne,  │
+  │                    │     │ u klienta konfigurowane                      │
+  └────────────────────┴─────┴──────────────────────────────────────────────┘
+
+  Zastrzeżenie do tej tabeli: podział zrobiłem automatem po tagach i treści,
+  więc granice są przybliżone. Automat wrzucił do kubełka „Juno" 25 reguł, ale
+  większość z nich wspomina Junona wyłącznie w przykładzie — naprawdę związanych
+  z platformą jest tych dziewięć.
+
+  Jedno ostrzeżenie na koniec: nie tnijcie zbyt drobno. Reguły HTTP dzielą ze
+  sobą GpOpenApiMetadata, kontraktowe — GpMessageContracts i
+  GpSemanticContractDetector. Granica paczki powinna iść tam, gdzie zmienia się
+  właściciel decyzji w organizacji klienta (zespół od endpointów, zespół od
+  integracji), a nie tam, gdzie wygodnie podzielić kod. Wspólny rdzeń zostaje
+  jeden, jako zależność wszystkich paczek.
+
+✻ Brewed for 1m 14s · done wtorek, 23:19
+
+❯ a da sie wyniki tcyh skanow wypluac do githubowego code quality gdyby klient  
+  go mial                                                                       
+
+● Sprawdzę to w dokumentacji, bo „GitHub code quality" może dziś znaczyć dwie
+  różne rzeczy — klasyczne code scanning z SARIF-em i nowszą funkcję o tej
+  nazwie.
+
+● Web Search("GitHub Code Quality feature third-party SARIF upload code scanning
+            difference 2026")
+  ⎿  Did 1 search in 8s
+
+● Fetch(https://docs.github.com/en/code-security/code-scanning/integrating-with-
+       code-scanning/sarif-support-for-code-scanning)
+  ⎿  Received 73.8KB (200 OK)
+
+● Fetch(https://docs.github.com/en/code-security/code-scanning/introduction-to-c
+       ode-scanning/about-code-scanning)
+  ⎿  Received 4.6KB (200 OK)
+
+● Fetch(https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/compi
+       ler-options/errors-warnings#errorlog)
+  ⎿  Received 13.4KB (200 OK)
+
+● Tak, i to bez żadnego mostka — bo analizatory Roslyna same emitują SARIF. To
+  jest wbudowane w kompilator, nie trzeba nic pisać.
+
+  Mechanika, w trzech krokach:
+
+  dotnet build src/Solution.sln -p:ErrorLog=gp.sarif,version=2.1
+  - uses: github/codeql-action/upload-sarif@v3
+    with:
+      sarif_file: gp.sarif
+      category: gp-rules
+
+  Wyniki lądują w zakładce Security jako alerty code scanning i jako adnotacje w
+  PR — tak samo jak CodeQL, z Waszymi opisami reguł i linkami.
+
+  Cztery pułapki, o których trzeba wiedzieć zawczasu:
+
+  1. Domyślna wersja SARIF-a to 1, a GitHub wymaga 2.1. Dokumentacja Microsoftu
+     mówi wprost: „Valid values for version are: »1«, »2«, and »2.1«. The 
+     default is »1«". Bez ,version=2.1 upload się wywali. Separatorem może być
+     przecinek albo średnik — w bashu średnik trzeba escapować, więc przecinek
+     jest wygodniejszy.
+  2. Limit 5 000 wyników na run. SARIF przyjmuje do 25 000, ale „Only the top 5 
+     000 results will be included, prioritized by severity". Przy Waszych
+     wolumenach (rekordzista w skanie miał kilkaset trafień na repo) to nie
+     boli, ale monorepo z pełnym zestawem reguł może obciąć. Do tego 10 MB na
+     spakowany plik i maks. 20 runów w pliku.
+  3. Zmiana z lipca 2025: GitHub przestał scalać wiele runów z tym samym tool i 
+     category w jednym pliku — takie uploady teraz padają. To jest realne ryzyko
+     przy .NET-owej solucji: każdy projekt produkuje własny ErrorLog, więc
+     jeśli je skleicie w jeden SARIF, wszystkie runy będą miały to samo
+     narzędzie i kategorię. Albo scalacie wyniki w jeden run, albo wysyłacie
+     osobno z różnym category.
+  4. Licencja po stronie klienta. Dokumentacja mówi: „If you want to use code 
+     scanning on private repositories, you need a GitHub Code Security license".
+     Czyli ta droga działa u klienta tylko wtedy, gdy ma wykupione Code
+     Security — a to jest dodatkowy koszt po jego stronie, niezależny od Was.
+
+  I tu jest ciekawa konsekwencja dla modelu, o którym rozmawialiśmy wcześniej:
+  punkt 4 jest argumentem za aplikacją GitHubową, a nie przeciw. Check Run z
+  adnotacjami w PR działa w każdym repozytorium, bez Code Security. Czyli:
+
+  - klient bez Code Security — Wasza aplikacja robi Check Run i komentarze w PR,
+    wszystko po Waszej stronie;
+  - klient z Code Security — dorzucacie eksport SARIF i wyniki wpadają do jego
+    istniejącego Security tab obok CodeQL, bez uczenia zespołu nowego
+    interfejsu.
+
+  To drugie jest świetnym argumentem sprzedażowym („wpinamy się w to, co już
+  macie"), ale nie może być jedyną drogą dostarczenia wyników, bo wtedy
+  sprzedajecie tylko klientom, którzy już płacą GitHubowi.
+
+  Źródła: ErrorLog i wersje SARIF, SARIF support for code scanning, Uploading a 
+  SARIF file to GitHub, About code scanning, Code scanning will stop combining 
+  multiple SARIF runs
+
+✻ Crunched for 1m 44s · done wtorek, 23:27
+
+❯ mowie o tym nowym code quality nie w zakdlace secuirty                        
+
+● Rozumiem — chodzi o osobną funkcję GitHub Code Quality, nie o code scanning.
+  Sprawdzam, bo to nowość i nie chcę zgadywać.
+
+● Web Search(""Code Quality" GitHub public preview changelog maintainability
+            reliability CodeQL")  ⎿  Did 1 search in 7s
+
+● Fetch(https://docs.github.com/en/code-security/code-quality/concepts/about-cod
+       e-quality)
+  ⎿  Received 4.3KB (200 OK)
+
+● Fetch(https://docs.github.com/en/code-security/code-quality/concepts/about-cod
+       e-quality.md?ask=can+I+add+my+own+rules+or+upload+SARIF+from+a+third+part
+       y+analyzer+to+code+quality+findings)
+  ⎿  Received 0 bytes (404 Not Found)
+
+❯ aa, i do pomysl na monetyzcje dorzucmy cos o obronie przed ai, w sensie       
+  stetyczne reguly trzymajace w ryzach ai                                       
+
+● Fetch(https://docs.github.com/en/code-security/tutorials/improve-code-quality/
+       quickstart)
+  ⎿  Received 12KB (200 OK)
+
+● Sprawdziłem — i tu mam dla Ciebie złą wiadomość, a zaraz po niej dobrą.
+
+  Do nowego Code Quality nie da się wepchnąć własnych reguł. Dokumentacja mówi
+  wprost, co produkuje tam findingi: „Code Quality uses CodeQL to scan your 
+  changes against a set of rules and posts findings as comments", plus
+  „AI-powered analysis also runs on recently changed files". Ani słowa o
+  SARIF-ie z zewnątrz, o własnych pakietach CodeQL, o czymkolwiek trzecim.
+  SARIF, który generuje Roslyn, ląduje w code scanning — czyli w zakładce
+  Security — a nie w Code Quality. To są dwie różne powierzchnie i tylko jedna z
+  nich jest otwarta na cudze narzędzia. (Zastrzeżenie: dokumentacja o tym po
+  prostu milczy, więc mówię „nie ma udokumentowanej drogi", a nie „GitHub tego
+  nigdy nie doda".)
+
+  Do tego kontekst konkurencyjny, który zmienia obraz: GitHub Code Quality jest 
+  GA od 20 lipca 2026, obsługuje C#, kosztuje 10 $ za aktywnego commitera 
+  miesięcznie plus zużycie za funkcje AI, a w preview przewinęło się przez nie
+  ponad 10 000 firm. Czyli w sąsiednim slocie siedzi teraz GitHub z produktem,
+  który robi ogólną maintainability i reliability dla C#.
+
+  I dokładnie dlatego Twój pomysł z obroną przed AI jest lepszym wejściem niż 
+  wszystko, o czym mówiliśmy wcześniej — bo trafia w miejsce, którego ani
+  CodeQL, ani model językowy nie obsłużą z definicji.
+
+  Dlaczego to się trzyma kupy merytorycznie. Model generuje kod, który wygląda
+  poprawnie. Recenzent przepuszcza go, bo nie ma się do czego przyczepić na
+  pierwszy rzut oka. A Wasze najczęściej strzelające reguły to jest dokładnie
+  katalog rzeczy „wyglądających poprawnie":
+
+  ┌──────────────┬─────────┬────────────────────────────────────────────────┐
+  │    reguła    │ trafień │   co model robi źle, a człowiek przepuszcza    │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0101       │ 772     │ endpoint bez opisu w OpenAPI                   │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0115       │ 693     │ brak zadeklarowanego 401/403 przy [Authorize]  │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0100       │ 484     │ zwracany status, którego nie ma w metadanych   │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0110       │ 430     │ własny kształt błędu zamiast ProblemDetails    │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0043       │ 429     │ typ kontraktu wzięty z assembly serwisu        │
+  ├──────────────┼─────────┼────────────────────────────────────────────────┤
+  │ GP0051 /     │ 326     │ event bez czasu wystąpienia i bez              │
+  │ GP0073       │         │ identyfikatora biznesowego                     │
+  └──────────────┴─────────┴────────────────────────────────────────────────┘
+
+  Nikt tego nie wyłapie w code review przy dziesięciu PR-ach dziennie, a model
+  będzie to powtarzał w nieskończoność, bo z jego perspektywy kod jest poprawny
+  — kompiluje się i przechodzi testy.
+
+  Mechanika, która to sprzedaje. Analizator Roslyna działa w dotnet build. To
+  znaczy, że agent widzi swój błąd sam, w pętli, zanim człowiek w ogóle spojrzy
+  — Copilot, Claude Code czy Cursor dostają ostrzeżenie z komunikatem „add a
+  DateTimeOffset OccurredAt" i poprawiają. To jest zupełnie inna jakość niż
+  komentarz w PR po fakcie. Produkt składa się wtedy z trzech rzeczy, nie
+  jednej:
+
+  1. paczka analizatorów (NuGet) — twarde, deterministyczne sprawdzenie w
+     kompilacji,
+  2. plik instrukcji dla agentów (AGENTS.md / copilot-instructions.md)
+     generowany z tych samych reguł — model dostaje konwencje przed pisaniem,
+     nie po,
+  3. check w PR — dla tego, co przecieknie.
+
+  Punkt 2 jest tu niedoceniany: Wasze rspec-i to gotowe źródło. Każda reguła ma
+  zdanie „co ma być", uzasadnienie i przykład zgodny — czyli dokładnie format,
+  który wchodzi do promptu. Jedna komenda i z 96 reguł robi się plik instrukcji
+  dla agenta.
+
+  Jak to nazwać, żeby nie wpaść w banał. „AI guardrails" jest dziś sloganem
+  wszystkich, więc sam w sobie nic nie sprzedaje. Broni się konkret:
+  deterministyczne, powtarzalne reguły dla kodu, którego nikt nie napisał 
+  ręcznie — z naciskiem na to, że nie ma tam żadnego modelu, żadnego
+  niedeterminizmu i żaden kod nie wychodzi poza CI. To jest dokładnie odwrotny
+  biegun niż „AI-powered analysis" GitHuba, i w rozmowie z zespołem, który
+  właśnie dostał 3× więcej PR-ów z Copilota, jest to argument mocniejszy niż
+  jakakolwiek lista reguł.
+
+  Źródła: GitHub Code Quality — dokumentacja, Quickstart, GA 20 lipca 2026,
+  public preview
+
+✻ Crunched for 1m 53s · done wtorek, 23:29
+
+※ recap: Cel: uporządkować i skomercjalizować zestaw reguł GP. Zrobione: sync z upstreamem, 96 reguł po przeglądzie opisów, jar 10.34.0.20260901134215 bez feralnego wpisu w manifeście, oraz pomysł na monetyzację przez ochronę kodu z AI. Następny krok: wypchnąć commit 30c9200252 na origin.
+
+❯ ale to wlasnie statyczna anliza kodu, jednka konkuruje z sonarem, aikido,     
+  codeqlem                                                                      
+
+● Masz rację i nie będę tego owijał: to jest statyczna analiza i będziecie
+  porównywani z Sonarem, CodeQL-em i Aikido. Moje wcześniejsze „nie nazywaj tego
+  static analysis" było poradą o nagłówku, ale jeśli miało brzmieć jak „to inna
+  kategoria" — to była to ucieczka od problemu, a nie odpowiedź. Kupujący i tak
+  zapyta „czym to się różni od Sonara", i musicie mieć na to zdanie, a nie
+  unik.
+
+  Więc zadajmy prawdziwe pytanie: czy w tej kategorii da się zbudować biznes 
+  obok darmowych i wbudowanych?
+
+  Uczciwa diagnoza terenu:
+  - SonarQube Community ma reguły C# za darmo, a firmy, które płacą, płacą już
+    za Developer/Enterprise. Nie wygracie z tym ceną ani liczbą reguł.
+  - CodeQL / GitHub Code Quality jest wbudowany, kosztuje 10 $ za commitera i
+    właśnie wszedł w GA dla C#. To jest dystrybucja, z którą się nie konkuruje.
+  - Aikido gra konsolidacją: SAST, SCA, sekrety, chmura, jeden dashboard, jedna
+    faktura. Konkurują szerokością i ceną.
+
+  Wniosek jest niewygodny, ale prosty: 96 reguł dla .NET-a to nie jest produkt, 
+  to jest feature. Jako samodzielne narzędzie w tej kategorii przegrywacie na
+  starcie — nie dlatego, że reguły są słabe, tylko dlatego, że kupujący ma już
+  budżetową linię „static analysis" zajętą i nie otworzy drugiej.
+
+  Ale są trzy pozycje, w których to nie jest walka czołowa:
+
+  1. Warstwa, nie zamiennik. Analizator Roslyna nie wymaga niczego wypierać —
+  działa w kompilacji klienta obok Sonara, CodeQL-a i czego tam jeszcze. Zdanie
+  sprzedażowe brzmi wtedy: „zostawcie wszystko, co macie; my dokładamy 30 reguł 
+  o kontraktach, których żadne z tych narzędzi nie zna". Zero migracji, zero
+  displacementu, zero porównania funkcja-po-funkcji. To jest jedyna wersja, w
+  której odpowiedź na „mamy Sonara" brzmi „świetnie, my nie jesteśmy zamiast".
+
+  2. Nie sprzedawać reguł, tylko możliwość napisania własnych. Wasze 96 reguł to
+  demonstracja, nie towar. Prawdziwy brak na rynku jest inny: żadne z tych 
+  narzędzi nie potrafi wyegzekwować konwencji konkretnej organizacji — „nasze
+  HTTP idzie przez X", „nasze eventy mają OccurredAt", „kontrakty mieszkają w
+  Y". Sonar ma custom rules, ale pisanie ich to projekt sam w sobie. Produktem
+  jest wtedy zestaw narzędziowy do kodowania konwencji plus gotowa biblioteka
+  startowa — czyli dokładnie to, co macie, tylko sprzedawane jako jak, a nie co.
+  To jest inna kategoria niż Sonar i tam Sonar nie jest konkurentem.
+
+  3. Usługowo, nie produktowo. Reguły są referencją: „przeanalizowaliśmy 126
+  repozytoriów, znaleźliśmy 5 362 naruszenia konwencji, wycięliśmy fałszywki,
+  oto zestaw dla waszej platformy". Marża wysoka, zero konkurencji cenowej z
+  darmowym, zero Marketplace. Wada oczywista: to nie skaluje się jak SaaS.
+
+  Wątek AI z poprzedniej wiadomości nie jest osobną kategorią — jest argumentem 
+  sprzedażowym w każdym z tych trzech wariantów, i akurat teraz mocnym, bo
+  zwiększa ból, który Wasze reguły leczą. Ale nie zmienia faktu, że sprzedajecie
+  statyczną analizę.
+
+  Gdybym miał wybierać, postawiłbym na 1 jako wejście i 2 jako produkt:
+  wchodzicie jako warstwa, której nikt nie musi wypierać, a zarabiacie na tym,
+  że klient chce mieć swoje reguły, nie wasze. Wariant 3 jest dobrym sposobem
+  sfinansowania pierwszego roku i zdobycia trzech referencji.
+
+  Czy chcesz, żebym rozbił któryś z tych wariantów na konkret — na przykład jak
+  wyglądałby wariant 2 od strony produktu: co klient dostaje pierwszego dnia, co
+  pisze sam, i gdzie jest granica między open source a płatnym?
+
+✻ Worked for 1m 4s · done 0:00
+
+❯ - te onepsorcy o ktorych mowiles, przypomnij je                               
+
+● Web Search("Microsoft.AspNetCore.Mvc.Api.Analyzers API1000 action returns
+            undeclared status code ProducesResponseType")
+  ⎿  Did 1 search in 8s
+
+● Fetch(https://learn.microsoft.com/en-us/aspnet/core/web-api/advanced/analyzers
+       ?view=aspnetcore-10.0)
+  ⎿  Received 5.5KB (200 OK)
+
+● Chodziło o darmową konkurencję open source, którą wymieniłem przy okazji
+  „rynek generycznych analizatorów C# jest zajęty". To były:
+
+  - Roslynator — największy zestaw ogólnych reguł C# plus refaktoryzacje i code
+    fixy, MIT.
+  - Meziantou.Analyzer — reguły dobrych praktyk .NET, MIT, bardzo popularny w
+    tej niszy.
+  - SonarAnalyzer.CSharp — reguły Sonara jako zwykły NuGet w buildzie, bez
+    serwera i bez opłat.
+  - StyleCop.Analyzers — styl i formatowanie.
+  - wbudowane analizatory .NET (CAxxxx) — jakość, wydajność, bezpieczeństwo, w
+    samym SDK.
+
+  Do tego trzy, których wcześniej nie wymieniłem, a które wchodzą wprost w Wasze
+  paczki:
+  - Microsoft.VisualStudio.Threading.Analyzers i AsyncFixer — poprawność async,
+    czyli obszar GP0053 i częściowo GP0027.
+  - SecurityCodeScan — bezpieczeństwo, nachodzi na GP0028 i GP0031.
+  - Microsoft.AspNetCore.Mvc.Api.Analyzers — i to jest ten, który boli
+    najbardziej, bo pokrywa się z Waszą najmocniejszą paczką.
+
+  I tutaj mam dla Was rzecz, która zmienia bilans. Sprawdziłem dokumentację tych
+  ostatnich i na stronie dla .NET 10 stoi ostrzeżenie:
+
+  ▎ „The IncludeOpenAPIAnalyzers MSBuild property and its associated MVC API 
+  ▎ analyzers are deprecated as of .NET 10 and will be removed in a future 
+  ▎ release… Migrate to the TypedResults pattern, which provides compile-time 
+  ▎ response-type guarantees without separate analyzers."
+
+  Te analizatory robiły dokładnie cztery rzeczy: niezadeklarowany status
+  (GP0100), niezadeklarowany wynik sukcesu (GP0102), zadeklarowany status,
+  którego akcja nie zwraca (GP0125), i jawną walidację modelu. Czyli jedyna
+  darmowa, pierwszoklasowa konkurencja dla rdzenia Waszej paczki HTTP właśnie 
+  odchodzi — a zastępstwo, TypedResults, działa dla Minimal API, nie dla
+  kontrolerów MVC. Wszystkie repozytoria, które przeskanowaliście, to kontrolery
+  MVC.
+
+  Dochodzi do tego, że tamte analizatory i tak były wąskie: działały tylko dla
+  typów z [ApiController], tylko w projektach na Microsoft.NET.Sdk.Web,
+  ignorowały ProducesResponseType na poziomie klasy, nie rozumiały własnych
+  atrybutów pochodnych i nie odpalały się na składowych z ciałem wyrażeniowym.
+  Wasze reguły radzą sobie z każdą z tych rzeczy — GP0100 czyta deklaracje z
+  kontrolera, a GP0132 rozstrzyga właśnie kwestię [ApiController].
+
+  Czyli mapa nakładania się wygląda tak:
+
+  ┌─────────────────────────┬───────────────────────────────────────────────┐
+  │      Wasza paczka       │            co ją dubluje za darmo             │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ defekty ogólne .NET     │ Roslynator, Meziantou, CA, SonarAnalyzer —    │
+  │ (~28 reguł)             │ duże pokrycie, słaba pozycja                  │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ bezpieczeństwo (~8)     │ SecurityCodeScan, CA — częściowe              │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ HTTP / OpenAPI (~27)    │ tylko MVC API Analyzers, deprecated od .NET   │
+  │                         │ 10                                            │
+  ├─────────────────────────┼───────────────────────────────────────────────┤
+  │ kontrakty i komunikaty  │ nic                                           │
+  │ (~20)                   │                                               │
+  └─────────────────────────┴───────────────────────────────────────────────┘
+
+  To jest odpowiedź na Twoje wcześniejsze „przecież konkurujemy z Sonarem":
+  konkurujecie, ale nie na całej długości. Na dwóch dolnych wierszach nie ma z
+  kim.
+
+  Źródła: Use web API analyzers (.NET 10 deprecation), API1000 – ograniczenia 
+  atrybutów pochodnych, API1000/API1001 a składowe wyrażeniowe,
+  ProducesResponseType na poziomie klasy
+
+✻ Worked for 1m 35s · done 0:02
+
+❯ GH marketplace wywaal sie siwetny dla mnie do systrybucji. jak to zrobic w    
+  warianice 1 i 2 , pojacie nie mam o sprzedazy                                 
+
+● Zanim doradzę mechanikę, sprawdzę warunki finansowe Marketplace, bo one
+  determinują konstrukcję planów.
+
+● Fetch(https://docs.github.com/en/apps/github-marketplace/selling-your-app-on-g
+       ithub-marketplace/pricing-plans-for-github-marketplace-apps)
+  ⎿  Received 4.5KB (200 OK)
+
+● Zacznę od korekty założenia, bo ono ustawia resztę: Marketplace nie jest 
+  kanałem odkrywania dla .NET-owców. Deweloper C# szuka analizatora na NuGecie,
+  nie w Marketplace. To, co Marketplace naprawdę daje, to trzy rzeczy:
+  wiarygodność (jesteście „zweryfikowanym wydawcą" obok Sonara), rozliczanie bez
+  pisania własnego billingu i instalację jednym kliknięciem na całą
+  organizację. To dużo, ale to nie jest ruch. Ruch robi NuGet i treść.
+
+  Twarde reguły gry, które sprawdziłem:
+  - płatne plany może mieć wyłącznie App; Action da się wystawić za darmo i
+    tyle,
+  - listing może mieć jednocześnie plan darmowy i płatne — „You can create both 
+    free and paid plans for your listing",
+  - plany są flat rate albo per-unit (za użytkownika w organizacji), miesięcznie
+    lub rocznie,
+  - są 14-dniowe triale,
+  - do płatnych planów: aplikacja musi należeć do organizacji, wymagana
+    weryfikacja wydawcy — 2FA i zweryfikowana domena.
+
+  Prowizji GitHuba dokumentacja na tej stronie nie podaje — to musicie sprawdzić
+  przed ustaleniem cen, bo wpływa na marżę.
+
+  ---
+
+  Wariant 1 — warstwa obok istniejących narzędzi
+
+  Trzy artefakty, każdy z inną rolą:
+
+  NuGet (darmowy) — paczka analizatorów. To jest dystrybucja i to jest miejsce,
+  gdzie ludzie Was znajdą. Działa w buildzie, bez serwera, bez konta. Ktoś
+  dodaje jedną linię do .csproj i po minucie widzi trafienia we własnym kodzie.
+  To jest cały „proces sprzedaży" pierwszego kroku.
+
+  Action (darmowa, w Marketplace) — buduje i publikuje wyniki jako adnotacje w
+  PR. Rola: wizytówka i pozycja w katalogu. Kosztuje Was jeden plik YAML.
+
+  App (płatna, w Marketplace) — robi to, czego NuGet zrobić nie może:
+  - baseline istniejącego długu (klient włącza reguły na 200 tys. linii i nie
+    tonie),
+  - bramka tylko na nowym kodzie,
+  - centralna konfiguracja zestawu reguł dla wszystkich repozytoriów
+    organizacji,
+  - podsumowanie per organizacja: co się poprawia, gdzie stoi.
+
+  Granica jest tu naturalna: darmowe rozwiązuje problem jednego repo, płatne 
+  rozwiązuje problem organizacji. Zespół, który ma trzy serwisy, nigdy nie
+  zapłaci i dobrze — nie jest Waszym klientem. Firma z sześćdziesięcioma
+  repozytoriami zapłaci pierwszego dnia, w którym spróbuje to rozwieźć ręcznie.
+
+  Cena: per-unit za aktywnego commitera jest tu naturalna, bo tak liczy GitHub i
+  tak liczy Code Quality — kupujący nie musi się uczyć nowego modelu. Trial 14
+  dni włączony.
+
+  Wariant 2 — sprzedajecie możliwość pisania własnych reguł
+
+  Ten sam szkielet, inna obietnica i inna granica:
+
+  Open source: silnik, SDK do pisania reguł, dokumentacja i 20–30 reguł jako
+  biblioteka startowa. To nie jest produkt, to jest dowód, że da się to zrobić w
+  dzień, a nie w kwartał.
+
+  Płatne: paczki domenowe (kontrakty, HTTP), generator pliku instrukcji dla
+  agentów z tych samych reguł, i najważniejsze — dystrybucja reguł wewnątrz 
+  organizacji: jedna wersja zestawu, wymuszona na wszystkich repo, z baseline'em
+  i historią. Tego nikt nie zbuduje sobie sam w weekend, a każdy, kto napisze
+  trzy własne reguły, natychmiast tego potrzebuje.
+
+  Marketplace App wygląda identycznie jak w wariancie 1. Różnica jest w opisie
+  listingu: nie „nasze 96 reguł", tylko „wasze konwencje, egzekwowane w każdym
+  PR".
+
+  ---
+
+  Jak to sprzedawać, nie umiejąc sprzedawać
+
+  Dobra wiadomość: przy tym produkcie nie musicie umieć. Musicie tylko nie
+  stanąć na drodze.
+
+  1. Zero rozmów w ścieżce zakupu. Free NuGet → trial → self-serve billing przez
+     GitHuba. Nie budujcie „skontaktuj się z nami" — to jest formularz dla
+     ludzi, którzy mają sprzedawcę.
+  2. Listing jest Waszym sprzedawcą. Pierwszy ekran: ból plus dowód. Macie
+     unikalny dowód, którego nie ma nikt inny na rynku: „przeskanowaliśmy 126 
+     repozytoriów, znaleźliśmy 5 362 naruszenia konwencji, po ręcznym 
+     przeglądzie wycięliśmy reguły, które generowały szum". To jest zdanie,
+     które sprzedaje inżynierowi lepiej niż jakikolwiek slogan.
+  3. Treść zamiast zimnych kontaktów. Jeden uczciwy post „co znaleźliśmy w 126
+     repozytoriach .NET" z prawdziwymi liczbami zrobi więcej niż sto maili.
+     Wasze rspec-i to gotowy materiał na serię tekstów — każdy opis reguły ma
+     uzasadnienie, cytat i przykład.
+  4. Kanały, gdzie inżynier może pisać jak inżynier: NuGet, GitHub, r/dotnet,
+     newslettery .NET, konferencje. Nie LinkedIn Sales Navigator.
+  5. Pierwsza referencja jest w domu. GP z 126 repozytoriami to jest wdrożenie
+     produkcyjne, o którym można napisać case study, zanim pojawi się pierwszy
+     klient zewnętrzny.
+
+  Pierwsze 90 dni, konkretnie: miesiąc pierwszy — port jednej paczki (kontrakty,
+  ~20 reguł) na czysty Roslyn i publikacja NuGeta; miesiąc drugi — Action w
+  Marketplace plus pierwszy tekst z liczbami; miesiąc trzeci — App z baseline'em
+  i planem płatnym, weryfikacja wydawcy (2FA plus domena, to zajmuje chwilę,
+  więc zacznijcie wcześniej), trial 14 dni.
+
+  Jedno ostrzeżenie na koniec: nie zaczynajcie od Appki. Płatna aplikacja bez
+  darmowego NuGeta z tysiącem pobrań to listing, którego nikt nie znajdzie i
+  nikt nie kliknie. Kolejność ma tu większe znaczenie niż cena.
+
+  Źródła: Pricing plans for GitHub Marketplace apps, Setting pricing plans for 
+  your listing, Applying for publisher verification
+
+✻ Cooked for 1m 35s · done 0:06
+
+※ recap: Cel: rozszerzyć fork sonar-dotnet o reguły GP, ograć FP i przemyśleć ich monetyzację. Teraz analizujemy dystrybucję przez GitHub Marketplace w wariancie warstwy i toolkitu. Następny krok: port jednej paczki reguł (kontrakty) na czysty Roslyn i publikacja darmowego NuGeta.
+
+❯ a kto znajdzie nugeta?                                                        
+● Słuszne uderzenie — i ta sama pułapka, którą przed chwilą wytknąłem przy
+  Marketplace, tylko piętro niżej. NuGet też nie jest kanałem odkrywania, tylko 
+  dostarczania. Nikt nie wpisuje w wyszukiwarkę NuGeta frazy opisującej problem,
+  o którym nie wie, że go ma. Publikacja paczki nie tworzy popytu.
+
+  Więc pytanie brzmi naprawdę: co sprawia, że pierwszy tysiąc osób w ogóle
+  dowiaduje się, że to istnieje. Realnie jest kilka mechanizmów i tylko jeden z
+  nich jest teraz wyjątkowo dobry.
+
+  1. Deprecacja analizatorów Microsoftu — i to jest Wasze okno. Od .NET 10
+  IncludeOpenAPIAnalyzers jest deprecated, build wypluwa ostrzeżenie ASPDEPR007,
+  a zalecane zastępstwo — TypedResults — nie działa dla kontrolerów MVC. To
+  znaczy, że w najbliższych miesiącach tysiące zespołów migrujących na .NET 10
+  zobaczy w logu konkretny kod błędu i wpisze go w wyszukiwarkę. To jest
+  istniejąca intencja wyszukiwania z datą ważności: ludzie szukają nie
+  „analizatora", tylko „co teraz zamiast API1000". Tekst, który uczciwie
+  odpowiada na to pytanie i przy okazji pokazuje Waszą paczkę, ma szansę być
+  pierwszym wynikiem, bo konkurencja o tę frazę praktycznie nie istnieje. Tego
+  okna nie będzie za rok.
+
+  2. Wątki, w których ci ludzie już siedzą. Issue w dotnet/aspnetcore o
+  deprecacji, wątki o ProducesResponseType na poziomie klasy, o atrybutach
+  pochodnych, o składowych wyrażeniowych — ja je znalazłem w trzy minuty. Tam są
+  ludzie z dokładnie tym problemem, dziś. Rzeczowa odpowiedź inżyniera, nie
+  reklama.
+
+  3. Dane, których nikt inny nie ma. Jeden tekst: „przeskanowaliśmy 126
+  repozytoriów .NET, oto co znaleźliśmy" — z rozkładem trafień, z tym, że 79
+  trafień jednej reguły było błędem projektowym, i z tym, że usunęliśmy siedem 
+  własnych reguł, bo zalewały albo nie strzelały. Ta ostatnia część jest
+  najcenniejsza, bo nikt tak nie pisze o swoich narzędziach. To się roznosi w
+  newsletterach .NET i na Reddicie samo — nie dlatego, że jest reklamą, tylko
+  dlatego, że jest rzadkie.
+
+  4. Listy i agregatory. awesome-dotnet, listy analizatorów Roslyna, zestawienia
+  „analyzers you should use". To jeden PR i stały strumyk ruchu przez lata.
+
+  5. Wątek agentów jako nośnik. Publiczne repo z konwencjami w formacie, który
+  czyta Copilot czy Claude — „instrukcje dla agenta pisane maszynowo z reguł" —
+  jest samo w sobie treścią, którą ludzie linkują, niezależnie od tego, czy
+  kupią cokolwiek.
+
+  6. Wewnątrz firmy klienta. Jeden inżynier dodaje pakiet do jednego projektu,
+  widzi sensowne trafienia, pokazuje zespołowi. To działa tylko wtedy, gdy próg
+  wejścia to jedna linia w .csproj i zero rejestracji — dlatego darmowy NuGet
+  musi być naprawdę darmowy i naprawdę użyteczny.
+
+  Uczciwie: z tych sześciu tylko pierwszy ma określony termin przydatności.
+  Gdybym miał Wam ułożyć kolejność inaczej niż wcześniej, to zacząłbym nie od
+  portu całej paczki kontraktów, tylko od najmniejszej rzeczy, która odpowiada
+  na ASPDEPR007 — czyli GP0100, GP0102 i GP0125, trzy reguły, które zastępują
+  to, co Microsoft właśnie wyrzucił. Paczka o nazwie mówiącej wprost, czym jest,
+  plus tekst wyjaśniający migrację. Reszta reguł dochodzi później, gdy ktoś już
+  ma Was zainstalowanych.
+
+✻ Brewed for 50s · done 0:13
+
+❯ czyli TypedResults dziala tylko dla apicontroelrow?                           
+
+● Sprawdzę to dokładnie, bo powiedziałem odwrotnie i nie chcę, żebyś budował na
+  tym plan.
+
+● Fetch(https://learn.microsoft.com/en-us/aspnet/core/breaking-changes/10/openap
+       i-analyzers-deprecated?view=aspnetcore-10.0)
+  ⎿  Received 7.1KB (200 OK)
+
+● Nie — pomyliłem się i to jest istotna pomyłka, więc prostuję wprost.
+
+  Dokumentacja breaking change mówi: „In .NET 10, TypedResults are supported in 
+  controller-based APIs", a przykład migracji to zwykła akcja kontrolera:
+
+  [HttpGet("{id}")]
+  public async Task<Results<Ok<Product>, NotFound>> GetProduct(int id)
+      => product == null ? TypedResults.NotFound() : TypedResults.Ok(product);
+
+  Czyli zastępstwo obejmuje MVC, nie tylko Minimal API. Moje wcześniejsze zdanie
+  było błędne i psuło wniosek, który z niego wyciągnąłem.
+
+  Co z tego zostaje, a co upada.
+
+  Upada teza „Microsoft zostawia kontrolery bez niczego". Zostaje coś węższego,
+  ale nadal prawdziwego: zastępstwem nie jest analizator, tylko wzorzec 
+  wymagający przepisania sygnatur wszystkich akcji. Task<IActionResult> plus
+  atrybuty zmienia się w Task<Results<Ok<T>, NotFound, ...>>. W kodzie, który
+  przeskanowaliście, takich akcji są setki. Żaden zespół nie zrobi tego w
+  kwartale, w którym podbija .NET-a do 10.
+
+  I tu jest realna luka: dopóki nie przepiszesz, nic nie sprawdza, czy atrybuty 
+  odpowiadają rzeczywistości — bo analizatory odejdą, a TypedResults obowiązuje
+  tylko tam, gdzie ktoś je już wprowadził. Wasze reguły sprawdzają kod taki,
+  jaki jest dzisiaj, po zainstalowaniu pakietu, bez refaktoru.
+
+  Więc pitch brzmi inaczej, niż napisałem: nie „Microsoft nic wam nie dał",
+  tylko „odpowiedź Microsoftu to przepisanie kodu; nasza to pakiet, który 
+  sprawdza to, co macie". Słabszy, ale uczciwy — i wciąż działający, bo migracja
+  rozłoży się na lata.
+
+  Konsekwencja dla strategii, ważniejsza niż sama korekta. Reguły GP0100, GP0102
+  i GP0125 mają datę ważności powiązaną z adopcją TypedResults — im więcej kodu
+  przejdzie na wzorzec, tym mniej mają do roboty, bo kompilator załatwi to za
+  nie. To znaczy, że nie można na nich budować fundamentu produktu. Można ich
+  użyć jako klina wejściowego, ale trwała wartość siedzi tam, gdzie kompilator
+  nie sięga i nie sięgnie: kontrakty komunikatów — GP0043, GP0051, GP0055,
+  GP0058, GP0060, GP0061, GP0066, GP0073 — bo tam nie ma żadnego typu, który
+  wymusiłby, żeby event niósł czas wystąpienia i identyfikator biznesowy.
+
+  Gdybym miał teraz zmienić wcześniejszą rekomendację kolejności: pierwsza
+  paczka to kontrakty, nie HTTP. HTTP jest dobrym tematem na tekst o migracji z
+  ASPDEPR007 — czyli na ruch — ale to kontrakty są tym, co ma się sprzedawać za
+  trzy lata.
+
+  Źródło: IncludeOpenAPIAnalyzers property and MVC API analyzers are deprecated
+
+✻ Baked for 51s · done 0:27
+
+❯ z innej beczki, czy sa tu reguly                                              
+  https://github.com/meziantou/Meziantou.Analyzer, kotrych ni ma soanr i nie ma 
+  nasze GP?                                                                     
+
+  Made 1 scratchpad edit +64, ran 2 shell commands (ctrl+o to expand)
+
+● 93 z 218 nie ma dopasowania po tytule, ale to jest sito zgrubne — sprawdzę
+  wybrane kandydatury po treści reguł Sonara, nie po nazwie, bo tytuły potrafią
+  się rozjeżdżać.
+
+  Made 1 scratchpad edit +39, ran 1 shell command (ctrl+o to expand)
+
+● Sprawdziłem to dwuetapowo: najpierw dopasowanie tytułów (93 z 218 reguł
+  Meziantou nie miało odpowiednika), potem — bo to sito kłamie — przeszukałem
+  treść reguł Sonara po nazwach konkretnych API. Druga runda wywaliła sporo
+  fałszywych alarmów: MA0151 pokrywa S4545, MA0064 → S2551, MA0072 → S1163,
+  MA0009 → S6444, MA0039 → S4830, MA0179 → S4023.
+
+  Zostały te, których nie ma ani u Sonara, ani u nas — i akurat trzy z nich są w
+  naszym ogródku:
+
+  Meziantou: MA0124, MA0125, MA0126, MA0135
+  co robi: typy parametrów w Microsoft.Extensions.Logging: niepoprawny typ,
+  duplikat na liście, brak skonfigurowanego typu
+  dlaczego to Was dotyczy: macie GP0019 i GP0022 o logowaniu, ale obie patrzą na
+
+  nazwy. To jest cała rodzina reguł o strukturze logu strukturalnego, której
+  nie ma nigdzie indziej
+  ────────────────────────────────────────
+  Meziantou: MA0153
+  co robi: nie loguj symboli oznaczonych DataClassificationAttribute
+  dlaczego to Was dotyczy: to jest atrybutowa wersja Waszego GP0022 — zamiast
+  zgadywać po nazwie Email, czyta deklarację autora typu
+  ────────────────────────────────────────
+  Meziantou: MA0079, MA0080
+  co robi: przekaż token przez .WithCancellation() przy IAsyncEnumerable
+  dlaczego to Was dotyczy: dopełnia GP0027 (HTTP) i GP0130 (Dapper) o strumienie
+
+  asynchroniczne, których żadna z nich nie widzi
+  ────────────────────────────────────────
+  Meziantou: MA0100, MA0129
+  co robi: poczekaj na zadanie przed zwolnieniem zasobów / await w using
+  dlaczego to Was dotyczy: realna klasa defektów — zasób znika, zadanie leci
+  dalej
+  ────────────────────────────────────────
+  Meziantou: MA0161, MA0162, MA0163
+  co robi: Process.Start i UseShellExecute ustawiane jawnie
+  dlaczego to Was dotyczy: bezpieczeństwo, zero pokrycia u Sonara
+  ────────────────────────────────────────
+  Meziantou: MA0173
+  co robi: LazyInitializer.EnsureInitialized zamiast ręcznego double-checked
+  dlaczego to Was dotyczy: poprawnościowa, nie stylistyczna
+
+  Zastrzeżenie do metody: „brak u Sonara" znaczy tu „żadna z 482 reguł C# nie
+  wspomina tych API w swoim opisie". To mocna przesłanka, ale nie dowód — Sonar
+  mógłby coś łapać bez nazywania API po imieniu.
+
+  Jedna rzecz warta zrobienia u siebie niezależnie od produktu: MA0153. Wasze
+  GP0022 rozpoznaje dane osobowe po nazwie identyfikatora, i właśnie dlatego
+  musieliśmy 28 sierpnia dokładać wyjątek na emailEx.
+  DataClassificationAttribute to jest to samo pytanie rozstrzygnięte
+  semantycznie — autor typu deklaruje, że pole jest wrażliwe, a reguła to czyta.
+  To jest dokładnie ta zasada, którą macie zapisaną w AGENTS.md: decydować
+  semantyką, nie pisownią. Dołożenie tego jako drugiego, mocniejszego źródła
+  dowodu w GP0022 zamknęłoby całą klasę fałszywek, a przy okazji dałoby ładny
+  argument w opowieści o pilnowaniu kodu pisanego przez AI — bo model nie
+  zgadnie, że pole jest wrażliwe, ale atrybut przeczyta.
+
+  Chcesz, żebym to rozpisał jako zmianę w GP0022 — atrybut jako dowód obok
+  nazwy?
+
+✻ Churned for 2m 42s · done 0:33

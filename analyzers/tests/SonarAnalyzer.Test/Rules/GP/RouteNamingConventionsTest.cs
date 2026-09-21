@@ -543,7 +543,7 @@ public class RouteNamingConventionsTest
 
             public class SessionsController
             {
-                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token}")] // Noncompliant {{Route parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token}")] // Noncompliant {{URL parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
                 public void GetByToken(string token) { }
             }
             """)
@@ -576,17 +576,95 @@ public class RouteNamingConventionsTest
 
             public class SessionsController
             {
-                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token?}")] // Noncompliant {{Route parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{token?}")] // Noncompliant {{URL parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
                 public void Optional(string token) { }
 
-                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{*apiKey}")] // Noncompliant {{Route parameter 'apiKey' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{*apiKey}")] // Noncompliant {{URL parameter 'apiKey' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
                 public void CatchAll(string apiKey) { }
 
-                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{**password}")] // Noncompliant {{Route parameter 'password' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                [Microsoft.AspNetCore.Mvc.HttpGet("sessions/{**password}")] // Noncompliant {{URL parameter 'password' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
                 public void DoubleCatchAll(string password) { }
             }
             """)
             .Verify();
+
+    [TestMethod]
+    public void RouteNamingConventions_NoncompliantSecretInMinimalApiRoute() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Routing
+            {
+                public interface IEndpointRouteBuilder { }
+                public sealed class RouteHandlerBuilder { }
+            }
+
+            namespace Microsoft.AspNetCore.Builder
+            {
+                public static class EndpointRouteBuilderExtensions
+                {
+                    public static Microsoft.AspNetCore.Routing.RouteHandlerBuilder MapGet(
+                        this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder endpoints,
+                        string pattern,
+                        System.Delegate handler) => new Microsoft.AspNetCore.Routing.RouteHandlerBuilder();
+                }
+            }
+
+            public static class Endpoints
+            {
+                public static void Map(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder app)
+                {
+                    Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(
+                        app,
+                        "reset/{token}", // Noncompliant {{URL parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+                        (System.Action)(() => { }));
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void RouteNamingConventions_NoncompliantSecretInExplicitQueryParameter() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public sealed class FromQueryAttribute : System.Attribute
+                {
+                    public string Name { get; set; }
+                }
+            }
+
+            public class SessionsController
+            {
+                public void Reset(
+                    [Microsoft.AspNetCore.Mvc.FromQuery] string token) { } // Noncompliant {{URL parameter 'token' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+
+                public void Authenticate(
+                    [Microsoft.AspNetCore.Mvc.FromQuery(Name = "apiKey")] string value) { } // Noncompliant {{URL parameter 'apiKey' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.}}
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void RouteNamingConventions_CompliantSecretReferencesInUrl() =>
+        builder.AddSnippet(
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public sealed class FromQueryAttribute : System.Attribute
+                {
+                    public string Name { get; set; }
+                }
+            }
+
+            public class SessionsController
+            {
+                public void Get(
+                    [Microsoft.AspNetCore.Mvc.FromQuery] string tokenId,
+                    [Microsoft.AspNetCore.Mvc.FromQuery] string credentialReference) { }
+            }
+            """)
+            .VerifyNoIssues();
 
     [TestMethod]
     public void RouteNamingConventions_CompliantOrdinaryRouteParameter() =>

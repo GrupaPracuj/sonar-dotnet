@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="103 wewnętrzne reguły C# dla SonarQube: bezpieczeństwo, NIS2, integracje AI, API, kontrakty i niezawodność w Grupie Pracuj.">
+  <title>Wewnętrzne reguły C# dla SonarQube</title>
+  <style>
+    :root {
+      --ink: #17213a;
+      --muted: #5f6d84;
+      --line: #dce4ef;
+      --soft: #f5f7fb;
+      --blue: #3157d5;
+      --blue-dark: #203f9f;
+      --blue-soft: #eaf0ff;
+      --violet: #7048d8;
+      --violet-soft: #f1ecff;
+      --green: #168466;
+      --green-soft: #e4f6f0;
+      --red: #c94c3c;
+      --red-soft: #fff0ed;
+      --amber: #a86600;
+      --amber-soft: #fff4d9;
+      --white: #fff;
+      --shadow: 0 14px 40px rgba(28, 49, 91, .09);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background: var(--white);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button, input { font: inherit; }
+    code { font-family: var(--mono); }
+
+    .container {
+      width: min(1180px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(220, 228, 239, .9);
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(14px);
+    }
+    .nav-inner {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      text-decoration: none;
+      font-weight: 850;
+      letter-spacing: -.025em;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      box-shadow: 0 8px 20px rgba(49, 87, 213, .24);
+      font-size: 13px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--blue); }
+
+    .button {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .button:hover { transform: translateY(-1px); }
+    .button.primary {
+      color: white;
+      background: var(--blue);
+      box-shadow: 0 10px 24px rgba(49, 87, 213, .23);
+    }
+    .button.secondary { color: var(--blue-dark); background: var(--blue-soft); }
+    .button.small { min-height: 38px; padding: 0 14px; font-size: 12px; }
+
+    .hero {
+      padding: 82px 0 68px;
+      background:
+        radial-gradient(circle at 84% 18%, rgba(112, 72, 216, .09), transparent 25rem),
+        radial-gradient(circle at 12% 10%, rgba(49, 87, 213, .07), transparent 22rem);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.12fr .88fr;
+      gap: 70px;
+      align-items: center;
+    }
+    .eyebrow {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 760px;
+      margin: 16px 0 21px;
+      font-size: clamp(49px, 6.3vw, 78px);
+      line-height: 1.01;
+      letter-spacing: -.06em;
+    }
+    .hero-copy {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.68;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 11px;
+      margin-top: 30px;
+    }
+
+    .summary-card {
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: var(--shadow);
+    }
+    .summary-title {
+      margin: 0 0 18px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .summary-list { display: grid; gap: 13px; }
+    .summary-item {
+      display: grid;
+      grid-template-columns: 39px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .summary-icon {
+      width: 39px;
+      height: 39px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-weight: 900;
+    }
+    .summary-item strong { display: block; margin: 1px 0 3px; font-size: 14px; }
+    .summary-item span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .section { padding: 88px 0; }
+    .section.soft { background: var(--soft); }
+    .kicker {
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    h2 {
+      margin: 10px 0 0;
+      font-size: clamp(35px, 4.5vw, 53px);
+      line-height: 1.08;
+      letter-spacing: -.048em;
+    }
+
+    .contents {
+      padding: 42px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .contents-title {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    .contents-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0 28px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: contents;
+    }
+    .contents-list li {
+      border-top: 1px solid var(--line);
+      counter-increment: contents;
+    }
+    .contents-list a {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 10px;
+      padding: 14px 0;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .contents-list a::before {
+      content: "0" counter(contents);
+      color: var(--blue);
+      font: 800 11px var(--mono);
+    }
+    .contents-list a:hover { color: var(--blue); }
+
+    .rule-group {
+      padding: 74px 0;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 76px;
+    }
+    .rule-group:first-child { border-top: 0; }
+    .group-layout {
+      display: grid;
+      grid-template-columns: 315px 1fr;
+      gap: 50px;
+      align-items: start;
+    }
+    .group-intro {
+      position: sticky;
+      top: 96px;
+    }
+    .group-number {
+      color: #a5b1c4;
+      font: 800 12px var(--mono);
+    }
+    .group-intro h2 { margin: 9px 0 14px; font-size: 35px; }
+    .group-intro p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .outcome {
+      margin-top: 20px;
+      padding: 15px;
+      border-left: 3px solid var(--green);
+      border-radius: 0 10px 10px 0;
+      color: #285c4d;
+      background: var(--green-soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .outcome strong { display: block; margin-bottom: 3px; }
+
+    .group-content { min-width: 0; }
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .problem {
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--soft);
+    }
+    .problem strong { display: block; margin-bottom: 5px; font-size: 13px; }
+    .problem span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .rule-list {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: white;
+    }
+    .rule-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 150px;
+      gap: 15px;
+      align-items: center;
+      min-height: 74px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .rule-row:last-child { border-bottom: 0; }
+    .rule-id { color: var(--blue); font: 800 12px var(--mono); }
+    .rule-title strong { display: block; margin-bottom: 4px; font-size: 13px; line-height: 1.35; }
+    .rule-title span { color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .sonar-link {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--blue-dark);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 850;
+    }
+    .sonar-link:hover { text-decoration: underline; }
+
+    .code-case {
+      margin-top: 20px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: #fbfcff;
+    }
+    .code-case-head {
+      min-height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      background: white;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .code-case-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .code-panel { min-width: 0; padding: 16px; }
+    .code-panel + .code-panel { border-left: 1px solid var(--line); }
+    .code-label {
+      margin-bottom: 9px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      color: #334058;
+      font: 11px/1.75 var(--mono);
+      white-space: pre;
+    }
+    .bad-line { color: var(--red); background: var(--red-soft); }
+    .good-line { color: var(--green); background: var(--green-soft); }
+
+    .catalog-box {
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 30px;
+      align-items: center;
+      border: 1px solid #cdd9f7;
+      border-radius: 21px;
+      background: linear-gradient(135deg, var(--blue-soft), #f8f5ff);
+    }
+    .catalog-box h2 { margin: 0 0 9px; font-size: 31px; }
+    .catalog-box p { max-width: 720px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+    .agent-section {
+      background:
+        radial-gradient(circle at 82% 20%, rgba(112, 72, 216, .09), transparent 25rem),
+        var(--soft);
+    }
+    .agent-layout {
+      display: grid;
+      grid-template-columns: .85fr 1.15fr;
+      gap: 58px;
+      align-items: center;
+    }
+    .agent-copy h2 { margin-bottom: 19px; }
+    .agent-copy p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+    }
+    .agent-points {
+      display: grid;
+      gap: 12px;
+      margin-top: 25px;
+    }
+    .agent-point {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+    .agent-point span:first-child {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: var(--green);
+      background: var(--green-soft);
+      font-weight: 900;
+    }
+    .agent-point strong { display: block; margin: 1px 0 3px; font-size: 13px; }
+    .agent-point span:last-child { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .agent-loop {
+      padding: 27px;
+      border: 1px solid #cdd9f7;
+      border-radius: 21px;
+      background: white;
+      box-shadow: var(--shadow);
+    }
+    .agent-loop-title {
+      margin-bottom: 17px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .loop-step {
+      display: grid;
+      grid-template-columns: 45px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfcff;
+    }
+    .loop-step + .loop-arrow { margin: 5px 0; }
+    .loop-number {
+      width: 45px;
+      height: 45px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font: 900 12px var(--mono);
+    }
+    .loop-step strong { display: block; margin-bottom: 4px; font-size: 13px; }
+    .loop-step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .loop-arrow {
+      padding-left: 35px;
+      color: #9aa8bd;
+      font-size: 16px;
+    }
+    .loop-result {
+      margin-top: 17px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: #285c4d;
+      background: var(--green-soft);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .loop-result strong { display: block; margin-bottom: 3px; }
+
+    footer {
+      padding: 25px 0;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    @media (max-width: 960px) {
+      .hero-grid, .group-layout, .agent-layout { grid-template-columns: 1fr; }
+      .group-intro { position: static; }
+      .contents-list { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 680px) {
+      .container { width: min(100% - 26px, 1180px); }
+      .nav-links { display: none; }
+      .hero { padding: 55px 0 48px; }
+      h1 { font-size: clamp(44px, 14vw, 61px); }
+      .hero-copy { font-size: 16px; }
+      .hero-actions .button { width: 100%; }
+      .contents-list { grid-template-columns: 1fr; }
+      .problem-grid, .code-case-body { grid-template-columns: 1fr; }
+      .section { padding: 66px 0; }
+      .rule-group { padding: 57px 0; }
+      .rule-row { grid-template-columns: 63px 1fr; }
+      .sonar-link { grid-column: 2; justify-self: start; }
+      .code-panel + .code-panel { border-left: 0; border-top: 1px solid var(--line); }
+      .catalog-box { grid-template-columns: 1fr; }
+      .footer-inner { display: block; }
+      .footer-inner span:last-child { display: block; margin-top: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#top"><span class="brand-mark">GP</span><span>Reguły C#</span></a>
+      <div class="nav-links">
+        <a href="#groups">Grupy reguł</a>
+        <a href="#nis2">NIS2</a>
+        <a href="#ai">AI</a>
+        <a href="#agents">Agenci LLM</a>
+        <a class="button primary small" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs" target="_blank" rel="noreferrer">Otwórz katalog w SonarQube ↗</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Wewnętrzne reguły C# dla SonarQube · 103 aktywne reguły</div>
+          <h1>Jakie problemy wykrywają nasze reguły C#?</h1>
+          <p class="hero-copy">
+            Reguły obejmują konkretne problemy, które powtarzają się w naszych usługach:
+            zabezpieczenie endpointów, spójność HTTP i OpenAPI, ewolucję kontraktów,
+            integracje przez Juno, operacje bazodanowe, techniczne środki wspierające NIS2
+            oraz bezpieczne użycie modeli i agentów AI.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#groups">Przejdź do grup reguł ↓</a>
+            <a class="button secondary" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs" target="_blank" rel="noreferrer">Wszystkie reguły w SonarQube ↗</a>
+          </div>
+        </div>
+        <aside class="summary-card">
+          <h2 class="summary-title">W praktyce zespół dostaje</h2>
+          <div class="summary-list">
+            <div class="summary-item">
+              <span class="summary-icon">01</span>
+              <div><strong>Finding w miejscu problemu</strong><span>Reguła wskazuje konkretną akcję, argument, kontrakt albo wywołanie.</span></div>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon">02</span>
+              <div><strong>Opis przyczyny i poprawki</strong><span>Każda reguła ma specyfikację „Why is this an issue?” i przykład compliant/noncompliant.</span></div>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon">03</span>
+              <div><strong>Link do szczegółów w SonarQube</strong><span>Można od razu zobaczyć pełną dokumentację oraz wystąpienia reguły.</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <section class="contents" id="groups">
+      <div class="container">
+        <h2 class="contents-title">Spis treści</h2>
+        <ol class="contents-list">
+          <li><a href="#security">Bezpieczeństwo i dostęp</a></li>
+          <li><a href="#api">API i semantyka HTTP</a></li>
+          <li><a href="#openapi">OpenAPI i generowane klienty</a></li>
+          <li><a href="#contracts">Kontrakty i messaging</a></li>
+          <li><a href="#platform">Juno, dane i integracje</a></li>
+          <li><a href="#correctness">Poprawność runtime i utrzymanie</a></li>
+          <li><a href="#nis2">NIS2 w cyklu wytwarzania</a></li>
+          <li><a href="#ai">Integracje AI</a></li>
+        </ol>
+      </div>
+    </section>
+
+    <div class="container">
+      <section class="rule-group" id="security">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA A</span>
+            <h2>Bezpieczeństwo i dostęp</h2>
+            <p>Reguły pilnują jawnej polityki dostępu i blokują typowe drogi wycieku danych lub przejęcia kontroli nad żądaniem wychodzącym.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Publiczny endpoint jest publiczny świadomie, sekret nie trafia do logów, a dane użytkownika nie sterują bezpośrednio URL-em wywołania lub przekierowania.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Niejawna autoryzacja</strong><span>Endpoint bez żadnej deklaracji wygląda tak samo jak endpoint przypadkiem pozostawiony publicznie.</span></div>
+              <div class="problem"><strong>Wycieki do logów</strong><span>Nazwa placeholdera lub argumentu może ujawnić token, hasło albo dane osobowe.</span></div>
+              <div class="problem"><strong>SSRF i open redirect</strong><span>URL pochodzący prosto z requestu nie powinien sterować wywołaniem zaufanej usługi.</span></div>
+              <div class="problem"><strong>Fałszywe poczucie ochrony</strong><span>Credentialed CORS z dowolnym originem lub połknięty wyjątek autoryzacji osłabiają zabezpieczenia.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0020</span><span class="rule-title"><strong>Endpoints should explicitly declare their access policy</strong><span>MVC i Minimal API muszą jawnie wybrać authorization albo anonymous access.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0020" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0019</span><span class="rule-title"><strong>Secret-like values should not be logged</strong><span>Łączy placeholder z argumentem i uwzględnia typ wartości, żeby ograniczyć false positive.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0019" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0022</span><span class="rule-title"><strong>Personal data should not be logged</strong><span>Wykrywa logowanie nazw wskazujących m.in. email, PESEL, telefon lub IBAN.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0022" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0023</span><span class="rule-title"><strong>Secrets should not be passed in URLs</strong><span>Obejmuje sekrety przekazywane w parametrach ścieżki MVC i Minimal API oraz jawnie bindowanym query stringu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0023" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0135</span><span class="rule-title"><strong>Personal data should not be passed in URLs</strong><span>Ogranicza kopiowanie danych osobowych do logów serwerów, historii przeglądarki i nagłówka Referer.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0135" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0136</span><span class="rule-title"><strong>Whole HTTP and authentication objects should not be logged</strong><span>Żądania, nagłówki, cookies i tożsamość nie trafiają do loggera jako niekontrolowane kontenery danych.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0136" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0137</span><span class="rule-title"><strong>Sensitive diagnostics should only be enabled in development</strong><span>Diagnostyka EF Core i strony błędów bazy nie ujawniają danych ani szczegółów schematu poza developmentem.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0137" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0138</span><span class="rule-title"><strong>Sensitive values should not be included in exception messages</strong><span>Sekrety i dane osobowe nie rozchodzą się przez logi, tracing, dashboardy i odpowiedzi błędów.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0138" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0028</span><span class="rule-title"><strong>Outbound requests should not use a URL taken straight from the request</strong><span>Ogranicza SSRF w wywołaniach do innych usług.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0028" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0123</span><span class="rule-title"><strong>Credentialed CORS policies should restrict allowed origins</strong><span>Credentials wymagają jawnie ograniczonej listy originów.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0123" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0020</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0020" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Problem</div><pre>app.MapGet("/users/{id}", GetUser);
+<span class="bad-line">// Brak jawnej polityki dostępu</span></pre></div>
+                <div class="code-panel"><div class="code-label">Jawna intencja</div><pre>app.MapGet("/users/{id}", GetUser)
+<span class="good-line">   .RequireAuthorization();</span></pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="api">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA B</span>
+            <h2>API i semantyka HTTP</h2>
+            <p>Reguły ujednolicają znaczenie odpowiedzi HTTP i oddzielają modele transportowe od encji oraz szczegółów implementacyjnych.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Klient nie musi obsługiwać kilku przypadkowych wariantów tej samej operacji, a endpoint nie ujawnia encji, stack trace’a ani nieoczekiwanych efektów ubocznych.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Stabilne kolekcje</strong><span>Pusty wynik GET to pusta kolekcja, nie 204 ani 404.</span></div>
+              <div class="problem"><strong>Poprawne statusy</strong><span>Create zwraca 201, DELETE nie zwraca body, auth rozróżnia 401 i 403.</span></div>
+              <div class="problem"><strong>Czysta granica API</strong><span>Encje bazy i szczegóły wyjątków nie wychodzą do klienta.</span></div>
+              <div class="problem"><strong>Jednolity format błędów</strong><span>Odpowiedzi błędów korzystają z RFC 9457 ProblemDetails.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0009</span><span class="rule-title"><strong>GET collection endpoints should not return 204 No Content</strong><span>Pusta kolekcja zachowuje ten sam kształt odpowiedzi.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0009" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0026</span><span class="rule-title"><strong>Resource-creating endpoints should return 201 Created</strong><span>Semantyka create jest widoczna w statusie i lokalizacji zasobu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0026" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0045</span><span class="rule-title"><strong>Endpoints should not return database entities</strong><span>Kontrakt API nie jest przypadkowo sprzężony ze schematem persystencji.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0045" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0046</span><span class="rule-title"><strong>GET endpoints should not have side effects</strong><span>GET pozostaje bezpieczny dla retry, cache i automatycznych crawlerów.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0046" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0110</span><span class="rule-title"><strong>Error response bodies should use ProblemDetails</strong><span>Klienci dostają jeden przewidywalny format błędów.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0110" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0132</span><span class="rule-title"><strong>REST controllers should be declared as API controllers</strong><span>Aktywuje przewidywalne zachowania bindingu i walidacji MVC.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0132" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0009</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0009" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Zmienny kształt odpowiedzi</div><pre>if (users.Count == 0)
+{
+<span class="bad-line">    return NoContent();</span>
+}
+return Ok(users);</pre></div>
+                <div class="code-panel"><div class="code-label">Jeden kontrakt kolekcji</div><pre>if (users.Count == 0)
+{
+<span class="good-line">    return Ok(new List&lt;User&gt;());</span>
+}
+return Ok(users);</pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="openapi">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA C</span>
+            <h2>OpenAPI i generowane klienty</h2>
+            <p>Ta grupa porównuje metadane endpointu z tym, co kod rzeczywiście zwraca. Celem jest poprawny protokół, nie tylko ładny Swagger.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Dokumentacja i generowane klienty znają wszystkie odpowiedzi, ich typy oraz scheme security — zanim nieudokumentowana gałąź ujawni się na produkcji.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Brakujące statusy</strong><span>Implementacja zwraca 404, ale metadata opisuje tylko 200.</span></div>
+              <div class="problem"><strong>Martwe deklaracje</strong><span>Dokumentacja obiecuje status sukcesu, którego żadna ścieżka nie zwraca.</span></div>
+              <div class="problem"><strong>Niewłaściwy typ body</strong><span>Status bez body ma zadeklarowany typ albo błąd z body nie ma typu.</span></div>
+              <div class="problem"><strong>Niespójne security schemes</strong><span>Id użyte w operacji musi dokładnie pasować do definicji schematu.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0100</span><span class="rule-title"><strong>Returned HTTP statuses must be declared in ProducesResponseType</strong><span>Analizuje jawne fabryki odpowiedzi i typed results.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0100" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0102</span><span class="rule-title"><strong>HTTP actions should declare their successful response type</strong><span>Klient zna model odpowiedzi sukcesu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0102" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0103</span><span class="rule-title"><strong>HTTP error responses with bodies should declare their type</strong><span>Body błędu jest częścią kontraktu, a nie ukrytym szczegółem.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0103" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0108</span><span class="rule-title"><strong>OpenAPI security scheme identifiers should match exactly</strong><span>Chroni przed dokumentacją deklarującą inne zabezpieczenie niż konfiguracja.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0108" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0125</span><span class="rule-title"><strong>Declared successful HTTP response statuses should be returned by an action path</strong><span>Wykrywa deklaracje, których implementacja nie realizuje.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0125" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0100</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0100" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Implementacja</div><pre>[ProducesResponseType(200)]
+public IActionResult Get(string id) =>
+    Find(id) is { } value
+      ? Ok(value)
+<span class="bad-line">      : NotFound(); // 404 nieopisane</span></pre></div>
+                <div class="code-panel"><div class="code-label">Kontrakt zgodny z kodem</div><pre>[ProducesResponseType(200)]
+<span class="good-line">[ProducesResponseType(404)]</span>
+public IActionResult Get(string id) =>
+    Find(id) is { } value
+      ? Ok(value)
+      : NotFound();</pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="contracts">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA D</span>
+            <h2>Kontrakty i messaging</h2>
+            <p>Reguły oddzielają modele integracyjne od implementacji oraz pilnują, aby komunikaty były wersjonowalne i kompletne.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Producent i konsument mogą rozwijać się niezależnie, kontrakt ma jawnego właściciela, a infrastruktura transportowa nie przecieka do modelu biznesowego.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Własność kontraktu</strong><span>Typy przekraczające REST lub messaging boundary pochodzą z dedykowanego assembly Contracts.</span></div>
+              <div class="problem"><strong>Ewolucja wartości</strong><span>Enum nie zamyka starszego konsumenta na nowe stany producenta.</span></div>
+              <div class="problem"><strong>Kompletność zdarzenia</strong><span>Event niesie czas wystąpienia i biznesowy identyfikator.</span></div>
+              <div class="problem"><strong>Oddzielenie transportu</strong><span>Kontrakt nie duplikuje metadata MassTransit ani nie zależy od typów infrastruktury.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0043</span><span class="rule-title"><strong>API contracts should come from contract assemblies</strong><span>REST request/response i message types mają jawne, wersjonowalne miejsce.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0043" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0068</span><span class="rule-title"><strong>Contracts should not expose enums</strong><span>Nowa wartość producenta nie staje się nieznaną semantyką u starego konsumenta.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0068" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0051</span><span class="rule-title"><strong>Published events should carry the time they occurred</strong><span>Event odróżnia czas biznesowy od czasu dostarczenia.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0051" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0058</span><span class="rule-title"><strong>Contract collections should be stable when serialized</strong><span>Kontrakt nie ujawnia mutowalnych lub nieprzewidywalnych kształtów kolekcji.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0058" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0061</span><span class="rule-title"><strong>Contracts should not duplicate transport metadata</strong><span>MessageId, CorrelationId i SentTime pozostają odpowiedzialnością transportu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0061" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0106</span><span class="rule-title"><strong>Message dispatch should match its Juno registration</strong><span>Publish/send/request odpowiada sposobowi rejestracji kontraktu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0106" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0051</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0051" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Brak czasu biznesowego</div><pre>public record PaymentReceived(
+    Guid PaymentId,
+    decimal Amount,
+<span class="bad-line">    string Currency);</span></pre></div>
+                <div class="code-panel"><div class="code-label">Czas wystąpienia w kontrakcie</div><pre>public record PaymentReceived(
+    Guid PaymentId,
+    decimal Amount,
+    string Currency,
+<span class="good-line">    DateTimeOffset OccurredAt);</span></pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="platform">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA E</span>
+            <h2>Juno, dane i integracje</h2>
+            <p>Reguły kierują kod przez wspólne abstractions platformowe oraz chronią granice transakcji i propagację cancellation.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Observability, discovery, konfiguracja, retry i transakcje działają według jednego standardu zamiast zależeć od lokalnej implementacji każdej usługi.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Sieć wewnątrz transakcji</strong><span>Zewnętrzny call przed commit wydłuża locki i może zostawić niespójny efekt uboczny.</span></div>
+              <div class="problem"><strong>Obejście platformy</strong><span>Raw MassTransit, Consul, SmtpClient lub ręczny scheduler omijają wspólne polityki Juno.</span></div>
+              <div class="problem"><strong>Utracona transakcja</strong><span>Dapper operation musi dostać aktywną transakcję i CancellationToken.</span></div>
+              <div class="problem"><strong>Ukryta konfiguracja</strong><span>Typed configuration i jednokrotna rejestracja type handlerów ograniczają błędy startowe.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0008</span><span class="rule-title"><strong>Database transactions should not contain external network calls before commit</strong><span>Transakcja nie obejmuje niekontrolowanego czasu odpowiedzi innej usługi.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0008" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0027</span><span class="rule-title"><strong>Calls to other services should propagate the available CancellationToken</strong><span>Anulowanie requestu kończy również pracę downstream.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0027" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0034</span><span class="rule-title"><strong>Messages should be published through Juno, not raw MassTransit</strong><span>Wspólna warstwa zachowuje organizacyjne konwencje publikacji.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0034" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0047</span><span class="rule-title"><strong>Service discovery should go through Juno, not the Consul client</strong><span>Discovery nie wiąże kodu biznesowego z konkretnym klientem infrastruktury.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0047" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0129</span><span class="rule-title"><strong>Dapper operations should receive the active transaction</strong><span>Operacja uczestniczy w transakcji, którą kod już otworzył.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0129" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0130</span><span class="rule-title"><strong>Dapper operations should pass the caller's CancellationToken</strong><span>Zapytanie można przerwać razem z wywołaniem aplikacyjnym.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0130" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0027</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0027" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Bez CancellationToken</div><pre>public Task&lt;OrderDto&gt; GetOrder(
+    string id,
+    CancellationToken cancellationToken) =>
+<span class="bad-line">    _httpClient.GetFromJsonAsync&lt;OrderDto&gt;(</span>
+<span class="bad-line">        $"/orders/{id}");</span></pre></div>
+                <div class="code-panel"><div class="code-label">Z przekazanym CancellationToken</div><pre>public Task&lt;OrderDto&gt; GetOrder(
+    string id,
+    CancellationToken cancellationToken) =>
+<span class="good-line">    _httpClient.GetFromJsonAsync&lt;OrderDto&gt;(</span>
+<span class="good-line">        $"/orders/{id}", cancellationToken);</span></pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="correctness">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA F</span>
+            <h2>Poprawność runtime i utrzymanie</h2>
+            <p>Ta grupa obejmuje pułapki języka i frameworka, które kompilują się poprawnie, ale mają inne zachowanie niż sugeruje kod.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Mniej błędów zależnych od obciążenia, kolejności wykonania lub wyjątkowej ścieżki — czyli przypadków trudnych do odtworzenia podczas zwykłego review.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Współbieżność</strong><span>Nieatomowa aktualizacja volatile, przechwycona zmienna pętli i źle użyte ThreadStatic.</span></div>
+              <div class="problem"><strong>Obsługa wyjątków</strong><span>Static constructor, exception filter lub wrapper mogą ukryć przyczynę albo zdestabilizować typ.</span></div>
+              <div class="problem"><strong>Zasoby i cancellation</strong><span>Object initializer w using może wyciec, a połknięte cancellation zmienia sterowanie.</span></div>
+              <div class="problem"><strong>Czas i testowalność</strong><span>Nazwy dat odpowiadają semantyce, a wstrzyknięty zegar nie jest omijany.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0042</span><span class="rule-title"><strong>Volatile fields should not be updated non-atomically</strong><span>Volatile nie zmienia złożonej operacji read-modify-write w atomową.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0042" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0084</span><span class="rule-title"><strong>'[ThreadStatic]' should not be used on non-static fields</strong><span>CLR ignoruje atrybut na polu instancyjnym; kod nie zapewnia izolacji per thread.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0084" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0088</span><span class="rule-title"><strong>A loop should not capture its own mutated control variable in a lambda passed to deferred execution</strong><span>Lambda nie używa późniejszej wartości zmiennej zamiast wartości z iteracji.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0088" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0089</span><span class="rule-title"><strong>A 'using' should not initialize its resource via an object initializer that can throw</strong><span>Wyjątek w initializerze nie pozostawia już utworzonego zasobu bez Dispose.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0089" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0105</span><span class="rule-title"><strong>Caught exceptions should be preserved when wrapping them</strong><span>Nowy wyjątek zachowuje original exception jako InnerException.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0105" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0120</span><span class="rule-title"><strong>Injected clocks should not be bypassed by static clocks</strong><span>Kod pozostaje deterministyczny i testowalny.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0120" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Przykład · GP0120</span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0120" target="_blank" rel="noreferrer">Pełny opis ↗</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Ominięty wstrzyknięty zegar</div><pre>public class Consumer(TimeProvider timeProvider)
+{
+    public AuditTrace CreateTrace() =>
+<span class="bad-line">        new(DateTimeOffset.UtcNow);</span>
+}</pre></div>
+                <div class="code-panel"><div class="code-label">Jedno kontrolowane źródło czasu</div><pre>public class Consumer(TimeProvider timeProvider)
+{
+    public AuditTrace CreateTrace() =>
+<span class="good-line">        new(timeProvider.GetUtcNow());</span>
+}</pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="nis2">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">PRZEKRÓJ NIS2</span>
+            <h2>NIS2 w cyklu wytwarzania</h2>
+            <p>Art. 21 NIS2 wymaga proporcjonalnych środków technicznych, operacyjnych i organizacyjnych. Reguły automatyzują tę część kontroli, którą można jednoznacznie sprawdzić w kodzie C#.</p>
+            <div class="outcome"><strong>Co zyskuje organizacja</strong>Powtarzalne findings w IDE i CI/CD tworzą techniczny ślad stosowania standardu secure development. Analizator wspiera wybrane środki NIS2, ale nie zastępuje analizy ryzyka, obsługi incydentów, ciągłości działania ani audytu zgodności.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Bezpieczne wytwarzanie i utrzymanie</strong><span>Kontrole SSRF, deserializacji, diagnostyki, wyjątków i danych w URL-ach wspierają bezpieczeństwo nabywania, rozwoju i utrzymania systemów z art. 21 ust. 2 lit. e.</span></div>
+              <div class="problem"><strong>Kontrola dostępu</strong><span>Jawna polityka endpointów, poprawna obsługa wyjątków autoryzacji, claims i CORS wspierają środki kontroli dostępu z art. 21 ust. 2 lit. i.</span></div>
+              <div class="problem"><strong>Ocena skuteczności zabezpieczeń</strong><span>Wersjonowane reguły, findings i quality gate dają powtarzalny mechanizm sprawdzania wybranych zabezpieczeń w każdej zmianie kodu.</span></div>
+              <div class="problem"><strong>Odporność usług</strong><span>Propagacja anulowania, granice transakcji i kontrole współbieżności ograniczają klasy awarii istotne dla ciągłości działania.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">21.2(e)</span><span class="rule-title"><strong>Secure development sprawdzany automatycznie</strong><span>Reguły wykrywają konkretne podatne konstrukcje i niebezpieczne ustawienia jeszcze przed wdrożeniem.</span></span><a class="sonar-link" href="https://eur-lex.europa.eu/eli/dir/2022/2555/oj" target="_blank" rel="noreferrer">Tekst NIS2 ↗</a></div>
+              <div class="rule-row"><span class="rule-id">21.2(i)</span><span class="rule-title"><strong>Dostęp deklarowany w kodzie</strong><span>Endpointy i mechanizmy uwierzytelnienia mają jawną, możliwą do przejrzenia politykę.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0020" target="_blank" rel="noreferrer">GP0020 ↗</a></div>
+              <div class="rule-row"><span class="rule-id">21.2(f)</span><span class="rule-title"><strong>Stały pomiar zamiast jednorazowej deklaracji</strong><span>Ten sam zestaw kontroli działa lokalnie, na pull requeście i w quality gate.</span></span><a class="sonar-link" href="#agents">Proces ↓</a></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rule-group" id="ai">
+        <div class="group-layout">
+          <div class="group-intro">
+            <span class="group-number">GRUPA G</span>
+            <h2>Integracje AI</h2>
+            <p>Cztery precyzyjne reguły pilnują technicznych kontraktów integracji z modelami i agentami bez analizowania treści promptów ani zgadywania intencji biznesowej.</p>
+            <div class="outcome"><strong>Co zyskuje zespół</strong>Kontrolowany koszt odpowiedzi, stabilna tożsamość agentów, bezpieczna deserializacja i mniejsze ryzyko ujawnienia treści rozmów w logach.</div>
+          </div>
+          <div class="group-content">
+            <div class="problem-grid">
+              <div class="problem"><strong>Nieograniczony koszt</strong><span>Każde rozpoznane wywołanie modelu ma dodatni limit tokenów odpowiedzi.</span></div>
+              <div class="problem"><strong>Niestabilna tożsamość agenta</strong><span>Deterministyczna nazwa utrzymuje spójność wątków, pamięci i telemetrii po restarcie.</span></div>
+              <div class="problem"><strong>Nieufna odpowiedź modelu</strong><span>Strukturalny wynik jest deserializowany do typu z odrzucaniem nieznanych pól.</span></div>
+              <div class="problem"><strong>Wrażliwa treść w logach</strong><span>Surowe wiadomości, odpowiedzi i historia konwersacji nie trafiają bezpośrednio do loggera.</span></div>
+            </div>
+            <div class="rule-list">
+              <div class="rule-row"><span class="rule-id">GP0141</span><span class="rule-title"><strong>AI model invocations should cap output tokens</strong><span>Ogranicza koszt i maksymalny rozmiar pojedynczej odpowiedzi modelu.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0141" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0143</span><span class="rule-title"><strong>ChatClientAgent instances should have a stable name</strong><span>Blokuje nazwy losowe, zależne od czasu i tworzone automatycznie przez framework.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0143" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0145</span><span class="rule-title"><strong>Structured AI responses should be deserialized safely</strong><span>Wymaga typowanego modelu i restrykcyjnej obsługi nieznanych pól.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0145" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+              <div class="rule-row"><span class="rule-id">GP0146</span><span class="rule-title"><strong>Raw AI content should not be logged</strong><span>Logi zachowują zatwierdzone metadane zamiast pełnej treści rozmowy.</span></span><a class="sonar-link" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs&open=roslyn.GPcsharp.cs%3AGP0146" target="_blank" rel="noreferrer">Specyfikacja ↗</a></div>
+            </div>
+            <div class="code-case">
+              <div class="code-case-head"><span>Dedykowana prezentacja AI</span><a class="sonar-link" href="index-ai.html">AI Engineering Guardrails →</a></div>
+              <div class="code-case-body">
+                <div class="code-panel"><div class="code-label">Nieograniczone wywołanie</div><pre><span class="bad-line">await client.GetResponseAsync(prompt);</span></pre></div>
+                <div class="code-panel"><div class="code-label">Kontrolowany limit</div><pre>var options = new ChatOptions
+{
+<span class="good-line">    MaxOutputTokens = 800</span>
+};
+await client.GetResponseAsync(
+    prompt, options);</pre></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="section agent-section" id="agents">
+      <div class="container agent-layout">
+        <div class="agent-copy">
+          <div class="kicker">Kod generowany przez agentów</div>
+          <h2>Wewnętrzne reguły C# sprawdzają standardy w kodzie wygenerowanym przez agentów LLM.</h2>
+          <p>
+            Skille, instrukcje repozytorium i prompt pomagają agentowi zastosować lokalne konwencje.
+            Agent może jednak pominąć instrukcję lub zastosować ją nieprawidłowo. Podczas analizy statycznej
+            Wewnętrzne reguły C# sprawdzają gotowy kod i zgłaszają naruszenia zdefiniowanych standardów.
+          </p>
+          <div class="agent-points">
+            <div class="agent-point">
+              <span>✓</span>
+              <div><strong>Powtarzalny wynik</strong><span>Ta sama wersja kodu i analizatora daje ten sam wynik niezależnie od modelu, promptu i użytych skilli.</span></div>
+            </div>
+            <div class="agent-point">
+              <span>✓</span>
+              <div><strong>Konwencje sprawdzane w kodzie</strong><span>Wewnętrzne reguły C# sprawdzają między innymi autoryzację endpointów, ochronę danych, kontrakty zdarzeń, integracje AI, użycie Juno i przekazywanie CancellationToken.</span></div>
+            </div>
+            <div class="agent-point">
+              <span>✓</span>
+              <div><strong>Wyniki dostępne przez MCP SonarQube</strong><span>Agent może pobrać lokalizację problemu, opis reguły i wskazówki do poprawienia kodu przed utworzeniem PR-a.</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="agent-loop">
+          <div class="agent-loop-title">Praca lokalna z MCP SonarQube</div>
+          <div class="loop-step">
+            <span class="loop-number">01</span>
+            <div><strong>Agent zmienia kod</strong><p>Agent korzysta z kodu repozytorium oraz dostępnych instrukcji i skilli.</p></div>
+          </div>
+          <div class="loop-arrow">↓</div>
+          <div class="loop-step">
+            <span class="loop-number">02</span>
+            <div><strong>Analiza statyczna uruchamia reguły</strong><p>Wewnętrzne reguły C# używają semantyki Roslyn do sprawdzenia standardów opisanych w regułach.</p></div>
+          </div>
+          <div class="loop-arrow">↓</div>
+          <div class="loop-step">
+            <span class="loop-number">03</span>
+            <div><strong>MCP SonarQube udostępnia wyniki</strong><p>Wynik zawiera lokalizację problemu, opis naruszenia oraz dokumentację reguły.</p></div>
+          </div>
+          <div class="loop-arrow">↓</div>
+          <div class="loop-step">
+            <span class="loop-number">04</span>
+            <div><strong>Agent poprawia kod i uruchamia analizę ponownie</strong><p>Kolejne uruchomienie potwierdza usunięcie problemu albo wskazuje pozostałe naruszenia.</p></div>
+          </div>
+          <div class="loop-result">
+            <strong>Rola każdego mechanizmu</strong>
+            Skille i instrukcje przekazują agentowi kontekst przed zmianą. Wewnętrzne reguły C# sprawdzają kod po zmianie.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section soft">
+      <div class="container">
+        <div class="catalog-box">
+          <div>
+            <h2>Pełny katalog pozostaje w SonarQube</h2>
+            <p>Ta strona porządkuje reguły według problemów. SonarQube pozostaje źródłem szczegółów: severity, pełnego uzasadnienia, wyjątków, przykładów oraz aktywnych findings.</p>
+          </div>
+          <a class="button primary" href="https://sonar2.pracuj.pl/coding_rules?repositories=roslyn.GPcsharp.cs" target="_blank" rel="noreferrer">Przejdź do 103 reguł ↗</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span><strong>Wewnętrzne reguły C#</strong> · przewodnik po możliwościach analizatora</span>
+      <span>Źródło opisów: <code>analyzers/rspec/cs/GP</code> · 15.09.2026</span>
+    </div>
+  </footer>
+
+</body>
+</html>

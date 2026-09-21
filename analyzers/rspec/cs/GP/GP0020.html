@@ -1,5 +1,5 @@
-<p>Every REST API action should explicitly state whether it requires authorization. Classic MVC controllers are checked when sibling actions
-establish a per-action <code>[Authorize]</code> convention.</p>
+<p>Every REST API endpoint should explicitly state whether it requires authorization. This includes MVC actions and Minimal API endpoint
+registrations. Classic MVC controllers are checked when sibling actions establish a per-action <code>[Authorize]</code> convention.</p>
 <h2>Why is this an issue?</h2>
 <p>When some actions in a controller carry <code>[Authorize]</code> and others don't, the missing declaration is ambiguous: it might be an
 intentionally public endpoint, or it might be an endpoint that was simply forgotten when access control was added to the rest of the controller.
@@ -9,6 +9,9 @@ at a glance that the endpoint is public on purpose, not by oversight.</p>
 have <code>[Authorize]</code> or <code>[AllowAnonymous]</code>, unless the compilation directly configures an authenticated fallback policy, adds
 the ASP.NET Core MVC <code>AuthorizeFilter</code> globally, or applies <code>RequireAuthorization()</code> directly to
 <code>MapControllers()</code>.</p>
+<p>Minimal API registrations made with <code>MapGet</code>, <code>MapPost</code>, <code>MapPut</code>, <code>MapPatch</code>,
+<code>MapDelete</code> or <code>MapMethods</code> must use <code>RequireAuthorization()</code> or <code>AllowAnonymous()</code>, either directly
+on the endpoint or on a directly traceable route group. An authenticated fallback policy also provides a secure global default.</p>
 <pre>
 public class UsersController : ControllerBase
 {
@@ -26,8 +29,12 @@ global protection: assignment to <code>AuthorizationOptions.FallbackPolicy</code
 global filter collection, or <code>MapControllers().RequireAuthorization()</code>. Merely calling <code>AddAuthorization</code>, configuring a
 named policy, application conventions, or unrelated lookalike types does not provide sufficiently strong evidence and is not treated as global
 protection.</p>
+<p>For Minimal API route groups, the rule follows direct fluent chains and stable local variables initialized with <code>MapGroup</code>. It does
+not infer authorization hidden inside arbitrary custom extension methods or route groups passed between methods. MVC global filters and
+<code>MapControllers().RequireAuthorization()</code> protect controllers only and do not suppress findings for Minimal API endpoints.</p>
 <h2>How to fix it</h2>
-<p>Add <code>[Authorize]</code> if the endpoint should require authorization, or <code>[AllowAnonymous]</code> if it is meant to stay public.</p>
+<p>For MVC, add <code>[Authorize]</code> if the endpoint should require authorization, or <code>[AllowAnonymous]</code> if it is meant to stay
+public. For Minimal API, apply <code>RequireAuthorization()</code> or <code>AllowAnonymous()</code> to the endpoint or its route group.</p>
 <h3>Code examples</h3>
 <h4>Noncompliant code example</h4>
 <pre data-diff-id="1" data-diff-type="noncompliant">
@@ -36,7 +43,7 @@ public class UsersController : ControllerBase
     [Authorize]
     public IActionResult GetProfile() { /* ... */ }
 
-    public IActionResult GetSettings() { /* ... */ } // Noncompliant {{Method 'GetSettings' has neither [Authorize] nor [AllowAnonymous]; explicitly declare its access policy.}}
+    public IActionResult GetSettings() { /* ... */ } // Noncompliant {{Endpoint 'GetSettings' has neither authorization nor anonymous access explicitly declared.}}
 }
 </pre>
 <h4>Compliant solution</h4>

@@ -1,5 +1,5 @@
 {
-  "title": "Secrets should not be passed in URLs",
+  "title": "Personal data should not be passed in URLs",
   "type": "VULNERABILITY",
   "code": {
     "impacts": {
@@ -17,13 +17,14 @@
     "security",
     "api",
     "rest",
+    "privacy",
     "cwe"
   ],
   "defaultSeverity": "Minor",
-  "ruleSpecification": "GP-0023",
-  "sqKey": "GP0023",
+  "ruleSpecification": "GP-0135",
+  "sqKey": "GP0135",
   "scope": "Main",
-  "quickfix": "unknown",
+  "quickfix": "infeasible",
   "securityStandards": {
     "CWE": [
       598

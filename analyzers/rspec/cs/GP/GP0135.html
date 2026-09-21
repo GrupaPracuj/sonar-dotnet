@@ -1,0 +1,41 @@
+<p>Personal data should not be passed in a URL path or query string.</p>
+<h2>Why is this an issue?</h2>
+<p>URLs are copied into web server, reverse proxy and CDN logs, stored in browser history, and may be sent to another site in the
+<code>Referer</code> header. Putting an email address, national identifier, phone number or other personal data in a URL quietly creates additional
+copies of that data in systems whose retention and access rules are usually broader than those of the application database.</p>
+<pre>
+[HttpGet("users/{email}")]
+public IActionResult GetByEmail(string email) { /* ... */ }
+</pre>
+<p>The rule checks route parameters (<code>{name}</code>) in MVC attributes and Minimal API mappings, and parameters explicitly bound with
+<code>[FromQuery]</code>. Literal path segments are not checked: <code>/email-addresses</code> is a resource name and carries no caller-supplied
+value. Arbitrary strings used to build outbound URLs are not analyzed.</p>
+<p>The complete, case-insensitive list is <code>email</code>, <code>pesel</code>, <code>phone</code>, <code>iban</code>, <code>surname</code>,
+<code>firstName</code>, <code>lastName</code>, <code>birthDate</code>, <code>dateOfBirth</code>, <code>creditCard</code>,
+<code>username</code> and <code>login</code>. Up to three adjacent camel-case, Pascal-case or underscore-separated words are joined before
+matching.</p>
+<h3>Exceptions</h3>
+<p>A trailing <code>Id</code>, <code>Ids</code>, <code>Reference</code>, <code>References</code>, <code>Ref</code>, <code>Count</code>,
+<code>Length</code>, <code>Uri</code>, <code>Url</code>, <code>Path</code> or <code>Type</code> means the parameter points at, or describes, the
+data rather than containing it. For example, <code>{emailId}</code>, <code>{birthDateReference}</code> and <code>phoneCount</code> are not
+reported.</p>
+<h2>How to fix it</h2>
+<p>Pass personal data in the request body. When a resource must be addressable, use an opaque identifier that is not personal data on its own.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+[HttpGet("users/{email}")] // Noncompliant {{URL parameter 'email' looks like it carries personal data - it will end up in server logs, browser history and proxy caches.}}
+public IActionResult GetByEmail(string email) { /* ... */ }
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+[HttpPost("users/search")]
+public IActionResult Find([FromBody] FindUserRequest request) { /* ... */ }
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>OWASP - <a href="https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#sensitive-information-in-http-requests">REST
+  Security Cheat Sheet - Sensitive information in HTTP requests</a></li>
+  <li>MITRE - <a href="https://cwe.mitre.org/data/definitions/598.html">CWE-598: Use of GET Request Method With Sensitive Query Strings</a></li>
+</ul>

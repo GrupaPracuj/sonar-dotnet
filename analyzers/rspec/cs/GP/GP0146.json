@@ -1,11 +1,11 @@
 {
-  "title": "Endpoints should explicitly declare their access policy",
-  "type": "CODE_SMELL",
+  "title": "Raw AI content should not be logged",
+  "type": "VULNERABILITY",
   "code": {
     "impacts": {
-      "MAINTAINABILITY": "MEDIUM"
+      "SECURITY": "MEDIUM"
     },
-    "attribute": "CONVENTIONAL"
+    "attribute": "TRUSTWORTHY"
   },
   "status": "ready",
   "remediation": {
@@ -14,11 +14,12 @@
   },
   "tags": [
     "gp",
-    "authorization"
+    "ai",
+    "privacy"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0020",
-  "sqKey": "GP0020",
+  "ruleSpecification": "GP-0146",
+  "sqKey": "GP0146",
   "scope": "Main",
   "quickfix": "unknown"
 }

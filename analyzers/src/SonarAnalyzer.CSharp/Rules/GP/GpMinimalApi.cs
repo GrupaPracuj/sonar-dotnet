@@ -26,6 +26,31 @@ internal static class GpMinimalApi
         "Microsoft.AspNetCore.Builder.RouteHandlerBuilderExtensions",
     };
 
+    internal static bool TryGetMapMethod(InvocationExpressionSyntax invocation,
+                                         SemanticModel model,
+                                         IReadOnlyCollection<string> mapMethodNames,
+                                         out IMethodSymbol mapMethod,
+                                         out string routeTemplate)
+    {
+        mapMethod = model.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+        routeTemplate = null;
+        if (mapMethod is null
+            || !mapMethodNames.Contains(mapMethod.Name)
+            || !MapExtensionTypes.Contains((mapMethod.ReducedFrom ?? mapMethod).ContainingType?.ToDisplayString() ?? string.Empty))
+        {
+            return false;
+        }
+
+        var lookup = new CSharpMethodParameterLookup(invocation, mapMethod);
+        routeTemplate = lookup.GetAllArgumentParameterMappings()
+            .Where(x => x.Symbol.Name is "pattern" or "routePattern")
+            .Select(x => model.GetConstantValue(x.Node.Expression))
+            .Where(x => x is { HasValue: true, Value: string })
+            .Select(x => (string)x.Value)
+            .FirstOrDefault();
+        return true;
+    }
+
     internal static bool TryGetInlineHandler(SyntaxNode nodeInHandler,
                                              SemanticModel model,
                                              string mapMethodName,

@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Cztery reguły SonarQube dla bezpiecznych i przewidywalnych integracji z modelami AI oraz agentami — bez wymyślonych atrybutów.">
+  <title>AI Engineering Guardrails dla .NET</title>
+  <style>
+    :root {
+      --ink: #10172a;
+      --muted: #61708c;
+      --line: #dce4f0;
+      --panel: #f6f8fc;
+      --white: #fff;
+      --navy: #182b62;
+      --blue: #3157d5;
+      --cyan: #08a8c8;
+      --violet: #7048d8;
+      --green: #14805f;
+      --amber: #a55d00;
+      --red: #b63e45;
+      --blue-soft: #eaf0ff;
+      --cyan-soft: #e5f8fb;
+      --violet-soft: #f1ecff;
+      --green-soft: #e3f6ef;
+      --amber-soft: #fff2d7;
+      --red-soft: #ffebed;
+      --shadow: 0 22px 60px rgba(28, 48, 91, .11);
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--white);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    code { font-family: var(--mono); }
+    .container { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(220, 228, 240, .88);
+      background: rgba(255, 255, 255, .9);
+      backdrop-filter: blur(16px);
+    }
+    .nav-inner {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 880;
+      letter-spacing: -.025em;
+    }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      box-shadow: 0 10px 24px rgba(49, 87, 213, .25);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--blue); }
+
+    .button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 13px;
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 820;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .button:hover { transform: translateY(-1px); }
+    .button.primary {
+      color: white;
+      background: var(--blue);
+      box-shadow: 0 12px 26px rgba(49, 87, 213, .24);
+    }
+    .button.secondary { color: var(--navy); background: var(--blue-soft); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 92px 0 76px;
+      background:
+        radial-gradient(circle at 86% 16%, rgba(112, 72, 216, .13), transparent 25rem),
+        radial-gradient(circle at 8% 10%, rgba(8, 168, 200, .1), transparent 24rem),
+        linear-gradient(180deg, #fff, #fafbfe);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      right: -230px;
+      bottom: -250px;
+      border: 70px solid rgba(49, 87, 213, .045);
+      border-radius: 50%;
+    }
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.08fr .92fr;
+      gap: 68px;
+      align-items: center;
+    }
+    .eyebrow {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      max-width: 760px;
+      margin: 17px 0 22px;
+      font-size: clamp(49px, 6vw, 76px);
+      line-height: 1.01;
+      letter-spacing: -.06em;
+    }
+    h1 span {
+      color: transparent;
+      background: linear-gradient(100deg, var(--blue), var(--violet));
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+    .hero-copy {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.68;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 30px; }
+    .trust-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-top: 31px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .trust-line span::before {
+      content: "✓";
+      margin-right: 7px;
+      color: var(--green);
+      font-weight: 950;
+    }
+
+    .terminal {
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 22px;
+      color: #eef4ff;
+      background: #10182d;
+      box-shadow: 0 30px 70px rgba(16, 24, 45, .23);
+    }
+    .terminal-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, .09);
+      color: #9cabc7;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #ff6b68; }
+    .dot:nth-child(2) { background: #f6c45c; }
+    .dot:nth-child(3) { margin-right: 8px; background: #5bd592; }
+    .terminal-body { padding: 24px 23px 26px; font-family: var(--mono); font-size: 12px; line-height: 1.85; }
+    .terminal-body .dim { color: #8697b9; }
+    .terminal-body .rule { color: #8faaff; }
+    .terminal-body .bad { color: #ff9ca2; }
+    .terminal-body .good { color: #79dfb0; }
+    .terminal-body .prompt { color: #65d8e9; }
+
+    .stats {
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--white);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .stat {
+      padding: 29px 26px;
+      border-right: 1px solid var(--line);
+    }
+    .stat:last-child { border-right: 0; }
+    .stat strong { display: block; font-size: 31px; letter-spacing: -.045em; }
+    .stat span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .section { padding: 90px 0; }
+    .section.soft { background: var(--panel); }
+    .section-head {
+      max-width: 790px;
+      margin-bottom: 39px;
+    }
+    .kicker {
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h2 {
+      margin: 11px 0 14px;
+      font-size: clamp(36px, 4.5vw, 54px);
+      line-height: 1.07;
+      letter-spacing: -.05em;
+    }
+    .section-copy { margin: 0; color: var(--muted); font-size: 17px; line-height: 1.7; }
+
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+    .value-card {
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--white);
+      box-shadow: 0 12px 34px rgba(28, 48, 91, .055);
+    }
+    .value-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 20px;
+      border-radius: 13px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-weight: 900;
+    }
+    .value-card:nth-child(2) .value-icon { color: var(--green); background: var(--green-soft); }
+    .value-card:nth-child(3) .value-icon { color: var(--violet); background: var(--violet-soft); }
+    .value-card h3 { margin: 0 0 10px; font-size: 20px; letter-spacing: -.025em; }
+    .value-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.66; }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .filter {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--white);
+      cursor: pointer;
+      font-weight: 780;
+    }
+    .filter.active { border-color: var(--blue); color: white; background: var(--blue); }
+    .rules {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .rule-card {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 19px;
+      padding: 23px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--white);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .rule-card:hover { transform: translateY(-2px); box-shadow: 0 15px 36px rgba(28, 48, 91, .08); }
+    .rule-card.hidden { display: none; }
+    .rule-id {
+      height: fit-content;
+      padding: 7px 8px;
+      border-radius: 9px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: center;
+    }
+    .rule-card[data-group="security"] .rule-id { color: var(--red); background: var(--red-soft); }
+    .rule-card[data-group="reliability"] .rule-id { color: var(--green); background: var(--green-soft); }
+    .rule-card[data-group="governance"] .rule-id { color: var(--violet); background: var(--violet-soft); }
+    .rule-card h3 { margin: 0 0 7px; font-size: 17px; line-height: 1.35; letter-spacing: -.02em; }
+    .rule-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.58; }
+    .tag {
+      display: inline-flex;
+      margin-top: 11px;
+      padding: 4px 8px;
+      border-radius: 7px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+    .flow-step {
+      position: relative;
+      min-height: 210px;
+      padding: 30px 25px;
+      border-right: 1px solid var(--line);
+    }
+    .flow-step:last-child { border-right: 0; }
+    .flow-number {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 22px;
+      border-radius: 50%;
+      color: white;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .flow-step h3 { margin: 0 0 8px; font-size: 17px; }
+    .flow-step p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.58; }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .code-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #111a30;
+    }
+    .code-title {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      color: #aebbd3;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    pre {
+      min-height: 260px;
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+      color: #dce8ff;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .comment { color: #7f91b2; }
+    .keyword { color: #b49cff; }
+    .type { color: #6bd5e5; }
+    .string { color: #9dddaf; }
+    .highlight-bad { display: inline-block; background: rgba(255, 91, 102, .15); }
+    .highlight-good { display: inline-block; background: rgba(91, 213, 146, .13); }
+
+    .cta {
+      overflow: hidden;
+      padding: 63px;
+      border-radius: 28px;
+      color: white;
+      background:
+        radial-gradient(circle at 92% 10%, rgba(112, 72, 216, .8), transparent 23rem),
+        linear-gradient(125deg, #17285c, #263f94);
+      box-shadow: 0 28px 70px rgba(24, 43, 98, .22);
+    }
+    .cta h2 { max-width: 760px; margin-top: 0; }
+    .cta p { max-width: 720px; margin: 17px 0 0; color: #cbd6ef; font-size: 17px; line-height: 1.67; }
+    .cta .button { margin-top: 27px; color: var(--navy); background: white; }
+
+    footer {
+      padding: 35px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .footer-inner { display: flex; justify-content: space-between; gap: 20px; }
+
+    @media (max-width: 960px) {
+      .hero-grid, .value-grid, .code-grid { grid-template-columns: 1fr; }
+      .hero-grid { gap: 45px; }
+      .rules { grid-template-columns: 1fr; }
+      .stats-grid, .flow { grid-template-columns: repeat(2, 1fr); }
+      .stat:nth-child(2), .flow-step:nth-child(2) { border-right: 0; }
+      .stat:nth-child(-n+2), .flow-step:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 650px) {
+      .container { width: min(100% - 26px, 1180px); }
+      .nav-links a:not(.button) { display: none; }
+      .hero { padding: 63px 0 55px; }
+      h1 { font-size: 46px; }
+      .stats-grid, .flow { grid-template-columns: 1fr; }
+      .stat, .flow-step { border-right: 0; border-bottom: 1px solid var(--line); }
+      .stat:last-child, .flow-step:last-child { border-bottom: 0; }
+      .rule-card { grid-template-columns: 1fr; gap: 12px; }
+      .rule-id { width: fit-content; }
+      .cta { padding: 38px 27px; }
+      .footer-inner { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#start">
+        <span class="brand-mark">AI</span>
+        <span>Engineering Guardrails</span>
+      </a>
+      <div class="nav-links">
+        <a href="#wartosc">Dlaczego</a>
+        <a href="#reguly">Reguły</a>
+        <a href="#proces">Proces</a>
+        <a class="button primary" href="#wdrozenie">Włącz kontrolę</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero" id="start">
+    <div class="container hero-grid">
+      <div>
+        <div class="eyebrow">SonarQube · C# · integracje AI</div>
+        <h1>AI w produkcji potrzebuje <span>technicznych barier.</span></h1>
+        <p class="hero-copy">
+          Cztery precyzyjne reguły statycznej analizy pilnują kosztu wywołań modeli, stabilnej tożsamości
+          agentów, bezpiecznej deserializacji odpowiedzi i prywatności logów — bez zgadywania treści
+          promptów, bez domenowych false positives i bez wymyślonych atrybutów, które nie istnieją w
+          żadnym SDK.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#reguly">Poznaj 4 kontrole</a>
+          <a class="button secondary" href="#przyklad">Zobacz przykład</a>
+        </div>
+        <div class="trust-line">
+          <span>Analiza semantyczna Roslyn</span>
+          <span>Konfigurowalne SDK</span>
+          <span>Kontrola w CI/CD</span>
+        </div>
+      </div>
+      <div class="terminal" aria-label="Przykładowy wynik analizy">
+        <div class="terminal-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          build / AI quality gate
+        </div>
+        <div class="terminal-body">
+          <div><span class="prompt">$</span> dotnet build</div>
+          <div class="dim">Analiza integracji AI...</div>
+          <br>
+          <div><span class="rule">GP0141</span> <span class="bad">Brak limitu output tokens</span></div>
+          <div><span class="rule">GP0145</span> <span class="bad">Niebezpieczna deserializacja odpowiedzi</span></div>
+          <div><span class="rule">GP0146</span> <span class="bad">Surowa odpowiedź trafia do logów</span></div>
+          <br>
+          <div class="dim">Po poprawie:</div>
+          <div><span class="good">✓ Limit tokenów ustawiony</span></div>
+          <div><span class="good">✓ Deserializacja odrzuca nieznane pola</span></div>
+          <div><span class="good">✓ Logi zawierają tylko metadane</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat"><strong>4</strong><span>reguły dedykowane integracjom z modelami i agentami</span></div>
+      <div class="stat"><strong>0</strong><span>wymyślonych atrybutów wymaganych, aby reguły działały</span></div>
+      <div class="stat"><strong>0</strong><span>analizy treści promptów i zgadywania intencji biznesowej</span></div>
+      <div class="stat"><strong>CI</strong><span>informacja zwrotna zanim ryzykowny kod trafi na produkcję</span></div>
+    </div>
+  </section>
+
+  <main>
+    <section class="section soft" id="wartosc">
+      <div class="container">
+        <div class="section-head">
+          <div class="kicker">Od eksperymentu do produktu</div>
+          <h2>Kontrola tam, gdzie zwykłe reguły C# już nie wystarczają.</h2>
+          <p class="section-copy">
+            Integracja z LLM-em wprowadza nowe powierzchnie ryzyka: nieograniczony koszt, utratę danych w logach
+            i odpowiedzi, których kształtu nie można założyć. Guardrails zamieniają te oczekiwania w
+            automatycznie egzekwowany standard kodu — dowodząc każdego naruszenia z realnych symboli SDK
+            i zwykłej semantyki C#, bez żadnych dodatkowych atrybutów do wprowadzenia.
+          </p>
+        </div>
+        <div class="value-grid">
+          <article class="value-card">
+            <div class="value-icon">01</div>
+            <h3>Przewidywalne koszty</h3>
+            <p>Każde wywołanie modelu ma ustawiony dodatni limit <code>MaxOutputTokens</code>, więc koszt pojedynczego zapytania jest z góry ograniczony.</p>
+          </article>
+          <article class="value-card">
+            <div class="value-icon">02</div>
+            <h3>Bezpieczne dane</h3>
+            <p>Surowe wiadomości i odpowiedzi nie trafiają do logów, a odpowiedź modelu jest deserializowana z opcjami odrzucającymi nieznane pola.</p>
+          </article>
+          <article class="value-card">
+            <div class="value-icon">03</div>
+            <h3>Stabilni agenci</h3>
+            <p><code>ChatClientAgent</code> ma deterministyczną nazwę, dzięki czemu jego stan (wątki, pamięć, telemetria) przeżywa restart procesu.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="reguly">
+      <div class="container">
+        <div class="section-head">
+          <div class="kicker">Katalog kontroli</div>
+          <h2>Cztery reguły. Każda odpowiada na konkretną awarię.</h2>
+          <p class="section-copy">
+            Reguły działają wyłącznie na symbolach i przepływie danych Roslyn dowiedzionych z rzeczywistego SDK -
+            żadna nie wymaga wprowadzenia własnego atrybutu znacznikowego. Dodatkowe API modeli, agentów i
+            formatów odpowiedzi można wskazać w <code>.editorconfig</code>.
+          </p>
+        </div>
+        <div class="filters" aria-label="Filtry reguł">
+          <button class="filter active" data-filter="all">Wszystkie</button>
+          <button class="filter" data-filter="governance">Governance</button>
+          <button class="filter" data-filter="reliability">Niezawodność</button>
+          <button class="filter" data-filter="security">Bezpieczeństwo</button>
+        </div>
+        <div class="rules">
+          <article class="rule-card" data-group="reliability">
+            <div class="rule-id">GP0141</div>
+            <div><h3>Limit output tokens</h3><p>Wywołanie modelu musi ustawić limit długości odpowiedzi i nie może przekazywać braku konfiguracji lub wartości niedodatniej.</p><span class="tag">Koszt</span></div>
+          </article>
+          <article class="rule-card" data-group="governance">
+            <div class="rule-id">GP0143</div>
+            <div><h3>Stabilna nazwa agenta</h3><p>Agent otrzymuje deterministyczny identyfikator zamiast nazwy generowanej losowo lub zależnej od bieżącego czasu.</p><span class="tag">Obserwowalność</span></div>
+          </article>
+          <article class="rule-card" data-group="security">
+            <div class="rule-id">GP0145</div>
+            <div><h3>Restrykcyjna deserializacja</h3><p>Odpowiedź modelu jest deserializowana z jawnymi opcjami odrzucającymi nieznane pola, w typowany model zamiast <code>dynamic</code>.</p><span class="tag">Walidacja</span></div>
+          </article>
+          <article class="rule-card" data-group="security">
+            <div class="rule-id">GP0146</div>
+            <div><h3>Brak surowych danych AI w logach</h3><p>Wiadomości, odpowiedzi i kolekcje konwersacji rozpoznane po typie nie mogą trafiać bezpośrednio do loggera.</p><span class="tag">Prywatność</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section soft" id="proces">
+      <div class="container">
+        <div class="section-head">
+          <div class="kicker">Egzekwowanie standardu</div>
+          <h2>Od lokalnego IDE do quality gate.</h2>
+          <p class="section-copy">Ten sam standard wspiera programistę podczas pisania kodu i chroni główną gałąź w pipeline.</p>
+        </div>
+        <div class="flow">
+          <div class="flow-step"><div class="flow-number">1</div><h3>Kod</h3><p>Programista pisze integrację, korzystając wprost z typów SDK: <code>ChatOptions</code>, <code>ChatResponse</code>, <code>ChatClientAgent</code>.</p></div>
+          <div class="flow-step"><div class="flow-number">2</div><h3>IDE</h3><p>Roslyn pokazuje problem dokładnie przy niezgodnym wywołaniu lub konfiguracji.</p></div>
+          <div class="flow-step"><div class="flow-number">3</div><h3>Pull request</h3><p>SonarQube prezentuje ryzyko podczas review, zanim zmiana zostanie scalona.</p></div>
+          <div class="flow-step"><div class="flow-number">4</div><h3>Quality gate</h3><p>Najważniejsze naruszenia mogą automatycznie zablokować wydanie.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="przyklad">
+      <div class="container">
+        <div class="section-head">
+          <div class="kicker">Przykład w kodzie</div>
+          <h2>Standard jest czytelny również bez dokumentacji obok.</h2>
+        </div>
+        <div class="code-grid">
+          <div class="code-card">
+            <div class="code-title">Ryzykowna integracja</div>
+            <pre><span class="keyword">public async</span> Task&lt;Invoice&gt; ExtractAsync(
+    IChatClient client,
+    ILogger logger)
+{
+    <span class="highlight-bad">var response = await client.GetResponseAsync(prompt);</span>
+
+    <span class="highlight-bad">logger.LogInformation("{Text}", response.Text);</span>
+
+    <span class="highlight-bad">return JsonSerializer.Deserialize&lt;Invoice&gt;(
+        response.Text)!;</span>
+}</pre>
+          </div>
+          <div class="code-card">
+            <div class="code-title">Kontrolowana integracja AI</div>
+            <pre><span class="keyword">public async</span> Task&lt;Invoice&gt; ExtractAsync(
+    IChatClient client,
+    ILogger logger)
+{
+    <span class="highlight-good">var options = new ChatOptions { MaxOutputTokens = 800 };</span>
+
+    var response = <span class="keyword">await</span> client.GetResponseAsync(
+        prompt, options);
+
+    <span class="highlight-good">logger.LogInformation("model {Model}, {Tokens} tokens",
+        response.ModelId, response.Usage?.TotalTokenCount);</span>
+
+    <span class="highlight-good">var jsonOptions = new JsonSerializerOptions
+    {
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    };</span>
+    <span class="keyword">return</span> JsonSerializer.Deserialize&lt;Invoice&gt;(
+        response.Text, jsonOptions)!;
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="wdrozenie">
+      <div class="container">
+        <div class="cta">
+          <div class="kicker" style="color:#91dceb">AI quality gate</div>
+          <h2>Zamień zasady bezpiecznego AI w kod, który sprawdza się sam.</h2>
+          <p>
+            Guardrails nie oceniają jakości promptu ani decyzji biznesowych. Pilnują technicznych kontraktów,
+            które da się jednoznacznie udowodnić podczas kompilacji — szybko, powtarzalnie i dla każdego zespołu.
+          </p>
+          <a class="button" href="#reguly">Przejrzyj katalog reguł</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>AI Engineering Guardrails dla .NET i SonarQube</span>
+      <span>Semantyczna analiza kodu · konfiguracja przez .editorconfig</span>
+    </div>
+  </footer>
+
+  <script>
+    const filters = document.querySelectorAll(".filter");
+    const rules = document.querySelectorAll(".rule-card");
+
+    filters.forEach((button) => {
+      button.addEventListener("click", () => {
+        filters.forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        const selected = button.dataset.filter;
+
+        rules.forEach((rule) => {
+          rule.classList.toggle(
+            "hidden",
+            selected !== "all" && rule.dataset.group !== selected
+          );
+        });
+      });
+    });
+  </script>
+</body>
+</html>

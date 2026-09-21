@@ -1,0 +1,33 @@
+{
+  "title": "Sensitive diagnostics should only be enabled in development",
+  "type": "VULNERABILITY",
+  "code": {
+    "impacts": {
+      "SECURITY": "HIGH"
+    },
+    "attribute": "TRUSTWORTHY"
+  },
+  "status": "ready",
+  "remediation": {
+    "func": "Constant/Issue",
+    "constantCost": "10min"
+  },
+  "tags": [
+    "gp",
+    "asp.net",
+    "ef-core",
+    "security",
+    "cwe"
+  ],
+  "defaultSeverity": "Critical",
+  "ruleSpecification": "GP-0137",
+  "sqKey": "GP0137",
+  "scope": "Main",
+  "quickfix": "infeasible",
+  "securityStandards": {
+    "CWE": [
+      209,
+      532
+    ]
+  }
+}

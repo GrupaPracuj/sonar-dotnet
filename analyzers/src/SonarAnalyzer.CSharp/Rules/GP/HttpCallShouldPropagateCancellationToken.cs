@@ -92,7 +92,9 @@ public sealed class HttpCallShouldPropagateCancellationToken : SonarDiagnosticAn
     private static bool IsCancellationToken(IParameterSymbol parameter) =>
         parameter.Type.Is(KnownType.System_Threading_CancellationToken);
 
-    private static bool PassesAvailableCancellationToken(SemanticModel model,
+    // Exposed for AiCallShouldPropagateCancellationToken (GP0140), which needs the exact same "is the enclosing
+    // method's own token actually the one passed" check for AI model/tool calls.
+    internal static bool PassesAvailableCancellationToken(SemanticModel model,
                                                          InvocationExpressionSyntax invocation,
                                                          IParameterSymbol availableToken) =>
         ArgumentsWithParameters(invocation, model.GetSymbolInfo(invocation).Symbol as IMethodSymbol)

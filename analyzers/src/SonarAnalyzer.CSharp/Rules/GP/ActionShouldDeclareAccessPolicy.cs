@@ -13,7 +13,7 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
 {
     internal const string RuleId = "GP0020";
 
-    private const string MessageFormat = "Method '{0}' has neither [Authorize] nor [AllowAnonymous]; explicitly declare its access policy.";
+    private const string MessageFormat = "Endpoint '{0}' has neither authorization nor anonymous access explicitly declared.";
     private const string AllowAnonymousAttribute = "Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute";
     private const string ApiControllerAttribute = "Microsoft.AspNetCore.Mvc.ApiControllerAttribute";
     private const string AuthorizeAttribute = "Microsoft.AspNetCore.Authorization.AuthorizeAttribute";
@@ -24,6 +24,8 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
     private const string ControllerEndpointRouteBuilderExtensions = "Microsoft.AspNetCore.Builder.ControllerEndpointRouteBuilderExtensions";
     private const string FilterCollection = "Microsoft.AspNetCore.Mvc.Filters.FilterCollection";
 
+    private static readonly string[] MinimalApiMapMethods = ["MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete", "MapMethods"];
+
     private static readonly DiagnosticDescriptor Rule = DescriptorFactory.Create(RuleId, MessageFormat);
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } = ImmutableArray.Create(Rule);
@@ -31,9 +33,14 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
     protected override void Initialize(SonarAnalysisContext context) =>
         context.RegisterCompilationStartAction(start =>
         {
-            if (!HasDirectGlobalProtection(start.Compilation))
+            var hasFallbackPolicy = HasAuthenticatedFallbackPolicy(start.Compilation);
+            if (!hasFallbackPolicy && !HasMvcOnlyGlobalProtection(start.Compilation))
             {
                 start.RegisterNodeAction(AnalyzeClass, SyntaxKind.ClassDeclaration);
+            }
+            if (!hasFallbackPolicy)
+            {
+                start.RegisterNodeAction(AnalyzeMinimalApiEndpoint, SyntaxKind.InvocationExpression);
             }
         });
 
@@ -62,6 +69,17 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
         }
     }
 
+    private static void AnalyzeMinimalApiEndpoint(SonarSyntaxNodeReportingContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        if (GpMinimalApi.TryGetMapMethod(invocation, context.Model, MinimalApiMapMethods, out var mapMethod, out var routeTemplate)
+            && !FluentChainDeclaresAccessPolicy(invocation, context.Model)
+            && !ReceiverDeclaresAccessPolicy(invocation, mapMethod, context.Model))
+        {
+            context.ReportIssue(Rule, invocation, routeTemplate ?? mapMethod.Name);
+        }
+    }
+
     private static bool DeclaresAccessPolicyForWholeType(INamedTypeSymbol type) =>
         type.AttributesWithInherited.Any(x => IsAttribute(x, AuthorizeAttribute) || IsAttribute(x, AllowAnonymousAttribute));
 
@@ -87,21 +105,134 @@ public sealed class ActionShouldDeclareAccessPolicy : SonarDiagnosticAnalyzer
         return false;
     }
 
-    private static bool HasDirectGlobalProtection(Compilation compilation)
+    private static bool HasAuthenticatedFallbackPolicy(Compilation compilation) =>
+        CompilationContains(compilation, (root, model) =>
+            root.DescendantNodes().OfType<AssignmentExpressionSyntax>().Any(x => IsAuthenticatedFallbackPolicy(model, x)));
+
+    private static bool HasMvcOnlyGlobalProtection(Compilation compilation) =>
+        CompilationContains(compilation, (root, model) =>
+            root.DescendantNodes().OfType<InvocationExpressionSyntax>().Any(x =>
+                AddsGlobalAuthorizeFilter(model, x) || RequiresAuthorizationForControllers(model, x)));
+
+    private static bool CompilationContains(Compilation compilation, Func<SyntaxNode, SemanticModel, bool> predicate)
     {
         foreach (var tree in compilation.SyntaxTrees)
         {
             var root = tree.GetRoot();
             var model = compilation.GetSemanticModel(tree);
-            if (root.DescendantNodes().OfType<AssignmentExpressionSyntax>().Any(x => IsAuthenticatedFallbackPolicy(model, x))
-                || root.DescendantNodes().OfType<InvocationExpressionSyntax>().Any(x =>
-                    AddsGlobalAuthorizeFilter(model, x) || RequiresAuthorizationForControllers(model, x)))
+            if (predicate(root, model))
             {
                 return true;
             }
         }
         return false;
     }
+
+    private static bool FluentChainDeclaresAccessPolicy(InvocationExpressionSyntax invocation, SemanticModel model)
+    {
+        SyntaxNode current = invocation;
+        while (current.Parent is MemberAccessExpressionSyntax { Expression: var receiver } memberAccess
+               && receiver == current
+               && memberAccess.Parent is InvocationExpressionSyntax chainedInvocation)
+        {
+            if (IsAccessPolicyInvocation(chainedInvocation, model))
+            {
+                return true;
+            }
+            current = chainedInvocation;
+        }
+        return false;
+    }
+
+    private static bool ReceiverDeclaresAccessPolicy(InvocationExpressionSyntax mapInvocation, IMethodSymbol mapMethod, SemanticModel model)
+    {
+        var receiver = ReceiverExpression(mapInvocation, mapMethod);
+        if (InvocationChainDeclaresAccessPolicy(receiver, model))
+        {
+            return true;
+        }
+
+        return receiver is not null
+               && model.GetSymbolInfo(receiver.RemoveParentheses()).Symbol is ILocalSymbol local
+               && StableLocalRouteGroupDeclaresAccessPolicy(local, mapInvocation, model);
+    }
+
+    private static bool InvocationChainDeclaresAccessPolicy(ExpressionSyntax expression, SemanticModel model)
+    {
+        expression = (ExpressionSyntax)expression?.RemoveParentheses();
+        if (expression is not InvocationExpressionSyntax invocation)
+        {
+            return false;
+        }
+
+        if (IsAccessPolicyInvocation(invocation, model))
+        {
+            return true;
+        }
+
+        return model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+               && InvocationChainDeclaresAccessPolicy(ReceiverExpression(invocation, method), model);
+    }
+
+    private static bool StableLocalRouteGroupDeclaresAccessPolicy(ILocalSymbol local,
+                                                                   InvocationExpressionSyntax mapInvocation,
+                                                                   SemanticModel model)
+    {
+        if (local.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<VariableDeclaratorSyntax>().SingleOrDefault() is not { } declaration
+            || declaration.Initializer?.Value is not { } initializer
+            || !ContainsMapGroupInvocation(initializer, model)
+            || mapInvocation.FirstAncestorOrSelf<BlockSyntax>() is not { } block
+            || declaration.FirstAncestorOrSelf<BlockSyntax>() != block
+            || IsReassignedBetween(local, declaration.Span.End, mapInvocation.SpanStart, block, model))
+        {
+            return false;
+        }
+
+        return InvocationChainDeclaresAccessPolicy(initializer, model)
+               || block.Statements
+                   .OfType<ExpressionStatementSyntax>()
+                   .SelectMany(x => x.Expression.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+                   .Any(x => x.SpanStart > declaration.Span.End
+                             && x.SpanStart < mapInvocation.SpanStart
+                             && IsAccessPolicyInvocation(x, model)
+                             && AccessPolicyTargetsLocal(x, local, model));
+    }
+
+    private static bool AccessPolicyTargetsLocal(InvocationExpressionSyntax invocation, ILocalSymbol local, SemanticModel model) =>
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol method
+        && ReceiverExpression(invocation, method) is { } receiverExpression
+        && model.GetSymbolInfo(receiverExpression.RemoveParentheses()).Symbol is { } receiver
+        && receiver.Equals(local);
+
+    private static bool ContainsMapGroupInvocation(ExpressionSyntax expression, SemanticModel model) =>
+        expression.DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(x => GpMinimalApi.TryGetMapMethod(x, model, ["MapGroup"], out _, out _));
+
+    private static bool IsReassignedBetween(ILocalSymbol local,
+                                            int start,
+                                            int end,
+                                            BlockSyntax block,
+                                            SemanticModel model) =>
+        block.DescendantNodes()
+            .OfType<AssignmentExpressionSyntax>()
+            .Any(x => x.SpanStart > start
+                      && x.SpanStart < end
+                      && model.GetSymbolInfo(x.Left).Symbol is { } assigned
+                      && assigned.Equals(local));
+
+    private static bool IsAccessPolicyInvocation(InvocationExpressionSyntax invocation, SemanticModel model) =>
+        model.GetSymbolInfo(invocation).Symbol is IMethodSymbol
+        {
+            Name: "RequireAuthorization" or "AllowAnonymous",
+            ContainingType: { } containingType,
+        }
+        && containingType.ToDisplayString() == AuthorizationEndpointConventionBuilderExtensions;
+
+    private static ExpressionSyntax ReceiverExpression(InvocationExpressionSyntax invocation, IMethodSymbol method) =>
+        method.ReducedFrom is not null
+            ? (invocation.Expression as MemberAccessExpressionSyntax)?.Expression
+            : invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
 
     private static bool IsAuthenticatedFallbackPolicy(SemanticModel model, AssignmentExpressionSyntax assignment) =>
         assignment.IsKind(SyntaxKind.SimpleAssignmentExpression)

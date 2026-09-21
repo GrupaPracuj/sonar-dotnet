@@ -1,0 +1,40 @@
+<p>A structured AI response should be deserialized with a <code>JsonSerializerOptions</code> that disallows unmapped members, and into a typed model
+rather than a dynamic value.</p>
+<h2>Why is this an issue?</h2>
+<p>An AI-generated response is untrusted input in every sense that matters for deserialization: the model can hallucinate extra fields, omit expected
+ones, or - in the presence of a prompt injection - be steered into producing a payload that was never intended to reach application code as data.
+Deserializing it with the default, permissive member handling silently accepts whatever shape the model produced. Deserializing it into
+<code>dynamic</code>, <code>ExpandoObject</code>, or a loose <code>JsonDocument</code> is worse still: nothing about the target type constrains what the
+response is allowed to contain, so validation has to happen by hand, if at all, at every place the value is subsequently used.</p>
+<pre>
+var invoice = JsonSerializer.Deserialize&lt;InvoiceData&gt;(response.Text);
+</pre>
+<p>The rule recognizes the <code>Text</code> property of <code>Microsoft.Extensions.AI.ChatResponse</code> and
+<code>AgentRunResponse</code> from <code>Microsoft.Extensions.AI</code> or <code>Microsoft.Agents.AI</code> when it is passed directly to
+<code>System.Text.Json.JsonSerializer.Deserialize()</code>, <code>DeserializeAsync()</code>, <code>JsonDocument.Parse()</code> or
+<code>ParseAsync()</code>. It reports deserialization without <code>JsonSerializerOptions</code>, options that are provably missing
+<code>UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow</code>, and deserialization into <code>dynamic</code>,
+<code>ExpandoObject</code> or <code>JsonDocument</code>.</p>
+<h3>Exceptions</h3>
+<p>AI response text passed through another variable or method is not reported. A <code>JsonSerializerOptions</code> instance supplied through a
+parameter, field, or method call is also not reported because its configuration cannot be determined at the deserialization site.</p>
+<h2>How to fix it</h2>
+<p>Deserialize into a specific typed model, and pass a <code>JsonSerializerOptions</code> with <code>UnmappedMemberHandling</code> set to
+<code>JsonUnmappedMemberHandling.Disallow</code>.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+public InvoiceData Extract(ChatResponse response) =>
+    JsonSerializer.Deserialize&lt;InvoiceData&gt;(response.Text); // Noncompliant {{This AI response is deserialized without a JsonSerializerOptions that disallows unmapped members - pass one with UnmappedMemberHandling.Disallow.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+public InvoiceData Extract(ChatResponse response) =>
+    JsonSerializer.Deserialize&lt;InvoiceData&gt;(response.Text, new JsonSerializerOptions { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow });
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/missing-members">Handle unmapped
+  members with System.Text.Json</a></li>
+</ul>

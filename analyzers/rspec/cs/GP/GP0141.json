@@ -1,24 +1,24 @@
 {
-  "title": "Endpoints should explicitly declare their access policy",
+  "title": "AI model invocations should cap output tokens",
   "type": "CODE_SMELL",
   "code": {
     "impacts": {
-      "MAINTAINABILITY": "MEDIUM"
+      "RELIABILITY": "MEDIUM"
     },
-    "attribute": "CONVENTIONAL"
+    "attribute": "COMPLETE"
   },
   "status": "ready",
   "remediation": {
     "func": "Constant/Issue",
-    "constantCost": "10min"
+    "constantCost": "5min"
   },
   "tags": [
     "gp",
-    "authorization"
+    "ai"
   ],
   "defaultSeverity": "Major",
-  "ruleSpecification": "GP-0020",
-  "sqKey": "GP0020",
+  "ruleSpecification": "GP-0141",
+  "sqKey": "GP0141",
   "scope": "Main",
   "quickfix": "unknown"
 }

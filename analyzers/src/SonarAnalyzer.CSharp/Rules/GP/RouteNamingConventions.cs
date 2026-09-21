@@ -21,7 +21,8 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     private const string KebabCaseMessage = "Rename route segment '{0}' to kebab-case.";
     private const string NoVerbMessage = "Remove the verb '{0}' from the route; the HTTP method already expresses the action.";
     private const string NoTrailingSlashMessage = "Remove the trailing slash from the route.";
-    private const string SecretRouteParameterMessage = "Route parameter '{0}' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.";
+    private const string SecretRouteParameterMessage = "URL parameter '{0}' looks like it carries a secret - it will end up in server logs, browser history and proxy caches.";
+    private const string FromQueryAttribute = "Microsoft.AspNetCore.Mvc.FromQueryAttribute";
 
     private static readonly DiagnosticDescriptor KebabCaseRule = DescriptorFactory.Create(KebabCaseRuleId, KebabCaseMessage);
     private static readonly DiagnosticDescriptor NoVerbRule = DescriptorFactory.Create(NoVerbRuleId, NoVerbMessage);
@@ -31,6 +32,16 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     // Ordered longest-first so prefix matching always reports the longest verb that fits, independently of how the
     // collection happens to be laid out in memory.
     private static readonly string[] VerbSegments = SortedByLengthDescending("delete", "patch", "post", "get", "put");
+    private static readonly HashSet<string> MinimalApiMapMethods = new(StringComparer.Ordinal)
+    {
+        "Map",
+        "MapDelete",
+        "MapGet",
+        "MapMethods",
+        "MapPatch",
+        "MapPost",
+        "MapPut",
+    };
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get; } =
         ImmutableArray.Create(KebabCaseRule, NoVerbRule, NoTrailingSlashRule, SecretRouteParameterRule);
@@ -39,6 +50,8 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     {
         context.RegisterNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
         context.RegisterNodeAction(AnalyzeClass, SyntaxKind.ClassDeclaration);
+        context.RegisterNodeAction(AnalyzeMinimalApiRoute, SyntaxKind.InvocationExpression);
+        context.RegisterNodeAction(AnalyzeQueryParameter, SyntaxKind.Parameter);
     }
 
     private static void AnalyzeMethod(SonarSyntaxNodeReportingContext context)
@@ -57,6 +70,32 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
         }
     }
 
+    private static void AnalyzeMinimalApiRoute(SonarSyntaxNodeReportingContext context)
+    {
+        var invocation = (InvocationExpressionSyntax)context.Node;
+        if (GpMinimalApi.TryGetMapMethod(invocation, context.Model, MinimalApiMapMethods, out _, out var routeTemplate)
+            && routeTemplate is { Length: > 0 })
+        {
+            AnalyzeSecretRouteParameters(context, invocation, routeTemplate);
+        }
+    }
+
+    private static void AnalyzeQueryParameter(SonarSyntaxNodeReportingContext context)
+    {
+        var parameterSyntax = (ParameterSyntax)context.Node;
+        if (context.Model.GetDeclaredSymbol(parameterSyntax) is not IParameterSymbol parameter
+            || parameter.GetAttributes().FirstOrDefault(x => x.AttributeClass?.ToDisplayString() == FromQueryAttribute) is not { } attribute)
+        {
+            return;
+        }
+
+        var queryName = attribute.NamedArguments.FirstOrDefault(x => x.Key == "Name").Value.Value as string ?? parameter.Name;
+        if (GpIdentifierWords.ContainsSecretWord(queryName))
+        {
+            context.ReportIssue(SecretRouteParameterRule, parameterSyntax.Identifier.GetLocation(), queryName);
+        }
+    }
+
     private static void AnalyzeAttributes(SonarSyntaxNodeReportingContext context, ImmutableArray<AttributeData> attributes)
     {
         foreach (var attribute in attributes)
@@ -72,9 +111,24 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
                 Report(context, NoTrailingSlashRule, attributeSyntax, template, template.Length - 1, 1);
             }
 
+            AnalyzeSecretRouteParameters(context, attributeSyntax, template);
+
             foreach (var (segment, offset) in Segments(template))
             {
                 AnalyzeSegment(context, attributeSyntax, template, segment, offset);
+            }
+        }
+    }
+
+    private static void AnalyzeSecretRouteParameters(SonarSyntaxNodeReportingContext context, SyntaxNode routeSyntax, string template)
+    {
+        foreach (var (segment, offset) in Segments(template))
+        {
+            if (IsParameter(segment)
+                && ParameterName(segment) is { Length: > 0 } parameterName
+                && GpIdentifierWords.ContainsSecretWord(parameterName))
+            {
+                Report(context, SecretRouteParameterRule, routeSyntax, template, offset + 1, parameterName.Length, parameterName);
             }
         }
     }
@@ -83,11 +137,6 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     {
         if (IsParameterOrToken(segment))
         {
-            if (IsParameter(segment) && ParameterName(segment) is { Length: > 0 } parameterName && GpIdentifierWords.ContainsSecretWord(parameterName))
-            {
-                Report(context, SecretRouteParameterRule, attributeSyntax, template, offset + 1, parameterName.Length, parameterName);
-            }
-
             return;
         }
 
@@ -136,10 +185,9 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
     // Points inside the route template string when the offsets can be mapped safely, which requires a plain string
     // literal whose text is exactly the value plus the two quotes - a verbatim prefix or any escape sequence would
     // shift every position after it. Otherwise the whole attribute is used.
-    private static Location TemplateLocation(SyntaxNode attributeSyntax, string template, int offset, int length)
+    private static Location TemplateLocation(SyntaxNode routeSyntax, string template, int offset, int length)
     {
-        if (attributeSyntax is AttributeSyntax { ArgumentList.Arguments: { Count: > 0 } arguments }
-            && arguments.Select(x => x.Expression)
+        if (routeSyntax.DescendantNodes()
                 .OfType<LiteralExpressionSyntax>()
                 .FirstOrDefault(x => x.IsKind(SyntaxKind.StringLiteralExpression) && x.Token.ValueText == template) is { Token: var token }
             && token.Text.Length == template.Length + 2)
@@ -147,7 +195,7 @@ public sealed class RouteNamingConventions : SonarDiagnosticAnalyzer
             return Location.Create(token.SyntaxTree, new TextSpan(token.SpanStart + 1 + offset, length));
         }
 
-        return attributeSyntax.GetLocation();
+        return routeSyntax.GetLocation();
     }
 
     // A route parameter or a replacement token anywhere in the segment puts the segment's spelling outside the

@@ -1,0 +1,31 @@
+<p>A <code>ChatClientAgent</code> should be created with a stable, deterministic name.</p>
+<h2>Why is this an issue?</h2>
+<p>An agent's name is frequently used as a key for scoped state - conversation threads, caches, telemetry dimensions - across process restarts. A name
+that is missing, null, or generated fresh on every run (a new <code>Guid</code>, a timestamp) silently starts a new identity every time the process
+starts, orphaning whatever was keyed to the previous run's name.</p>
+<pre>
+var agent = new ChatClientAgent(chatClient, name: Guid.NewGuid().ToString());
+</pre>
+<p>The rule checks construction of <code>ChatClientAgent</code> from <code>Microsoft.Agents.AI</code> and
+<code>Microsoft.Extensions.AI</code>. It reports a missing or <code>null</code> <code>name</code>, and names built from
+<code>Guid.NewGuid()</code>, <code>DateTime.Now</code>, <code>DateTime.UtcNow</code> or <code>DateTime.Today</code>.</p>
+<h3>Exceptions</h3>
+<p>A name supplied through an ordinary variable, parameter, or method call is not reported when its stability cannot be determined at the
+construction site. Literal strings, constants, and <code>static readonly</code> fields with deterministic initializers are stable.</p>
+<h2>How to fix it</h2>
+<p>Give the agent a literal or otherwise deterministic name, for example one sourced from configuration through an ordinary parameter or
+field.</p>
+<h3>Code examples</h3>
+<h4>Noncompliant code example</h4>
+<pre data-diff-id="1" data-diff-type="noncompliant">
+var agent = new ChatClientAgent(chatClient, name: Guid.NewGuid().ToString()); // Noncompliant {{Give this ChatClientAgent a stable, deterministic name instead of an unstable or missing one.}}
+</pre>
+<h4>Compliant solution</h4>
+<pre data-diff-id="1" data-diff-type="compliant">
+var agent = new ChatClientAgent(chatClient, name: "invoice-summarizer");
+</pre>
+<h2>Resources</h2>
+<h3>Documentation</h3>
+<ul>
+  <li>Microsoft Learn - <a href="https://learn.microsoft.com/en-us/dotnet/ai/">AI development with .NET</a></li>
+</ul>
