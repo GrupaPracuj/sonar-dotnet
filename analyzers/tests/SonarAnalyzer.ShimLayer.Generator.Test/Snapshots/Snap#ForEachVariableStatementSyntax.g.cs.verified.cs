@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ForEachVariableStatementSyntaxWrapper
+public readonly struct ForEachVariableStatementSyntaxWrapper : IWrapper, IEquatable<ForEachVariableStatementSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.ForEachVariableStatementSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -34,26 +34,44 @@ public readonly struct ForEachVariableStatementSyntaxWrapper
     private static readonly Func<StatementSyntax, StatementSyntax> StatementAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, StatementSyntax>>(WrappedType, "Statement");
     private static readonly Func<StatementSyntax, ExpressionSyntax> VariableAccessor = AccessorFactory.CreateProperty<Func<StatementSyntax, ExpressionSyntax>>(WrappedType, "Variable");
 
-    private static readonly Func<StatementSyntax, AttributeListSyntax[], StatementSyntax> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, AttributeListSyntax[], StatementSyntax>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<StatementSyntax, AttributeListSyntax[], ForEachVariableStatementSyntaxWrapper> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, AttributeListSyntax[], ForEachVariableStatementSyntaxWrapper>>(WrappedType, "AddAttributeLists");
     private static readonly Func<StatementSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<StatementSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax>>(WrappedType, "Update");
-    private static readonly Func<StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax>>(WrappedType, "Update");
-    private static readonly Func<StatementSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax> UpdateAccessor_Overload3 = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, StatementSyntax>>(WrappedType, "Update");
-    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>, StatementSyntax> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxList<AttributeListSyntax>, StatementSyntax>>(WrappedType, "WithAttributeLists");
-    private static readonly Func<StatementSyntax, SyntaxToken, StatementSyntax> WithAwaitKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, StatementSyntax>>(WrappedType, "WithAwaitKeyword");
-    private static readonly Func<StatementSyntax, SyntaxToken, StatementSyntax> WithCloseParenTokenAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, StatementSyntax>>(WrappedType, "WithCloseParenToken");
-    private static readonly Func<StatementSyntax, ExpressionSyntax, StatementSyntax> WithExpressionAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, ExpressionSyntax, StatementSyntax>>(WrappedType, "WithExpression");
-    private static readonly Func<StatementSyntax, SyntaxToken, StatementSyntax> WithForEachKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, StatementSyntax>>(WrappedType, "WithForEachKeyword");
-    private static readonly Func<StatementSyntax, SyntaxToken, StatementSyntax> WithInKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, StatementSyntax>>(WrappedType, "WithInKeyword");
-    private static readonly Func<StatementSyntax, SyntaxToken, StatementSyntax> WithOpenParenTokenAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, StatementSyntax>>(WrappedType, "WithOpenParenToken");
-    private static readonly Func<StatementSyntax, StatementSyntax, StatementSyntax> WithStatementAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, StatementSyntax, StatementSyntax>>(WrappedType, "WithStatement");
-    private static readonly Func<StatementSyntax, ExpressionSyntax, StatementSyntax> WithVariableAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, ExpressionSyntax, StatementSyntax>>(WrappedType, "WithVariable");
+    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxList<AttributeListSyntax>, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper> UpdateAccessor_Overload2 = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<StatementSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper> UpdateAccessor_Overload3 = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, SyntaxToken, SyntaxToken, ExpressionSyntax, SyntaxToken, ExpressionSyntax, SyntaxToken, StatementSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<StatementSyntax, SyntaxList<AttributeListSyntax>, ForEachVariableStatementSyntaxWrapper> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxList<AttributeListSyntax>, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithAttributeLists");
+    private static readonly Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper> WithAwaitKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithAwaitKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper> WithCloseParenTokenAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithCloseParenToken");
+    private static readonly Func<StatementSyntax, ExpressionSyntax, ForEachVariableStatementSyntaxWrapper> WithExpressionAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, ExpressionSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithExpression");
+    private static readonly Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper> WithForEachKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithForEachKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper> WithInKeywordAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithInKeyword");
+    private static readonly Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper> WithOpenParenTokenAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, SyntaxToken, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithOpenParenToken");
+    private static readonly Func<StatementSyntax, StatementSyntax, ForEachVariableStatementSyntaxWrapper> WithStatementAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, StatementSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithStatement");
+    private static readonly Func<StatementSyntax, ExpressionSyntax, ForEachVariableStatementSyntaxWrapper> WithVariableAccessor = AccessorFactory.CreateMethod<Func<StatementSyntax, ExpressionSyntax, ForEachVariableStatementSyntaxWrapper>>(WrappedType, "WithVariable");
 
     private ForEachVariableStatementSyntaxWrapper(StatementSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public StatementSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ForEachVariableStatementSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ForEachVariableStatementSyntaxWrapper left, ForEachVariableStatementSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ForEachVariableStatementSyntaxWrapper left, ForEachVariableStatementSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -72,13 +90,13 @@ public readonly struct ForEachVariableStatementSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
-    public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
-    public SyntaxToken CloseParenToken => (SyntaxToken)CloseParenTokenAccessor(wrappedInstance);
+    public SyntaxList<AttributeListSyntax> AttributeLists => AttributeListsAccessor(wrappedInstance);
+    public SyntaxToken AwaitKeyword => AwaitKeywordAccessor(wrappedInstance);
+    public SyntaxToken CloseParenToken => CloseParenTokenAccessor(wrappedInstance);
     public ExpressionSyntax Expression => ExpressionAccessor(wrappedInstance);
-    public SyntaxToken ForEachKeyword => (SyntaxToken)ForEachKeywordAccessor(wrappedInstance);
-    public SyntaxToken InKeyword => (SyntaxToken)InKeywordAccessor(wrappedInstance);
-    public SyntaxToken OpenParenToken => (SyntaxToken)OpenParenTokenAccessor(wrappedInstance);
+    public SyntaxToken ForEachKeyword => ForEachKeywordAccessor(wrappedInstance);
+    public SyntaxToken InKeyword => InKeywordAccessor(wrappedInstance);
+    public SyntaxToken OpenParenToken => OpenParenTokenAccessor(wrappedInstance);
     public StatementSyntax Statement => StatementAccessor(wrappedInstance);
     public ExpressionSyntax Variable => VariableAccessor(wrappedInstance);
 
@@ -140,21 +158,21 @@ public readonly struct ForEachVariableStatementSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public ForEachVariableStatementSyntaxWrapper AddAttributeLists(AttributeListSyntax[] items) => ForEachVariableStatementSyntaxWrapper.From(AddAttributeListsAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public ForEachVariableStatementSyntaxWrapper Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken awaitKeyword, SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => ForEachVariableStatementSyntaxWrapper.From(UpdateAccessor(wrappedInstance, attributeLists, awaitKeyword, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement));
-    public ForEachVariableStatementSyntaxWrapper Update(SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => ForEachVariableStatementSyntaxWrapper.From(UpdateAccessor_Overload2(wrappedInstance, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement));
-    public ForEachVariableStatementSyntaxWrapper Update(SyntaxToken awaitKeyword, SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => ForEachVariableStatementSyntaxWrapper.From(UpdateAccessor_Overload3(wrappedInstance, awaitKeyword, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement));
-    public ForEachVariableStatementSyntaxWrapper WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => ForEachVariableStatementSyntaxWrapper.From(WithAttributeListsAccessor(wrappedInstance, attributeLists));
-    public ForEachVariableStatementSyntaxWrapper WithAwaitKeyword(SyntaxToken awaitKeyword) => ForEachVariableStatementSyntaxWrapper.From(WithAwaitKeywordAccessor(wrappedInstance, awaitKeyword));
-    public ForEachVariableStatementSyntaxWrapper WithCloseParenToken(SyntaxToken closeParenToken) => ForEachVariableStatementSyntaxWrapper.From(WithCloseParenTokenAccessor(wrappedInstance, closeParenToken));
-    public ForEachVariableStatementSyntaxWrapper WithExpression(ExpressionSyntax expression) => ForEachVariableStatementSyntaxWrapper.From(WithExpressionAccessor(wrappedInstance, expression));
-    public ForEachVariableStatementSyntaxWrapper WithForEachKeyword(SyntaxToken forEachKeyword) => ForEachVariableStatementSyntaxWrapper.From(WithForEachKeywordAccessor(wrappedInstance, forEachKeyword));
-    public ForEachVariableStatementSyntaxWrapper WithInKeyword(SyntaxToken inKeyword) => ForEachVariableStatementSyntaxWrapper.From(WithInKeywordAccessor(wrappedInstance, inKeyword));
-    public ForEachVariableStatementSyntaxWrapper WithOpenParenToken(SyntaxToken openParenToken) => ForEachVariableStatementSyntaxWrapper.From(WithOpenParenTokenAccessor(wrappedInstance, openParenToken));
-    public ForEachVariableStatementSyntaxWrapper WithStatement(StatementSyntax statement) => ForEachVariableStatementSyntaxWrapper.From(WithStatementAccessor(wrappedInstance, statement));
-    public ForEachVariableStatementSyntaxWrapper WithVariable(ExpressionSyntax variable) => ForEachVariableStatementSyntaxWrapper.From(WithVariableAccessor(wrappedInstance, variable));
+    public ForEachVariableStatementSyntaxWrapper AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public ForEachVariableStatementSyntaxWrapper Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken awaitKeyword, SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => UpdateAccessor(wrappedInstance, attributeLists, awaitKeyword, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement);
+    public ForEachVariableStatementSyntaxWrapper Update(SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => UpdateAccessor_Overload2(wrappedInstance, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement);
+    public ForEachVariableStatementSyntaxWrapper Update(SyntaxToken awaitKeyword, SyntaxToken forEachKeyword, SyntaxToken openParenToken, ExpressionSyntax variable, SyntaxToken inKeyword, ExpressionSyntax expression, SyntaxToken closeParenToken, StatementSyntax statement) => UpdateAccessor_Overload3(wrappedInstance, awaitKeyword, forEachKeyword, openParenToken, variable, inKeyword, expression, closeParenToken, statement);
+    public ForEachVariableStatementSyntaxWrapper WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
+    public ForEachVariableStatementSyntaxWrapper WithAwaitKeyword(SyntaxToken awaitKeyword) => WithAwaitKeywordAccessor(wrappedInstance, awaitKeyword);
+    public ForEachVariableStatementSyntaxWrapper WithCloseParenToken(SyntaxToken closeParenToken) => WithCloseParenTokenAccessor(wrappedInstance, closeParenToken);
+    public ForEachVariableStatementSyntaxWrapper WithExpression(ExpressionSyntax expression) => WithExpressionAccessor(wrappedInstance, expression);
+    public ForEachVariableStatementSyntaxWrapper WithForEachKeyword(SyntaxToken forEachKeyword) => WithForEachKeywordAccessor(wrappedInstance, forEachKeyword);
+    public ForEachVariableStatementSyntaxWrapper WithInKeyword(SyntaxToken inKeyword) => WithInKeywordAccessor(wrappedInstance, inKeyword);
+    public ForEachVariableStatementSyntaxWrapper WithOpenParenToken(SyntaxToken openParenToken) => WithOpenParenTokenAccessor(wrappedInstance, openParenToken);
+    public ForEachVariableStatementSyntaxWrapper WithStatement(StatementSyntax statement) => WithStatementAccessor(wrappedInstance, statement);
+    public ForEachVariableStatementSyntaxWrapper WithVariable(ExpressionSyntax variable) => WithVariableAccessor(wrappedInstance, variable);
 
     public static explicit operator ForEachVariableStatementSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

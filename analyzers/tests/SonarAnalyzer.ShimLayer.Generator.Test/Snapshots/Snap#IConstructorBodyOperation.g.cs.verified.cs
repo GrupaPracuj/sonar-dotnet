@@ -18,15 +18,15 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IConstructorBodyOperationWrapper : IOperationWrapper
+public readonly struct IConstructorBodyOperationWrapper : IOperationWrapper, IWrapper, IEquatable<IConstructorBodyOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IConstructorBodyOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly IOperation wrappedInstance;
 
-    private static readonly Func<IOperation, IOperation> BlockBodyAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "BlockBody");
+    private static readonly Func<IOperation, IBlockOperationWrapper> BlockBodyAccessor = AccessorFactory.CreateProperty<Func<IOperation, IBlockOperationWrapper>>(WrappedType, "BlockBody");
     private static readonly Func<IOperation, IEnumerable<IOperation>> ChildrenAccessor = AccessorFactory.CreateProperty<Func<IOperation, IEnumerable<IOperation>>>(WrappedType, "Children");
-    private static readonly Func<IOperation, IOperation> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "ExpressionBody");
+    private static readonly Func<IOperation, IBlockOperationWrapper> ExpressionBodyAccessor = AccessorFactory.CreateProperty<Func<IOperation, IBlockOperationWrapper>>(WrappedType, "ExpressionBody");
     private static readonly Func<IOperation, IOperation> InitializerAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Initializer");
     private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
     private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
@@ -41,19 +41,37 @@ public readonly struct IConstructorBodyOperationWrapper : IOperationWrapper
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IConstructorBodyOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IConstructorBodyOperationWrapper left, IConstructorBodyOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IConstructorBodyOperationWrapper left, IConstructorBodyOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
-    public IBlockOperationWrapper BlockBody => IBlockOperationWrapper.From(BlockBodyAccessor(wrappedInstance));
+    public IBlockOperationWrapper BlockBody => BlockBodyAccessor(wrappedInstance);
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
-    public IBlockOperationWrapper ExpressionBody => IBlockOperationWrapper.From(ExpressionBodyAccessor(wrappedInstance));
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
+    public IBlockOperationWrapper ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
     public IOperation Initializer => InitializerAccessor(wrappedInstance);
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
-    public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
+    public ImmutableArray<ILocalSymbol> Locals => LocalsAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
     public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
 

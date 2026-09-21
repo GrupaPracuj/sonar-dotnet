@@ -18,16 +18,38 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ISyntaxContextReceiverWrapper
+public readonly struct ISyntaxContextReceiverWrapper : IWrapper, IEquatable<ISyntaxContextReceiverWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.ISyntaxContextReceiver");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
+    private static readonly Action<Object, GeneratorSyntaxContextWrapper> OnVisitSyntaxNodeAccessor = AccessorFactory.CreateMethod<Action<Object, GeneratorSyntaxContextWrapper>>(WrappedType, "OnVisitSyntaxNode");
+
     private ISyntaxContextReceiverWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ISyntaxContextReceiverWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ISyntaxContextReceiverWrapper left, ISyntaxContextReceiverWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ISyntaxContextReceiverWrapper left, ISyntaxContextReceiverWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public void OnVisitSyntaxNode(GeneratorSyntaxContextWrapper context) => OnVisitSyntaxNodeAccessor(wrappedInstance, context);
 
     public static ISyntaxContextReceiverWrapper From(object instance)
     {

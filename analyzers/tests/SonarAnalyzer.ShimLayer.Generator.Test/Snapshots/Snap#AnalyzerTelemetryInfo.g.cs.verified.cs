@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.Diagnostics.Telemetry;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnalyzerTelemetryInfoShimExtensions
+public static class AnalyzerTelemetryInfoShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnalyzerTelemetryInfo);
 
@@ -33,14 +31,14 @@ public static partial class AnalyzerTelemetryInfoShimExtensions
     extension(AnalyzerTelemetryInfo wrappedInstance)
     {
         [System.Runtime.Serialization.DataMemberAttribute]
-        public int AdditionalFileActionsCount => (int)AdditionalFileActionsCountAccessor(wrappedInstance);
+        public int AdditionalFileActionsCount => AdditionalFileActionsCountAccessor(wrappedInstance);
         [System.Runtime.Serialization.DataMemberAttribute]
-        public bool Concurrent => (bool)ConcurrentAccessor(wrappedInstance);
+        public bool Concurrent => ConcurrentAccessor(wrappedInstance);
         [System.Runtime.Serialization.DataMemberAttribute]
-        public int SuppressionActionsCount => (int)SuppressionActionsCountAccessor(wrappedInstance);
+        public int SuppressionActionsCount => SuppressionActionsCountAccessor(wrappedInstance);
         [System.Runtime.Serialization.DataMemberAttribute]
-        public int SymbolEndActionsCount => (int)SymbolEndActionsCountAccessor(wrappedInstance);
+        public int SymbolEndActionsCount => SymbolEndActionsCountAccessor(wrappedInstance);
         [System.Runtime.Serialization.DataMemberAttribute]
-        public int SymbolStartActionsCount => (int)SymbolStartActionsCountAccessor(wrappedInstance);
+        public int SymbolStartActionsCount => SymbolStartActionsCountAccessor(wrappedInstance);
     }
 }

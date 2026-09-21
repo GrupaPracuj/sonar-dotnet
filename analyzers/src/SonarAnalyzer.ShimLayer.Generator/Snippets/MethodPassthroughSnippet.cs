@@ -24,8 +24,11 @@ public sealed class MethodPassthroughSnippet : MethodSnippet
     public override string AccessorDeclaration() =>
         null;
 
-    protected override string InvocationSnippet() =>
-        $"""
-        wrappedInstance.{member.Name}({parameters.JoinStr(", ", SerializeParameterArgument)})
-        """;
+    protected override string InvocationSnippet()
+    {
+        var prefix = member.IsStatic ? strategy.CompiletimeTypeSnippet : "wrappedInstance";
+        return $"""
+            {prefix}.{member.Name}({parameters.JoinStr(", ", SerializeParameterArgument)})
+            """;
+    }
 }

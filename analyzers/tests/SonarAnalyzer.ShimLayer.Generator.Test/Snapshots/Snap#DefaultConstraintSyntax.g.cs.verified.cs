@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct DefaultConstraintSyntaxWrapper
+public readonly struct DefaultConstraintSyntaxWrapper : IWrapper, IEquatable<DefaultConstraintSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.DefaultConstraintSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,13 +28,31 @@ public readonly struct DefaultConstraintSyntaxWrapper
 
     private static readonly Func<TypeParameterConstraintSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<TypeParameterConstraintSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken, TypeParameterConstraintSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, SyntaxToken, TypeParameterConstraintSyntax>>(WrappedType, "Update");
-    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken, TypeParameterConstraintSyntax> WithDefaultKeywordAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, SyntaxToken, TypeParameterConstraintSyntax>>(WrappedType, "WithDefaultKeyword");
+    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken, DefaultConstraintSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, SyntaxToken, DefaultConstraintSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<TypeParameterConstraintSyntax, SyntaxToken, DefaultConstraintSyntaxWrapper> WithDefaultKeywordAccessor = AccessorFactory.CreateMethod<Func<TypeParameterConstraintSyntax, SyntaxToken, DefaultConstraintSyntaxWrapper>>(WrappedType, "WithDefaultKeyword");
 
     private DefaultConstraintSyntaxWrapper(TypeParameterConstraintSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public TypeParameterConstraintSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(DefaultConstraintSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(DefaultConstraintSyntaxWrapper left, DefaultConstraintSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(DefaultConstraintSyntaxWrapper left, DefaultConstraintSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -53,7 +71,7 @@ public readonly struct DefaultConstraintSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxToken DefaultKeyword => (SyntaxToken)DefaultKeywordAccessor(wrappedInstance);
+    public SyntaxToken DefaultKeyword => DefaultKeywordAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -113,10 +131,10 @@ public readonly struct DefaultConstraintSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public DefaultConstraintSyntaxWrapper Update(SyntaxToken defaultKeyword) => DefaultConstraintSyntaxWrapper.From(UpdateAccessor(wrappedInstance, defaultKeyword));
-    public DefaultConstraintSyntaxWrapper WithDefaultKeyword(SyntaxToken defaultKeyword) => DefaultConstraintSyntaxWrapper.From(WithDefaultKeywordAccessor(wrappedInstance, defaultKeyword));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public DefaultConstraintSyntaxWrapper Update(SyntaxToken defaultKeyword) => UpdateAccessor(wrappedInstance, defaultKeyword);
+    public DefaultConstraintSyntaxWrapper WithDefaultKeyword(SyntaxToken defaultKeyword) => WithDefaultKeywordAccessor(wrappedInstance, defaultKeyword);
 
     public static explicit operator DefaultConstraintSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

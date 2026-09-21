@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IWhileLoopOperationWrapper : IOperationWrapper
+public readonly struct IWhileLoopOperationWrapper : IOperationWrapper, IWrapper, IEquatable<IWhileLoopOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IWhileLoopOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -46,24 +46,42 @@ public readonly struct IWhileLoopOperationWrapper : IOperationWrapper
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IWhileLoopOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IWhileLoopOperationWrapper left, IWhileLoopOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IWhileLoopOperationWrapper left, IWhileLoopOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
     public IOperation Body => BodyAccessor(wrappedInstance);
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
     public IOperation Condition => ConditionAccessor(wrappedInstance);
-    public bool ConditionIsTop => (bool)ConditionIsTopAccessor(wrappedInstance);
-    public bool ConditionIsUntil => (bool)ConditionIsUntilAccessor(wrappedInstance);
+    public bool ConditionIsTop => ConditionIsTopAccessor(wrappedInstance);
+    public bool ConditionIsUntil => ConditionIsUntilAccessor(wrappedInstance);
     public ILabelSymbol ContinueLabel => ContinueLabelAccessor(wrappedInstance);
     public ILabelSymbol ExitLabel => ExitLabelAccessor(wrappedInstance);
     public IOperation IgnoredCondition => IgnoredConditionAccessor(wrappedInstance);
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
-    public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
-    public LoopKind LoopKind => (LoopKind)LoopKindAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
+    public ImmutableArray<ILocalSymbol> Locals => LocalsAccessor(wrappedInstance);
+    public LoopKind LoopKind => LoopKindAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
     public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
 

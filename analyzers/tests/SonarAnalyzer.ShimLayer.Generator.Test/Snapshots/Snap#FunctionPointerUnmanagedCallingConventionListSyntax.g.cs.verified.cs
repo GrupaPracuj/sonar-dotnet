@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct FunctionPointerUnmanagedCallingConventionListSyntaxWrapper
+public readonly struct FunctionPointerUnmanagedCallingConventionListSyntaxWrapper : IWrapper, IEquatable<FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.FunctionPointerUnmanagedCallingConventionListSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,18 +28,36 @@ public readonly struct FunctionPointerUnmanagedCallingConventionListSyntaxWrappe
     private static readonly Func<CSharpSyntaxNode, SyntaxToken> CloseBracketTokenAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxToken>>(WrappedType, "CloseBracketToken");
     private static readonly Func<CSharpSyntaxNode, SyntaxToken> OpenBracketTokenAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxToken>>(WrappedType, "OpenBracketToken");
 
-    private static readonly Func<CSharpSyntaxNode, FunctionPointerUnmanagedCallingConventionSyntaxWrapper[], CSharpSyntaxNode> AddCallingConventionsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, FunctionPointerUnmanagedCallingConventionSyntaxWrapper[], CSharpSyntaxNode>>(WrappedType, "AddCallingConventions");
+    private static readonly Func<CSharpSyntaxNode, FunctionPointerUnmanagedCallingConventionSyntaxWrapper[], FunctionPointerUnmanagedCallingConventionListSyntaxWrapper> AddCallingConventionsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, FunctionPointerUnmanagedCallingConventionSyntaxWrapper[], FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>>(WrappedType, "AddCallingConventions");
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, SyntaxToken, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "Update");
-    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, CSharpSyntaxNode> WithCallingConventionsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, CSharpSyntaxNode>>(WrappedType, "WithCallingConventions");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithCloseBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithCloseBracketToken");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithOpenBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithOpenBracketToken");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper> WithCallingConventionsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper>, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>>(WrappedType, "WithCallingConventions");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper> WithCloseBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>>(WrappedType, "WithCloseBracketToken");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper> WithOpenBracketTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper>>(WrappedType, "WithOpenBracketToken");
 
     private FunctionPointerUnmanagedCallingConventionListSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(FunctionPointerUnmanagedCallingConventionListSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(FunctionPointerUnmanagedCallingConventionListSyntaxWrapper left, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(FunctionPointerUnmanagedCallingConventionListSyntaxWrapper left, FunctionPointerUnmanagedCallingConventionListSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -59,8 +77,8 @@ public readonly struct FunctionPointerUnmanagedCallingConventionListSyntaxWrappe
     public int SpanStart => wrappedInstance.SpanStart;
 
     public SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper> CallingConventions => CallingConventionsAccessor(wrappedInstance);
-    public SyntaxToken CloseBracketToken => (SyntaxToken)CloseBracketTokenAccessor(wrappedInstance);
-    public SyntaxToken OpenBracketToken => (SyntaxToken)OpenBracketTokenAccessor(wrappedInstance);
+    public SyntaxToken CloseBracketToken => CloseBracketTokenAccessor(wrappedInstance);
+    public SyntaxToken OpenBracketToken => OpenBracketTokenAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -120,13 +138,13 @@ public readonly struct FunctionPointerUnmanagedCallingConventionListSyntaxWrappe
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper AddCallingConventions(FunctionPointerUnmanagedCallingConventionSyntaxWrapper[] items) => FunctionPointerUnmanagedCallingConventionListSyntaxWrapper.From(AddCallingConventionsAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper Update(SyntaxToken openBracketToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper> callingConventions, SyntaxToken closeBracketToken) => FunctionPointerUnmanagedCallingConventionListSyntaxWrapper.From(UpdateAccessor(wrappedInstance, openBracketToken, callingConventions, closeBracketToken));
-    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithCallingConventions(SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper> callingConventions) => FunctionPointerUnmanagedCallingConventionListSyntaxWrapper.From(WithCallingConventionsAccessor(wrappedInstance, callingConventions));
-    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithCloseBracketToken(SyntaxToken closeBracketToken) => FunctionPointerUnmanagedCallingConventionListSyntaxWrapper.From(WithCloseBracketTokenAccessor(wrappedInstance, closeBracketToken));
-    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithOpenBracketToken(SyntaxToken openBracketToken) => FunctionPointerUnmanagedCallingConventionListSyntaxWrapper.From(WithOpenBracketTokenAccessor(wrappedInstance, openBracketToken));
+    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper AddCallingConventions(FunctionPointerUnmanagedCallingConventionSyntaxWrapper[] items) => AddCallingConventionsAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper Update(SyntaxToken openBracketToken, SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper> callingConventions, SyntaxToken closeBracketToken) => UpdateAccessor(wrappedInstance, openBracketToken, callingConventions, closeBracketToken);
+    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithCallingConventions(SeparatedSyntaxListWrapper<FunctionPointerUnmanagedCallingConventionSyntaxWrapper> callingConventions) => WithCallingConventionsAccessor(wrappedInstance, callingConventions);
+    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithCloseBracketToken(SyntaxToken closeBracketToken) => WithCloseBracketTokenAccessor(wrappedInstance, closeBracketToken);
+    public FunctionPointerUnmanagedCallingConventionListSyntaxWrapper WithOpenBracketToken(SyntaxToken openBracketToken) => WithOpenBracketTokenAccessor(wrappedInstance, openBracketToken);
 
     public static explicit operator FunctionPointerUnmanagedCallingConventionListSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

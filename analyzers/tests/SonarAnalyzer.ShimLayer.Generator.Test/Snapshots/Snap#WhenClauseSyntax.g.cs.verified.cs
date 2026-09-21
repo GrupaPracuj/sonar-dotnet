@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct WhenClauseSyntaxWrapper
+public readonly struct WhenClauseSyntaxWrapper : IWrapper, IEquatable<WhenClauseSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.WhenClauseSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -29,14 +29,32 @@ public readonly struct WhenClauseSyntaxWrapper
 
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, ExpressionSyntax, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, ExpressionSyntax, CSharpSyntaxNode>>(WrappedType, "Update");
-    private static readonly Func<CSharpSyntaxNode, ExpressionSyntax, CSharpSyntaxNode> WithConditionAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, ExpressionSyntax, CSharpSyntaxNode>>(WrappedType, "WithCondition");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithWhenKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithWhenKeyword");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, ExpressionSyntax, WhenClauseSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, ExpressionSyntax, WhenClauseSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, ExpressionSyntax, WhenClauseSyntaxWrapper> WithConditionAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, ExpressionSyntax, WhenClauseSyntaxWrapper>>(WrappedType, "WithCondition");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, WhenClauseSyntaxWrapper> WithWhenKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, WhenClauseSyntaxWrapper>>(WrappedType, "WithWhenKeyword");
 
     private WhenClauseSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(WhenClauseSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(WhenClauseSyntaxWrapper left, WhenClauseSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(WhenClauseSyntaxWrapper left, WhenClauseSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -56,7 +74,7 @@ public readonly struct WhenClauseSyntaxWrapper
     public int SpanStart => wrappedInstance.SpanStart;
 
     public ExpressionSyntax Condition => ConditionAccessor(wrappedInstance);
-    public SyntaxToken WhenKeyword => (SyntaxToken)WhenKeywordAccessor(wrappedInstance);
+    public SyntaxToken WhenKeyword => WhenKeywordAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -116,11 +134,11 @@ public readonly struct WhenClauseSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public WhenClauseSyntaxWrapper Update(SyntaxToken whenKeyword, ExpressionSyntax condition) => WhenClauseSyntaxWrapper.From(UpdateAccessor(wrappedInstance, whenKeyword, condition));
-    public WhenClauseSyntaxWrapper WithCondition(ExpressionSyntax condition) => WhenClauseSyntaxWrapper.From(WithConditionAccessor(wrappedInstance, condition));
-    public WhenClauseSyntaxWrapper WithWhenKeyword(SyntaxToken whenKeyword) => WhenClauseSyntaxWrapper.From(WithWhenKeywordAccessor(wrappedInstance, whenKeyword));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public WhenClauseSyntaxWrapper Update(SyntaxToken whenKeyword, ExpressionSyntax condition) => UpdateAccessor(wrappedInstance, whenKeyword, condition);
+    public WhenClauseSyntaxWrapper WithCondition(ExpressionSyntax condition) => WithConditionAccessor(wrappedInstance, condition);
+    public WhenClauseSyntaxWrapper WithWhenKeyword(SyntaxToken whenKeyword) => WithWhenKeywordAccessor(wrappedInstance, whenKeyword);
 
     public static explicit operator WhenClauseSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

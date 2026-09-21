@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class PortableExecutableReferenceShimExtensions
+public static class PortableExecutableReferenceShimExtensions
 {
     private static readonly Type WrappedType = typeof(PortableExecutableReference);
 
@@ -28,6 +26,6 @@ public static partial class PortableExecutableReferenceShimExtensions
 
     extension(PortableExecutableReference wrappedInstance)
     {
-        public MetadataId GetMetadataId() => (MetadataId)GetMetadataIdAccessor(wrappedInstance);
+        public MetadataId GetMetadataId() => GetMetadataIdAccessor(wrappedInstance);
     }
 }

@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct SyntaxTreeOptionsProviderWrapper
+public readonly struct SyntaxTreeOptionsProviderWrapper : IWrapper, IEquatable<SyntaxTreeOptionsProviderWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.SyntaxTreeOptionsProvider");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -35,9 +35,27 @@ public readonly struct SyntaxTreeOptionsProviderWrapper
 
     public Object WrappedInstance => wrappedInstance;
 
-    public GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken) => (GeneratedKind)IsGeneratedAccessor(wrappedInstance, tree, cancellationToken);
-    public bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) => (bool)TryGetDiagnosticValueAccessor(wrappedInstance, tree, diagnosticId, cancellationToken, out severity);
-    public bool TryGetGlobalDiagnosticValue(string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) => (bool)TryGetGlobalDiagnosticValueAccessor(wrappedInstance, diagnosticId, cancellationToken, out severity);
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(SyntaxTreeOptionsProviderWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(SyntaxTreeOptionsProviderWrapper left, SyntaxTreeOptionsProviderWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(SyntaxTreeOptionsProviderWrapper left, SyntaxTreeOptionsProviderWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken) => IsGeneratedAccessor(wrappedInstance, tree, cancellationToken);
+    public bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) => TryGetDiagnosticValueAccessor(wrappedInstance, tree, diagnosticId, cancellationToken, out severity);
+    public bool TryGetGlobalDiagnosticValue(string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic severity) => TryGetGlobalDiagnosticValueAccessor(wrappedInstance, diagnosticId, cancellationToken, out severity);
 
     public static SyntaxTreeOptionsProviderWrapper From(Object instance)
     {

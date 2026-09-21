@@ -36,13 +36,16 @@ public class StrategyModel : IEnumerable<Strategy>
                 Strategy newStrategy = key switch
                 {
                     { Namespace: "System.Reflection.Metadata" } => new SkipStrategy(key),  // Old Roslyn throws: Could not load 'System.Reflection.Metadata, Version=1.3.0.0, ...'}
-                    { Name: "ImmutableArray`1" } when this[key.GenericTypeArguments.Single()] is OperationWrapStrategy typeArgument => new ImmutableArrayStrategy(key, typeArgument),
+                    { Name: "ImmutableArray`1" } when this[key.GenericTypeArguments.Single()] is WrapStrategy typeArgument => new ImmutableArrayStrategy(key, typeArgument),
                     { Name: "SeparatedSyntaxList`1" } when this[key.GenericTypeArguments.Single()] is SyntaxNodeWrapStrategy typeArgument => new SeparatedSyntaxListStrategy(key, typeArgument),
+                    { Name: "ReadOnlySpan`1" } => new SkipStrategy(key),
                     { IsArray: true } => new ArrayStrategy(key, this[key.GetElementType()]),
+                    { IsGenericType: true } when IsUnsupportedGenericOpenType(key) => new SkipStrategy(key),
                     { IsGenericType: true } => new GenericTypeStrategy(key, key.GenericTypeArguments.Select(x => this[x]).ToArray()),
                     // Primitive types can't be added in ModelBuilder, because typeof(int) (from RuntimeTypes module) is not equivalent to the Int32 we see here (from EcmaModule).
                     { Name: "Boolean" } => new PrimitiveStrategy(key, "bool"),
                     { Name: "Int32" } => new PrimitiveStrategy(key, "int"),
+                    { Name: "Object" } => new PrimitiveStrategy(key, "object"),
                     { Name: "String" } => new PrimitiveStrategy(key, "string"),
                     { Name: "Void" } => new PrimitiveStrategy(key, "void"),
                     _ => new NoChangeStrategy(key)
@@ -67,4 +70,10 @@ public class StrategyModel : IEnumerable<Strategy>
 
     IEnumerator IEnumerable.GetEnumerator() =>
         GetEnumerator();
+
+    // Optional<int> returns false because Optional<> is supported
+    // IncrementalValueProvider<int> returns true because IncrementalValueProvider<> is not supported
+    // IEnumerable<int> returns false because IEnumerable<> is not in strategies
+    private bool IsUnsupportedGenericOpenType(Type key) =>
+        strategies.TryGetValue(key.GetGenericTypeDefinition(), out var strategy) && !strategy.IsSupported;
 }

@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.Emit;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class EmitOptionsShimExtensions
+public static class EmitOptionsShimExtensions
 {
     private static readonly Type WrappedType = typeof(EmitOptions);
 
@@ -36,10 +34,10 @@ public static partial class EmitOptionsShimExtensions
 
     extension(EmitOptions wrappedInstance)
     {
-        public Encoding DefaultSourceFileEncoding => (Encoding)DefaultSourceFileEncodingAccessor(wrappedInstance);
-        public Encoding FallbackSourceFileEncoding => (Encoding)FallbackSourceFileEncodingAccessor(wrappedInstance);
-        public ImmutableArray<InstrumentationKind> InstrumentationKinds => (ImmutableArray<InstrumentationKind>)InstrumentationKindsAccessor(wrappedInstance);
-        public HashAlgorithmName PdbChecksumAlgorithm => (HashAlgorithmName)PdbChecksumAlgorithmAccessor(wrappedInstance);
+        public Encoding DefaultSourceFileEncoding => DefaultSourceFileEncodingAccessor(wrappedInstance);
+        public Encoding FallbackSourceFileEncoding => FallbackSourceFileEncodingAccessor(wrappedInstance);
+        public ImmutableArray<InstrumentationKind> InstrumentationKinds => InstrumentationKindsAccessor(wrappedInstance);
+        public HashAlgorithmName PdbChecksumAlgorithm => PdbChecksumAlgorithmAccessor(wrappedInstance);
 
         public EmitOptions WithDefaultSourceFileEncoding(Encoding defaultSourceFileEncoding) => WithDefaultSourceFileEncodingAccessor(wrappedInstance, defaultSourceFileEncoding);
         public EmitOptions WithFallbackSourceFileEncoding(Encoding fallbackSourceFileEncoding) => WithFallbackSourceFileEncodingAccessor(wrappedInstance, fallbackSourceFileEncoding);

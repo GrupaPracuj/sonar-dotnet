@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct WithExpressionSyntaxWrapper
+public readonly struct WithExpressionSyntaxWrapper : IWrapper, IEquatable<WithExpressionSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.WithExpressionSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,18 +28,36 @@ public readonly struct WithExpressionSyntaxWrapper
     private static readonly Func<ExpressionSyntax, InitializerExpressionSyntax> InitializerAccessor = AccessorFactory.CreateProperty<Func<ExpressionSyntax, InitializerExpressionSyntax>>(WrappedType, "Initializer");
     private static readonly Func<ExpressionSyntax, SyntaxToken> WithKeywordAccessor = AccessorFactory.CreateProperty<Func<ExpressionSyntax, SyntaxToken>>(WrappedType, "WithKeyword");
 
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax[], ExpressionSyntax> AddInitializerExpressionsAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax[], ExpressionSyntax>>(WrappedType, "AddInitializerExpressions");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax[], WithExpressionSyntaxWrapper> AddInitializerExpressionsAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax[], WithExpressionSyntaxWrapper>>(WrappedType, "AddInitializerExpressions");
     private static readonly Func<ExpressionSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<ExpressionSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, InitializerExpressionSyntax, ExpressionSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, InitializerExpressionSyntax, ExpressionSyntax>>(WrappedType, "Update");
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax> WithExpressionAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax>>(WrappedType, "WithExpression");
-    private static readonly Func<ExpressionSyntax, InitializerExpressionSyntax, ExpressionSyntax> WithInitializerAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, InitializerExpressionSyntax, ExpressionSyntax>>(WrappedType, "WithInitializer");
-    private static readonly Func<ExpressionSyntax, SyntaxToken, ExpressionSyntax> WithWithKeywordAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxToken, ExpressionSyntax>>(WrappedType, "WithWithKeyword");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, InitializerExpressionSyntax, WithExpressionSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, InitializerExpressionSyntax, WithExpressionSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax, WithExpressionSyntaxWrapper> WithExpressionAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, WithExpressionSyntaxWrapper>>(WrappedType, "WithExpression");
+    private static readonly Func<ExpressionSyntax, InitializerExpressionSyntax, WithExpressionSyntaxWrapper> WithInitializerAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, InitializerExpressionSyntax, WithExpressionSyntaxWrapper>>(WrappedType, "WithInitializer");
+    private static readonly Func<ExpressionSyntax, SyntaxToken, WithExpressionSyntaxWrapper> WithWithKeywordAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxToken, WithExpressionSyntaxWrapper>>(WrappedType, "WithWithKeyword");
 
     private WithExpressionSyntaxWrapper(ExpressionSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public ExpressionSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(WithExpressionSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(WithExpressionSyntaxWrapper left, WithExpressionSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(WithExpressionSyntaxWrapper left, WithExpressionSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -60,7 +78,7 @@ public readonly struct WithExpressionSyntaxWrapper
 
     public ExpressionSyntax Expression => ExpressionAccessor(wrappedInstance);
     public InitializerExpressionSyntax Initializer => InitializerAccessor(wrappedInstance);
-    public SyntaxToken WithKeyword => (SyntaxToken)WithKeywordAccessor(wrappedInstance);
+    public SyntaxToken WithKeyword => WithKeywordAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -120,13 +138,13 @@ public readonly struct WithExpressionSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public WithExpressionSyntaxWrapper AddInitializerExpressions(ExpressionSyntax[] items) => WithExpressionSyntaxWrapper.From(AddInitializerExpressionsAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public WithExpressionSyntaxWrapper Update(ExpressionSyntax expression, SyntaxToken withKeyword, InitializerExpressionSyntax initializer) => WithExpressionSyntaxWrapper.From(UpdateAccessor(wrappedInstance, expression, withKeyword, initializer));
-    public WithExpressionSyntaxWrapper WithExpression(ExpressionSyntax expression) => WithExpressionSyntaxWrapper.From(WithExpressionAccessor(wrappedInstance, expression));
-    public WithExpressionSyntaxWrapper WithInitializer(InitializerExpressionSyntax initializer) => WithExpressionSyntaxWrapper.From(WithInitializerAccessor(wrappedInstance, initializer));
-    public WithExpressionSyntaxWrapper WithWithKeyword(SyntaxToken withKeyword) => WithExpressionSyntaxWrapper.From(WithWithKeywordAccessor(wrappedInstance, withKeyword));
+    public WithExpressionSyntaxWrapper AddInitializerExpressions(ExpressionSyntax[] items) => AddInitializerExpressionsAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public WithExpressionSyntaxWrapper Update(ExpressionSyntax expression, SyntaxToken withKeyword, InitializerExpressionSyntax initializer) => UpdateAccessor(wrappedInstance, expression, withKeyword, initializer);
+    public WithExpressionSyntaxWrapper WithExpression(ExpressionSyntax expression) => WithExpressionAccessor(wrappedInstance, expression);
+    public WithExpressionSyntaxWrapper WithInitializer(InitializerExpressionSyntax initializer) => WithInitializerAccessor(wrappedInstance, initializer);
+    public WithExpressionSyntaxWrapper WithWithKeyword(SyntaxToken withKeyword) => WithWithKeywordAccessor(wrappedInstance, withKeyword);
 
     public static explicit operator WithExpressionSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

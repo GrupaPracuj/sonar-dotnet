@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnalysisContextShimExtensions
+public static class AnalysisContextShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnalysisContext);
 
@@ -28,6 +26,6 @@ public static partial class AnalysisContextShimExtensions
 
     extension(AnalysisContext wrappedInstance)
     {
-        public DiagnosticSeverity MinimumReportedSeverity => (DiagnosticSeverity)MinimumReportedSeverityAccessor(wrappedInstance);
+        public DiagnosticSeverity MinimumReportedSeverity => MinimumReportedSeverityAccessor(wrappedInstance);
     }
 }

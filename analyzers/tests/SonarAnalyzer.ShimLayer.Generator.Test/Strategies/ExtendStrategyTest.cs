@@ -66,11 +66,9 @@ public class ExtendStrategyTest
              * along with this program; if not, see https://sonarsource.com/license/ssal/
              */
 
-            using Microsoft.CodeAnalysis.CSharp.Syntax;
-
             namespace SonarAnalyzer.ShimLayer;
 
-            public static partial class ClassDeclarationSyntaxShimExtensions
+            public static class ClassDeclarationSyntaxShimExtensions
             {
                 private static readonly Type WrappedType = typeof(ClassDeclarationSyntax);
 
@@ -81,10 +79,10 @@ public class ExtendStrategyTest
 
                 extension(ClassDeclarationSyntax wrappedInstance)
                 {
-                    public ParameterListSyntax ParameterList => (ParameterListSyntax)ParameterListAccessor(wrappedInstance);
-                    public SyntaxToken SemicolonToken => (SyntaxToken)SemicolonTokenAccessor(wrappedInstance);
+                    public ParameterListSyntax ParameterList => ParameterListAccessor(wrappedInstance);
+                    public SyntaxToken SemicolonToken => SemicolonTokenAccessor(wrappedInstance);
 
-                    public ClassDeclarationSyntax AddParameterListParameters(ParameterSyntax[] items) => (ClassDeclarationSyntax)AddParameterListParametersAccessor(wrappedInstance, items);
+                    public ClassDeclarationSyntax AddParameterListParameters(ParameterSyntax[] items) => AddParameterListParametersAccessor(wrappedInstance, items);
                 }
             }
             """);
@@ -117,11 +115,9 @@ public class ExtendStrategyTest
              * along with this program; if not, see https://sonarsource.com/license/ssal/
              */
 
-            using Microsoft.CodeAnalysis.CSharp.Syntax;
-
             namespace SonarAnalyzer.ShimLayer;
 
-            public static partial class ClassDeclarationSyntaxShimExtensions
+            public static class ClassDeclarationSyntaxShimExtensions
             {
                 private static readonly Type WrappedType = typeof(ClassDeclarationSyntax);
 
@@ -129,7 +125,7 @@ public class ExtendStrategyTest
 
                 extension(ClassDeclarationSyntax wrappedInstance)
                 {
-                    public ClassDeclarationSyntax AddParameterListParameters(ParameterSyntax[] items) => (ClassDeclarationSyntax)AddParameterListParametersAccessor(wrappedInstance, items);
+                    public ClassDeclarationSyntax AddParameterListParameters(ParameterSyntax[] items) => AddParameterListParametersAccessor(wrappedInstance, items);
                 }
             }
             """);
@@ -163,11 +159,9 @@ public class ExtendStrategyTest
              * along with this program; if not, see https://sonarsource.com/license/ssal/
              */
 
-            using System.Diagnostics;
-
             namespace SonarAnalyzer.ShimLayer;
 
-            public static partial class ProcessStartInfoShimExtensions
+            public static class ProcessStartInfoShimExtensions
             {
                 private static readonly Type WrappedType = typeof(ProcessStartInfo);
 
@@ -176,7 +170,7 @@ public class ExtendStrategyTest
                 extension(ProcessStartInfo wrappedInstance)
                 {
                     [System.ComponentModel.EditorAttribute("System.Diagnostics.Design.StartFileNameEditor, System.Design, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a", "System.Drawing.Design.UITypeEditor, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
-                    public string FileName => (string)FileNameAccessor(wrappedInstance);
+                    public string FileName => FileNameAccessor(wrappedInstance);
                 }
             }
             """);

@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ISourceAssemblySymbolShimExtensions
+public static class ISourceAssemblySymbolShimExtensions
 {
     private static readonly Type WrappedType = typeof(ISourceAssemblySymbol);
 
@@ -30,8 +28,8 @@ public static partial class ISourceAssemblySymbolShimExtensions
 
     extension(ISourceAssemblySymbol wrappedInstance)
     {
-        public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
+        public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
 
-        public ImmutableArray<INamedTypeSymbol> GetForwardedTypes() => (ImmutableArray<INamedTypeSymbol>)GetForwardedTypesAccessor(wrappedInstance);
+        public ImmutableArray<INamedTypeSymbol> GetForwardedTypes() => GetForwardedTypesAccessor(wrappedInstance);
     }
 }

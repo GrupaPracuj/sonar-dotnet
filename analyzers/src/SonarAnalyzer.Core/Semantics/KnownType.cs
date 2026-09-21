@@ -25,6 +25,7 @@ public sealed partial class KnownType
 #pragma warning disable SA1307  // Field 'log4net_Config_XmlConfigurator' should begin with upper-case letter
 #pragma warning disable T0016   // Empty lines between multiline declarations
 
+    public static readonly KnownType Amazon_Lambda_Annotations_LambdaStartupAttribute = new("Amazon.Lambda.Annotations.LambdaStartupAttribute");
     public static readonly KnownType AutoConstructorAttribute = new("AutoConstructorAttribute");
     public static readonly KnownType Azure_Messaging_ServiceBus_Administration_ServiceBusAdministrationClient = new("Azure.Messaging.ServiceBus.Administration.ServiceBusAdministrationClient");
     public static readonly KnownType Azure_Messaging_ServiceBus_ServiceBusClient = new("Azure.Messaging.ServiceBus.ServiceBusClient");
@@ -63,8 +64,15 @@ public sealed partial class KnownType
     public static readonly KnownType log4net_ILog = new("log4net.ILog");
     public static readonly KnownType log4net_LogManager = new("log4net.LogManager");
     public static readonly KnownType log4net_Util_ILogExtensions = new("log4net.Util.ILogExtensions");
+    public static readonly KnownType MassTransit_IConsumer = new("MassTransit.IConsumer");    // Marker interface implemented by every IConsumer<TMessage>
+    public static readonly KnownType MediatR_INotificationHandler_TNotification = new("MediatR.INotificationHandler", "TNotification");
+    public static readonly KnownType MediatR_IPipelineBehavior_TRequest_TResponse = new("MediatR.IPipelineBehavior", "TRequest", "TResponse");
+    public static readonly KnownType MediatR_IRequestHandler_TRequest = new("MediatR.IRequestHandler", "TRequest");    // Handler of a request without response. It does not inherit IRequestHandler<TRequest, TResponse>.
+    public static readonly KnownType MediatR_IRequestHandler_TRequest_TResponse = new("MediatR.IRequestHandler", "TRequest", "TResponse");
     public static readonly KnownType Microsoft_AspNet_Identity_PasswordHasherOptions = new("Microsoft.AspNet.Identity.PasswordHasherOptions");
     public static readonly KnownType Microsoft_AspNet_SignalR_Hub = new("Microsoft.AspNet.SignalR.Hub");
+    public static readonly KnownType Microsoft_AspNetCore_Authorization_AuthorizationHandler_TRequirement = new("Microsoft.AspNetCore.Authorization.AuthorizationHandler", "TRequirement");
+    public static readonly KnownType Microsoft_AspNetCore_Authorization_IAuthorizationHandler = new("Microsoft.AspNetCore.Authorization.IAuthorizationHandler");
     public static readonly KnownType Microsoft_AspNetCore_Builder_DeveloperExceptionPageExtensions = new("Microsoft.AspNetCore.Builder.DeveloperExceptionPageExtensions");
     public static readonly KnownType Microsoft_AspNetCore_Builder_DatabaseErrorPageExtensions = new("Microsoft.AspNetCore.Builder.DatabaseErrorPageExtensions");
     public static readonly KnownType Microsoft_AspNetCore_Components_Forms_IBrowserFile = new("Microsoft.AspNetCore.Components.Forms.IBrowserFile");
@@ -84,6 +92,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_AspNetCore_Http_IFormFile = new("Microsoft.AspNetCore.Http.IFormFile");
     public static readonly KnownType Microsoft_AspNetCore_Http_IFormFileCollection = new("Microsoft.AspNetCore.Http.IFormFileCollection");
     public static readonly KnownType Microsoft_AspNetCore_Http_IHeaderDictionary = new("Microsoft.AspNetCore.Http.IHeaderDictionary");
+    public static readonly KnownType Microsoft_AspNetCore_Http_IMiddleware = new("Microsoft.AspNetCore.Http.IMiddleware");
     public static readonly KnownType Microsoft_AspNetCore_Http_IQueryCollection = new("Microsoft.AspNetCore.Http.IQueryCollection");
     public static readonly KnownType Microsoft_AspNetCore_Http_IRequestCookieCollection = new("Microsoft.AspNetCore.Http.IRequestCookieCollection");
     public static readonly KnownType Microsoft_AspNetCore_Http_IResponseCookies = new("Microsoft.AspNetCore.Http.IResponseCookies");
@@ -102,6 +111,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_ActionFilterAttribute = new("Microsoft.AspNetCore.Mvc.Filters.ActionFilterAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_IActionFilter = new("Microsoft.AspNetCore.Mvc.Filters.IActionFilter");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_IAsyncActionFilter = new("Microsoft.AspNetCore.Mvc.Filters.IAsyncActionFilter");
+    public static readonly KnownType Microsoft_AspNetCore_Mvc_Filters_IFilterMetadata = new("Microsoft.AspNetCore.Mvc.Filters.IFilterMetadata");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_FromServicesAttribute = new("Microsoft.AspNetCore.Mvc.FromServicesAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_FromStateAttribute = new("Microsoft.AspNetCore.Mvc.FromStateAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_HttpDeleteAttribute = new("Microsoft.AspNetCore.Mvc.HttpDeleteAttribute");
@@ -131,8 +141,13 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_AspNetCore_Mvc_RouteAttribute = new("Microsoft.AspNetCore.Mvc.RouteAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Routing_HttpMethodAttribute = new("Microsoft.AspNetCore.Mvc.Routing.HttpMethodAttribute");
     public static readonly KnownType Microsoft_AspNetCore_Mvc_Routing_IRouteTemplateProvider = new("Microsoft.AspNetCore.Mvc.Routing.IRouteTemplateProvider");
+    public static readonly KnownType Microsoft_AspNetCore_Mvc_ViewComponent = new("Microsoft.AspNetCore.Mvc.ViewComponent");
     public static readonly KnownType Microsoft_AspNetCore_Razor_Hosting_RazorCompiledItemAttribute = new("Microsoft.AspNetCore.Razor.Hosting.RazorCompiledItemAttribute");
+    public static readonly KnownType Microsoft_AspNetCore_Razor_TagHelpers_ITagHelper = new("Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper");
+    public static readonly KnownType Microsoft_AspNetCore_Razor_TagHelpers_TagHelper = new("Microsoft.AspNetCore.Razor.TagHelpers.TagHelper");
     public static readonly KnownType Microsoft_AspNetCore_Routing_RouteValueDictionary = new("Microsoft.AspNetCore.Routing.RouteValueDictionary");
+    public static readonly KnownType Microsoft_AspNetCore_SignalR_Hub = new("Microsoft.AspNetCore.SignalR.Hub");
+    public static readonly KnownType Microsoft_AspNetCore_SignalR_Hub_T = new("Microsoft.AspNetCore.SignalR.Hub", "T");
     public static readonly KnownType Microsoft_Azure_Cosmos_CosmosClient = new("Microsoft.Azure.Cosmos.CosmosClient");
     public static readonly KnownType Microsoft_Azure_Cosmos_Container = new("Microsoft.Azure.Cosmos.Container");
     public static readonly KnownType Microsoft_Azure_Cosmos_QueryDefinition = new("Microsoft.Azure.Cosmos.QueryDefinition");
@@ -156,6 +171,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_EntityFrameworkCore_DbSet_TEntity = new("Microsoft.EntityFrameworkCore.DbSet", "TEntity");
     public static readonly KnownType Microsoft_EntityFrameworkCore_EntityFrameworkQueryableExtensions = new("Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions");
     public static readonly KnownType Microsoft_EntityFrameworkCore_IDbContextFactory_TContext = new("Microsoft.EntityFrameworkCore.IDbContextFactory", "TContext");
+    public static readonly KnownType Microsoft_EntityFrameworkCore_IEntityTypeConfiguration_TEntity = new("Microsoft.EntityFrameworkCore.IEntityTypeConfiguration", "TEntity");
     public static readonly KnownType Microsoft_EntityFrameworkCore_Migrations_Migration = new("Microsoft.EntityFrameworkCore.Migrations.Migration");
     public static readonly KnownType Microsoft_EntityFrameworkCore_Migrations_MigrationBuilder = new("Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder");
     public static readonly KnownType Microsoft_EntityFrameworkCore_Migrations_Operations_Builders_ColumnsBuilder = new("Microsoft.EntityFrameworkCore.Migrations.Operations.Builders.ColumnsBuilder");
@@ -163,6 +179,7 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_EntityFrameworkCore_NpgsqlDbContextOptionsExtensions = new("Microsoft.EntityFrameworkCore.NpgsqlDbContextOptionsExtensions");
     public static readonly KnownType Microsoft_EntityFrameworkCore_NpgsqlDbContextOptionsBuilderExtensions = new("Microsoft.EntityFrameworkCore.NpgsqlDbContextOptionsBuilderExtensions");
     public static readonly KnownType Microsoft_EntityFrameworkCore_OracleDbContextOptionsExtensions = new("Microsoft.EntityFrameworkCore.OracleDbContextOptionsExtensions");
+    public static readonly KnownType Microsoft_EntityFrameworkCore_OwnedAttribute = new("Microsoft.EntityFrameworkCore.OwnedAttribute");
     public static readonly KnownType Microsoft_EntityFrameworkCore_PrimaryKeyAttribute = new("Microsoft.EntityFrameworkCore.PrimaryKeyAttribute");
     public static readonly KnownType Microsoft_EntityFrameworkCore_RawSqlString = new("Microsoft.EntityFrameworkCore.RawSqlString");
     public static readonly KnownType Microsoft_EntityFrameworkCore_RelationalDatabaseFacadeExtensions = new("Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions");
@@ -171,13 +188,16 @@ public sealed partial class KnownType
     public static readonly KnownType Microsoft_EntityFrameworkCore_SqliteDbContextOptionsBuilderExtensions = new("Microsoft.EntityFrameworkCore.SqliteDbContextOptionsBuilderExtensions");
     public static readonly KnownType Microsoft_EntityFrameworkCore_SqlServerDbContextOptionsExtensions = new("Microsoft.EntityFrameworkCore.SqlServerDbContextOptionsExtensions");
     public static readonly KnownType Microsoft_Extensions_Configuration_IConfiguration = new("Microsoft.Extensions.Configuration.IConfiguration");
+    public static readonly KnownType Microsoft_Extensions_DependencyInjection_ActivatorUtilitiesConstructorAttribute = new("Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructorAttribute");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_LoggingServiceCollectionExtensions = new("Microsoft.Extensions.DependencyInjection.LoggingServiceCollectionExtensions");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_ServiceCollectionServiceExtensions = new("Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_Extensions_ServiceCollectionDescriptorExtensions = new("Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_FromKeyedServicesAttribute = new("Microsoft.Extensions.DependencyInjection.FromKeyedServicesAttribute");
     public static readonly KnownType Microsoft_Extensions_DependencyInjection_ServiceDescriptor = new("Microsoft.Extensions.DependencyInjection.ServiceDescriptor");
+    public static readonly KnownType Microsoft_Extensions_Hosting_BackgroundService = new("Microsoft.Extensions.Hosting.BackgroundService");
     public static readonly KnownType Microsoft_Extensions_Hosting_HostEnvironmentEnvExtensions = new("Microsoft.Extensions.Hosting.HostEnvironmentEnvExtensions");
     public static readonly KnownType Microsoft_Extensions_Hosting_IHostApplicationLifetime = new("Microsoft.Extensions.Hosting.IHostApplicationLifetime");
+    public static readonly KnownType Microsoft_Extensions_Hosting_IHostedService = new("Microsoft.Extensions.Hosting.IHostedService");
     public static readonly KnownType Microsoft_Extensions_Logging_AzureAppServicesLoggerFactoryExtensions = new("Microsoft.Extensions.Logging.AzureAppServicesLoggerFactoryExtensions");
     public static readonly KnownType Microsoft_Extensions_Logging_ConsoleLoggerExtensions = new("Microsoft.Extensions.Logging.ConsoleLoggerExtensions");
     public static readonly KnownType Microsoft_Extensions_Logging_DebugLoggerFactoryExtensions = new("Microsoft.Extensions.Logging.DebugLoggerFactoryExtensions");
@@ -386,6 +406,7 @@ public sealed partial class KnownType
     public static readonly KnownType System_ComponentModel_DataAnnotations_IValidatableObject = new("System.ComponentModel.DataAnnotations.IValidatableObject");
     public static readonly KnownType System_ComponentModel_DataAnnotations_RequiredAttribute = new("System.ComponentModel.DataAnnotations.RequiredAttribute");
     public static readonly KnownType System_ComponentModel_DataAnnotations_ValidationAttribute = new("System.ComponentModel.DataAnnotations.ValidationAttribute");
+    public static readonly KnownType System_ComponentModel_DataAnnotations_Validator = new("System.ComponentModel.DataAnnotations.Validator");
     public static readonly KnownType System_ComponentModel_DefaultValueAttribute = new("System.ComponentModel.DefaultValueAttribute");
     public static readonly KnownType System_ComponentModel_EditorBrowsableAttribute = new("System.ComponentModel.EditorBrowsableAttribute");
     public static readonly KnownType System_ComponentModel_LocalizableAttribute = new("System.ComponentModel.LocalizableAttribute");
@@ -578,6 +599,7 @@ public sealed partial class KnownType
     public static readonly KnownType System_Security_AccessControl_FileSystemSecurity = new("System.Security.AccessControl.FileSystemSecurity");
     public static readonly KnownType System_Security_AllowPartiallyTrustedCallersAttribute = new("System.Security.AllowPartiallyTrustedCallersAttribute");
     public static readonly KnownType System_Security_Authentication_SslProtocols = new("System.Security.Authentication.SslProtocols");
+    public static readonly KnownType System_Security_CodeAccessPermission = new("System.Security.CodeAccessPermission");
     public static readonly KnownType System_Security_Cryptography_AesManaged = new("System.Security.Cryptography.AesManaged");
     public static readonly KnownType System_Security_Cryptography_AsymmetricAlgorithm = new("System.Security.Cryptography.AsymmetricAlgorithm");
     public static readonly KnownType System_Security_Cryptography_AsymmetricKeyExchangeDeformatter = new("System.Security.Cryptography.AsymmetricKeyExchangeDeformatter");
@@ -626,6 +648,7 @@ public sealed partial class KnownType
     public static readonly KnownType System_Security_Principal_NTAccount = new("System.Security.Principal.NTAccount");
     public static readonly KnownType System_Security_Principal_SecurityIdentifier = new("System.Security.Principal.SecurityIdentifier");
     public static readonly KnownType System_Security_Principal_WindowsIdentity = new("System.Security.Principal.WindowsIdentity");
+    public static readonly KnownType System_Security_Principal_WindowsImpersonationContext = new("System.Security.Principal.WindowsImpersonationContext");
     public static readonly KnownType System_Security_SecureString = new("System.Security.SecureString");
     public static readonly KnownType System_Security_SecurityCriticalAttribute = new("System.Security.SecurityCriticalAttribute");
     public static readonly KnownType System_Security_SecuritySafeCriticalAttribute = new("System.Security.SecuritySafeCriticalAttribute");
@@ -649,6 +672,7 @@ public sealed partial class KnownType
     public static readonly KnownType System_Threading_AsyncLocal_T = new("System.Threading.AsyncLocal", "T");
     public static readonly KnownType System_Threading_CancellationToken = new("System.Threading.CancellationToken");
     public static readonly KnownType System_Threading_CancellationTokenSource = new("System.Threading.CancellationTokenSource");
+    public static readonly KnownType System_Threading_ExecutionContext = new("System.Threading.ExecutionContext");
     public static readonly KnownType System_Threading_Lock = new("System.Threading.Lock");
     public static readonly KnownType System_Threading_Lock_Scope = new("System.Threading.Lock+Scope");
     public static readonly KnownType System_Threading_Monitor = new("System.Threading.Monitor");
@@ -846,5 +870,4 @@ public sealed partial class KnownType
             // Note: XUnit doesn't have a separate "Ignore" attribute. It has a "Skip" parameter on the test attribute
             Microsoft_VisualStudio_TestTools_UnitTesting_IgnoreAttribute,
             NUnit_Framework_IgnoreAttribute);
-
 }

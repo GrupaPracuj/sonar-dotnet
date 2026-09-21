@@ -18,34 +18,54 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ControlFlowRegionWrapper
+public readonly struct ControlFlowRegionWrapper : IWrapper, IEquatable<ControlFlowRegionWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.FlowAnalysis.ControlFlowRegion");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
-    private static readonly Func<Object, ImmutableArray<CaptureId>> CaptureIdsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<CaptureId>>>(WrappedType, "CaptureIds");
-    private static readonly Func<Object, Object> EnclosingRegionAccessor = AccessorFactory.CreateProperty<Func<Object, Object>>(WrappedType, "EnclosingRegion");
+    private static readonly Func<Object, ImmutableArray<CaptureIdWrapper>> CaptureIdsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<CaptureIdWrapper>>>(WrappedType, "CaptureIds");
+    private static readonly Func<Object, ControlFlowRegionWrapper> EnclosingRegionAccessor = AccessorFactory.CreateProperty<Func<Object, ControlFlowRegionWrapper>>(WrappedType, "EnclosingRegion");
     private static readonly Func<Object, ITypeSymbol> ExceptionTypeAccessor = AccessorFactory.CreateProperty<Func<Object, ITypeSymbol>>(WrappedType, "ExceptionType");
     private static readonly Func<Object, int> FirstBlockOrdinalAccessor = AccessorFactory.CreateProperty<Func<Object, int>>(WrappedType, "FirstBlockOrdinal");
     private static readonly Func<Object, ControlFlowRegionKind> KindAccessor = AccessorFactory.CreateProperty<Func<Object, ControlFlowRegionKind>>(WrappedType, "Kind");
     private static readonly Func<Object, int> LastBlockOrdinalAccessor = AccessorFactory.CreateProperty<Func<Object, int>>(WrappedType, "LastBlockOrdinal");
     private static readonly Func<Object, ImmutableArray<IMethodSymbol>> LocalFunctionsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<IMethodSymbol>>>(WrappedType, "LocalFunctions");
     private static readonly Func<Object, ImmutableArray<ILocalSymbol>> LocalsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ILocalSymbol>>>(WrappedType, "Locals");
+    private static readonly Func<Object, ImmutableArray<ControlFlowRegionWrapper>> NestedRegionsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ControlFlowRegionWrapper>>>(WrappedType, "NestedRegions");
 
     private ControlFlowRegionWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public ImmutableArray<CaptureId> CaptureIds => (ImmutableArray<CaptureId>)CaptureIdsAccessor(wrappedInstance);
-    public ControlFlowRegionWrapper EnclosingRegion => ControlFlowRegionWrapper.From(EnclosingRegionAccessor(wrappedInstance));
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ControlFlowRegionWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ControlFlowRegionWrapper left, ControlFlowRegionWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ControlFlowRegionWrapper left, ControlFlowRegionWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public ImmutableArray<CaptureIdWrapper> CaptureIds => CaptureIdsAccessor(wrappedInstance);
+    public ControlFlowRegionWrapper EnclosingRegion => EnclosingRegionAccessor(wrappedInstance);
     public ITypeSymbol ExceptionType => ExceptionTypeAccessor(wrappedInstance);
-    public int FirstBlockOrdinal => (int)FirstBlockOrdinalAccessor(wrappedInstance);
-    public ControlFlowRegionKind Kind => (ControlFlowRegionKind)KindAccessor(wrappedInstance);
-    public int LastBlockOrdinal => (int)LastBlockOrdinalAccessor(wrappedInstance);
-    public ImmutableArray<IMethodSymbol> LocalFunctions => (ImmutableArray<IMethodSymbol>)LocalFunctionsAccessor(wrappedInstance);
-    public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
+    public int FirstBlockOrdinal => FirstBlockOrdinalAccessor(wrappedInstance);
+    public ControlFlowRegionKind Kind => KindAccessor(wrappedInstance);
+    public int LastBlockOrdinal => LastBlockOrdinalAccessor(wrappedInstance);
+    public ImmutableArray<IMethodSymbol> LocalFunctions => LocalFunctionsAccessor(wrappedInstance);
+    public ImmutableArray<ILocalSymbol> Locals => LocalsAccessor(wrappedInstance);
+    public ImmutableArray<ControlFlowRegionWrapper> NestedRegions => NestedRegionsAccessor(wrappedInstance);
 
     public static ControlFlowRegionWrapper From(Object instance)
     {

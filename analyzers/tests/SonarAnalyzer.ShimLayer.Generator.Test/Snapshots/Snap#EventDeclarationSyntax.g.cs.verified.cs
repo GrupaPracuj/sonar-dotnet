@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class EventDeclarationSyntaxShimExtensions
+public static class EventDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(EventDeclarationSyntax);
 
@@ -34,10 +32,10 @@ public static partial class EventDeclarationSyntaxShimExtensions
 
     extension(EventDeclarationSyntax wrappedInstance)
     {
-        public SyntaxToken SemicolonToken => (SyntaxToken)SemicolonTokenAccessor(wrappedInstance);
+        public SyntaxToken SemicolonToken => SemicolonTokenAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public EventDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken eventKeyword, TypeSyntax type, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken identifier, AccessorListSyntax accessorList, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, attributeLists, modifiers, eventKeyword, type, explicitInterfaceSpecifier, identifier, accessorList, semicolonToken);
         public EventDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken eventKeyword, TypeSyntax type, ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier, SyntaxToken identifier, SyntaxToken semicolonToken) => UpdateAccessor_Overload3(wrappedInstance, attributeLists, modifiers, eventKeyword, type, explicitInterfaceSpecifier, identifier, semicolonToken);
         public EventDeclarationSyntax WithSemicolonToken(SyntaxToken semicolonToken) => WithSemicolonTokenAccessor(wrappedInstance, semicolonToken);

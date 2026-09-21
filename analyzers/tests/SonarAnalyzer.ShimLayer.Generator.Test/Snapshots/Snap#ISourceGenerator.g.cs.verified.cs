@@ -18,16 +18,42 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ISourceGeneratorWrapper
+public readonly struct ISourceGeneratorWrapper : IWrapper, IEquatable<ISourceGeneratorWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.ISourceGenerator");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
+    private static readonly Action<Object, GeneratorExecutionContextWrapper> ExecuteAccessor = AccessorFactory.CreateMethod<Action<Object, GeneratorExecutionContextWrapper>>(WrappedType, "Execute");
+    private static readonly Action<Object, GeneratorInitializationContextWrapper> InitializeAccessor = AccessorFactory.CreateMethod<Action<Object, GeneratorInitializationContextWrapper>>(WrappedType, "Initialize");
+
     private ISourceGeneratorWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ISourceGeneratorWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ISourceGeneratorWrapper left, ISourceGeneratorWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ISourceGeneratorWrapper left, ISourceGeneratorWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    [System.ObsoleteAttribute("ISourceGenerator is deprecated and should not be implemented. Please implement IIncrementalGenerator instead. See https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md.")]
+    public void Execute(GeneratorExecutionContextWrapper context) => ExecuteAccessor(wrappedInstance, context);
+    [System.ObsoleteAttribute("ISourceGenerator is deprecated and should not be implemented. Please implement IIncrementalGenerator instead. See https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md.")]
+    public void Initialize(GeneratorInitializationContextWrapper context) => InitializeAccessor(wrappedInstance, context);
 
     public static ISourceGeneratorWrapper From(object instance)
     {

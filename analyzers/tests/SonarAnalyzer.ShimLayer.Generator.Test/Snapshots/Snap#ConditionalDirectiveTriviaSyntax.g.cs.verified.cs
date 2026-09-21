@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ConditionalDirectiveTriviaSyntaxShimExtensions
+public static class ConditionalDirectiveTriviaSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ConditionalDirectiveTriviaSyntax);
 
@@ -32,8 +30,8 @@ public static partial class ConditionalDirectiveTriviaSyntaxShimExtensions
 
     extension(ConditionalDirectiveTriviaSyntax wrappedInstance)
     {
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public ConditionalDirectiveTriviaSyntax WithCondition(ExpressionSyntax condition) => WithConditionAccessor(wrappedInstance, condition);
         public BranchingDirectiveTriviaSyntax WithEndOfDirectiveToken(SyntaxToken endOfDirectiveToken) => WithEndOfDirectiveTokenAccessor(wrappedInstance, endOfDirectiveToken);
         public BranchingDirectiveTriviaSyntax WithHashToken(SyntaxToken hashToken) => WithHashTokenAccessor(wrappedInstance, hashToken);

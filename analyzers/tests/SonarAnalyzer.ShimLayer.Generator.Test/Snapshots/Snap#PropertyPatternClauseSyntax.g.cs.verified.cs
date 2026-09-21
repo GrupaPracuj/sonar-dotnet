@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct PropertyPatternClauseSyntaxWrapper
+public readonly struct PropertyPatternClauseSyntaxWrapper : IWrapper, IEquatable<PropertyPatternClauseSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.PropertyPatternClauseSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,18 +28,36 @@ public readonly struct PropertyPatternClauseSyntaxWrapper
     private static readonly Func<CSharpSyntaxNode, SyntaxToken> OpenBraceTokenAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxToken>>(WrappedType, "OpenBraceToken");
     private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>> SubpatternsAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>>>(WrappedType, "Subpatterns");
 
-    private static readonly Func<CSharpSyntaxNode, SubpatternSyntaxWrapper[], CSharpSyntaxNode> AddSubpatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SubpatternSyntaxWrapper[], CSharpSyntaxNode>>(WrappedType, "AddSubpatterns");
+    private static readonly Func<CSharpSyntaxNode, SubpatternSyntaxWrapper[], PropertyPatternClauseSyntaxWrapper> AddSubpatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SubpatternSyntaxWrapper[], PropertyPatternClauseSyntaxWrapper>>(WrappedType, "AddSubpatterns");
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, SyntaxToken, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "Update");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithCloseBraceTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithCloseBraceToken");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithOpenBraceTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithOpenBraceToken");
-    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, CSharpSyntaxNode> WithSubpatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, CSharpSyntaxNode>>(WrappedType, "WithSubpatterns");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, SyntaxToken, PropertyPatternClauseSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, SyntaxToken, PropertyPatternClauseSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, PropertyPatternClauseSyntaxWrapper> WithCloseBraceTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, PropertyPatternClauseSyntaxWrapper>>(WrappedType, "WithCloseBraceToken");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, PropertyPatternClauseSyntaxWrapper> WithOpenBraceTokenAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, PropertyPatternClauseSyntaxWrapper>>(WrappedType, "WithOpenBraceToken");
+    private static readonly Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, PropertyPatternClauseSyntaxWrapper> WithSubpatternsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper>, PropertyPatternClauseSyntaxWrapper>>(WrappedType, "WithSubpatterns");
 
     private PropertyPatternClauseSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(PropertyPatternClauseSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(PropertyPatternClauseSyntaxWrapper left, PropertyPatternClauseSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(PropertyPatternClauseSyntaxWrapper left, PropertyPatternClauseSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -58,8 +76,8 @@ public readonly struct PropertyPatternClauseSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxToken CloseBraceToken => (SyntaxToken)CloseBraceTokenAccessor(wrappedInstance);
-    public SyntaxToken OpenBraceToken => (SyntaxToken)OpenBraceTokenAccessor(wrappedInstance);
+    public SyntaxToken CloseBraceToken => CloseBraceTokenAccessor(wrappedInstance);
+    public SyntaxToken OpenBraceToken => OpenBraceTokenAccessor(wrappedInstance);
     public SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper> Subpatterns => SubpatternsAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
@@ -120,13 +138,13 @@ public readonly struct PropertyPatternClauseSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public PropertyPatternClauseSyntaxWrapper AddSubpatterns(SubpatternSyntaxWrapper[] items) => PropertyPatternClauseSyntaxWrapper.From(AddSubpatternsAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public PropertyPatternClauseSyntaxWrapper Update(SyntaxToken openBraceToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper> subpatterns, SyntaxToken closeBraceToken) => PropertyPatternClauseSyntaxWrapper.From(UpdateAccessor(wrappedInstance, openBraceToken, subpatterns, closeBraceToken));
-    public PropertyPatternClauseSyntaxWrapper WithCloseBraceToken(SyntaxToken closeBraceToken) => PropertyPatternClauseSyntaxWrapper.From(WithCloseBraceTokenAccessor(wrappedInstance, closeBraceToken));
-    public PropertyPatternClauseSyntaxWrapper WithOpenBraceToken(SyntaxToken openBraceToken) => PropertyPatternClauseSyntaxWrapper.From(WithOpenBraceTokenAccessor(wrappedInstance, openBraceToken));
-    public PropertyPatternClauseSyntaxWrapper WithSubpatterns(SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper> subpatterns) => PropertyPatternClauseSyntaxWrapper.From(WithSubpatternsAccessor(wrappedInstance, subpatterns));
+    public PropertyPatternClauseSyntaxWrapper AddSubpatterns(SubpatternSyntaxWrapper[] items) => AddSubpatternsAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public PropertyPatternClauseSyntaxWrapper Update(SyntaxToken openBraceToken, SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper> subpatterns, SyntaxToken closeBraceToken) => UpdateAccessor(wrappedInstance, openBraceToken, subpatterns, closeBraceToken);
+    public PropertyPatternClauseSyntaxWrapper WithCloseBraceToken(SyntaxToken closeBraceToken) => WithCloseBraceTokenAccessor(wrappedInstance, closeBraceToken);
+    public PropertyPatternClauseSyntaxWrapper WithOpenBraceToken(SyntaxToken openBraceToken) => WithOpenBraceTokenAccessor(wrappedInstance, openBraceToken);
+    public PropertyPatternClauseSyntaxWrapper WithSubpatterns(SeparatedSyntaxListWrapper<SubpatternSyntaxWrapper> subpatterns) => WithSubpatternsAccessor(wrappedInstance, subpatterns);
 
     public static explicit operator PropertyPatternClauseSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

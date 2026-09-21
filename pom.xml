@@ -60,9 +60,9 @@
     <!-- We are ignoring java doc warnings - this is because we are using JDK 11. Ideally we should not do that. -->
     <doclint>none</doclint>
     
-    <sonar.analyzer.commons.version>2.30.0.5193</sonar.analyzer.commons.version>
-    <sonar.plugin.api.version>13.11.0.4459</sonar.plugin.api.version>
-    <sonar.scanner.version>13.9.0.4593</sonar.scanner.version>
+    <sonar.analyzer.commons.version>2.32.0.5319</sonar.analyzer.commons.version>
+    <sonar.plugin.api.version>14.0.0.4498</sonar.plugin.api.version>
+    <sonar.scanner.version>13.13.0.6016</sonar.scanner.version>
     <jdk.min.version>21</jdk.min.version>
     <maven.compiler.release>${jdk.min.version}</maven.compiler.release>
     <!-- See: https://github.com/SonarSource/sonar-plugin-api#compatibility -->
@@ -77,6 +77,7 @@
     <rspec.directory>${project.build.directory}/../../analyzers/rspec</rspec.directory>
     <packaging.directory>${project.build.directory}/../../analyzers/packaging</packaging.directory>
     <maven.deploy.skip>false</maven.deploy.skip>
+    <enforcer.pluginSize.skip>false</enforcer.pluginSize.skip>
   </properties>
 
   <dependencyManagement>
@@ -115,12 +116,6 @@
         <groupId>org.sonarsource.api.plugin</groupId>
         <artifactId>sonar-plugin-api-test-fixtures</artifactId>
         <version>${sonar.plugin.api.version}</version>
-        <scope>test</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-api</artifactId>
-        <version>1.7.36</version>
         <scope>test</scope>
       </dependency>
       <dependency>

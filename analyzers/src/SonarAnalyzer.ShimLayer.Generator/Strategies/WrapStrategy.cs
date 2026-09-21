@@ -19,14 +19,17 @@ namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
 public abstract class WrapStrategy : MemberStrategy
 {
-    protected abstract string BaseTypeSnippet { get; }
     protected abstract string FromTypeName { get; }
     protected abstract string ConversionSnippet { get; }
 
     public Type BaseType { get; }
     public Type FallbackBaseType { get; }
-    public override string ReturnTypeSnippet => $"{Latest.Name}Wrapper";
+    public override string TypeSnippet => $"{Latest.Name}Wrapper";
+    public override string ReturnTypeSnippet => $"{TypeSnippet}{NullableSnippet}";
     public override string CompiletimeTypeSnippet => BaseType.Name;
+    protected virtual string BaseTypeSnippet => $"IWrapper, IEquatable<{TypeSnippet}>";
+    protected virtual bool IsNullable => false;
+    private string NullableSnippet => IsNullable ? "?" : null;
 
     protected WrapStrategy(Type latest, Type baseType, Type fallbackBaseType, MemberDescriptor[] members) : base(latest, members)
     {
@@ -34,16 +37,13 @@ public abstract class WrapStrategy : MemberStrategy
         FallbackBaseType = fallbackBaseType;
     }
 
-    public override string ToConversionSnippet(string from) =>
-        $"{Latest.Name}Wrapper.From({from})";
-
     protected override string GenerateCore(StrategyModel model)
     {
         var passthrough = PassthroughMembers(model);
         var wrap = WrapMembers(model);
         return $$"""
             {{Preamble()}}
-            public readonly struct {{ReturnTypeSnippet}}{{(BaseTypeSnippet is null ? null : $" : {BaseTypeSnippet}")}}
+            public readonly struct {{TypeSnippet}} : {{BaseTypeSnippet}}
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("{{Latest.FullName}}"{{FallbackBaseTypeSnippet()}});
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -53,10 +53,28 @@ public abstract class WrapStrategy : MemberStrategy
 
             {{JoinLines(wrap.Methods.Select(x => x.AccessorDeclaration()))}}
 
-                private {{ReturnTypeSnippet}}({{CompiletimeTypeSnippet}} wrappedInstance) =>
+                private {{TypeSnippet}}({{CompiletimeTypeSnippet}} wrappedInstance) =>
                     this.wrappedInstance = wrappedInstance;
 
                 public {{CompiletimeTypeSnippet}} WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals({{TypeSnippet}} other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==({{TypeSnippet}} left, {{TypeSnippet}} right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=({{TypeSnippet}} left, {{TypeSnippet}} right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
             {{JoinLines(passthrough.Properties.Select(x => x.MemberDeclaration(4)))}}
 
@@ -76,7 +94,7 @@ public abstract class WrapStrategy : MemberStrategy
                     }
                     else if (IsInstance(instance))
                     {
-                        return new {{ReturnTypeSnippet}}(({{CompiletimeTypeSnippet}})instance);
+                        return new {{TypeSnippet}}(({{CompiletimeTypeSnippet}})instance);
                     }
                     else
                     {
@@ -116,8 +134,8 @@ public abstract class WrapStrategy : MemberStrategy
         {
             sb ??= new StringBuilder();
             sb.AppendLine($"""
-                    public static implicit operator {baseType}Wrapper({ReturnTypeSnippet} up) => {baseType}Wrapper.From(up.WrappedInstance);
-                    public static explicit operator {ReturnTypeSnippet}({baseType}Wrapper down) => {ReturnTypeSnippet}.From(down.WrappedInstance);
+                    public static implicit operator {baseType}Wrapper({TypeSnippet} up) => {baseType}Wrapper.From(up.WrappedInstance);
+                    public static explicit operator {TypeSnippet}({baseType}Wrapper down) => {TypeSnippet}.From(down.WrappedInstance);
 
                 """);
         }
@@ -134,5 +152,5 @@ public abstract class WrapStrategy : MemberStrategy
     private string FallbackBaseTypeConversionSnippet() =>
         FallbackBaseType is null
             ? null
-            : $"""    public static implicit operator {ReturnTypeSnippet}({FallbackBaseType.Name} instance) => new(instance);""";
+            : $"""    public static implicit operator {TypeSnippet}({FallbackBaseType.Name} instance) => new(instance);""";
 }

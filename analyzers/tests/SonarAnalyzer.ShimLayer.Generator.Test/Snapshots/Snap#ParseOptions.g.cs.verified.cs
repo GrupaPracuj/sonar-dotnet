@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ParseOptionsShimExtensions
+public static class ParseOptionsShimExtensions
 {
     private static readonly Type WrappedType = typeof(ParseOptions);
 
@@ -30,8 +28,8 @@ public static partial class ParseOptionsShimExtensions
 
     extension(ParseOptions wrappedInstance)
     {
-        public ImmutableArray<Diagnostic> Errors => (ImmutableArray<Diagnostic>)ErrorsAccessor(wrappedInstance);
-        public string Language => (string)LanguageAccessor(wrappedInstance);
-        public SourceCodeKind SpecifiedKind => (SourceCodeKind)SpecifiedKindAccessor(wrappedInstance);
+        public ImmutableArray<Diagnostic> Errors => ErrorsAccessor(wrappedInstance);
+        public string Language => LanguageAccessor(wrappedInstance);
+        public SourceCodeKind SpecifiedKind => SpecifiedKindAccessor(wrappedInstance);
     }
 }

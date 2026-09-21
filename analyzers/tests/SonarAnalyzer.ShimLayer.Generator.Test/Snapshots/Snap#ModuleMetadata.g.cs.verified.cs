@@ -16,22 +16,20 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ModuleMetadataShimExtensions
+public static class ModuleMetadataShimExtensions
 {
     private static readonly Type WrappedType = typeof(ModuleMetadata);
 
     private static readonly Func<ModuleMetadata, bool> IsDisposedAccessor = AccessorFactory.CreateProperty<Func<ModuleMetadata, bool>>(WrappedType, "IsDisposed");
 
-    private static readonly Func<ModuleMetadata, IntPtr, int, Action, ModuleMetadata> CreateFromMetadataAccessor_Overload2 = AccessorFactory.CreateMethod<Func<ModuleMetadata, IntPtr, int, Action, ModuleMetadata>>(WrappedType, "CreateFromMetadata");
+    private static readonly Func<IntPtr, int, Action, ModuleMetadata> CreateFromMetadataAccessor_Overload2 = AccessorFactory.CreateStaticMethod<Func<IntPtr, int, Action, ModuleMetadata>>(WrappedType, "CreateFromMetadata");
 
     extension(ModuleMetadata wrappedInstance)
     {
-        public bool IsDisposed => (bool)IsDisposedAccessor(wrappedInstance);
+        public bool IsDisposed => IsDisposedAccessor(wrappedInstance);
 
-        public ModuleMetadata CreateFromMetadata(IntPtr metadata, int size, Action onDispose) => CreateFromMetadataAccessor_Overload2(wrappedInstance, metadata, size, onDispose);
+        public static ModuleMetadata CreateFromMetadata(IntPtr metadata, int size, Action onDispose) => CreateFromMetadataAccessor_Overload2(metadata, size, onDispose);
     }
 }

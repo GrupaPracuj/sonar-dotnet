@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnonymousMethodExpressionSyntaxShimExtensions
+public static class AnonymousMethodExpressionSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnonymousMethodExpressionSyntax);
 
@@ -39,12 +37,12 @@ public static partial class AnonymousMethodExpressionSyntaxShimExtensions
     extension(AnonymousMethodExpressionSyntax wrappedInstance)
     {
         public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => ModifiersAccessor(wrappedInstance);
 
         public AnonymousMethodExpressionSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
         public AnonymousMethodExpressionSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public AnonymousMethodExpressionSyntax Update(SyntaxToken asyncKeyword, SyntaxToken delegateKeyword, ParameterListSyntax parameterList, BlockSyntax block, ExpressionSyntax expressionBody) => UpdateAccessor_Overload2(wrappedInstance, asyncKeyword, delegateKeyword, parameterList, block, expressionBody);
         public AnonymousMethodExpressionSyntax Update(SyntaxTokenList modifiers, SyntaxToken delegateKeyword, ParameterListSyntax parameterList, BlockSyntax block, ExpressionSyntax expressionBody) => UpdateAccessor_Overload3(wrappedInstance, modifiers, delegateKeyword, parameterList, block, expressionBody);
         public AnonymousMethodExpressionSyntax WithExpressionBody(ExpressionSyntax expressionBody) => WithExpressionBodyAccessor(wrappedInstance, expressionBody);

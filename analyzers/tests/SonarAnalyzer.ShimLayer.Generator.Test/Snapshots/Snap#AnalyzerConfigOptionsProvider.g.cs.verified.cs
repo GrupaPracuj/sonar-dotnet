@@ -18,26 +18,44 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct AnalyzerConfigOptionsProviderWrapper
+public readonly struct AnalyzerConfigOptionsProviderWrapper : IWrapper, IEquatable<AnalyzerConfigOptionsProviderWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Diagnostics.AnalyzerConfigOptionsProvider");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
-    private static readonly Func<Object, Object> GlobalOptionsAccessor = AccessorFactory.CreateProperty<Func<Object, Object>>(WrappedType, "GlobalOptions");
+    private static readonly Func<Object, AnalyzerConfigOptionsWrapper> GlobalOptionsAccessor = AccessorFactory.CreateProperty<Func<Object, AnalyzerConfigOptionsWrapper>>(WrappedType, "GlobalOptions");
 
-    private static readonly Func<Object, AdditionalText, Object> GetOptionsAccessor = AccessorFactory.CreateMethod<Func<Object, AdditionalText, Object>>(WrappedType, "GetOptions");
-    private static readonly Func<Object, SyntaxTree, Object> GetOptionsAccessor_Overload2 = AccessorFactory.CreateMethod<Func<Object, SyntaxTree, Object>>(WrappedType, "GetOptions");
+    private static readonly Func<Object, AdditionalText, AnalyzerConfigOptionsWrapper> GetOptionsAccessor = AccessorFactory.CreateMethod<Func<Object, AdditionalText, AnalyzerConfigOptionsWrapper>>(WrappedType, "GetOptions");
+    private static readonly Func<Object, SyntaxTree, AnalyzerConfigOptionsWrapper> GetOptionsAccessor_Overload2 = AccessorFactory.CreateMethod<Func<Object, SyntaxTree, AnalyzerConfigOptionsWrapper>>(WrappedType, "GetOptions");
 
     private AnalyzerConfigOptionsProviderWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public AnalyzerConfigOptionsWrapper GlobalOptions => AnalyzerConfigOptionsWrapper.From(GlobalOptionsAccessor(wrappedInstance));
+    object IWrapper.WrappedInstance => wrappedInstance;
 
-    public AnalyzerConfigOptionsWrapper GetOptions(AdditionalText textFile) => AnalyzerConfigOptionsWrapper.From(GetOptionsAccessor(wrappedInstance, textFile));
-    public AnalyzerConfigOptionsWrapper GetOptions(SyntaxTree tree) => AnalyzerConfigOptionsWrapper.From(GetOptionsAccessor_Overload2(wrappedInstance, tree));
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(AnalyzerConfigOptionsProviderWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(AnalyzerConfigOptionsProviderWrapper left, AnalyzerConfigOptionsProviderWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(AnalyzerConfigOptionsProviderWrapper left, AnalyzerConfigOptionsProviderWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public AnalyzerConfigOptionsWrapper GlobalOptions => GlobalOptionsAccessor(wrappedInstance);
+
+    public AnalyzerConfigOptionsWrapper GetOptions(AdditionalText textFile) => GetOptionsAccessor(wrappedInstance, textFile);
+    public AnalyzerConfigOptionsWrapper GetOptions(SyntaxTree tree) => GetOptionsAccessor_Overload2(wrappedInstance, tree);
 
     public static AnalyzerConfigOptionsProviderWrapper From(Object instance)
     {

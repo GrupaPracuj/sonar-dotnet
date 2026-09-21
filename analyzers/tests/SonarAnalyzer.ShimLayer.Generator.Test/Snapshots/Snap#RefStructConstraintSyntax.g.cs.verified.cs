@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct RefStructConstraintSyntaxWrapper
+public readonly struct RefStructConstraintSyntaxWrapper : IWrapper, IEquatable<RefStructConstraintSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.RefStructConstraintSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -29,14 +29,32 @@ public readonly struct RefStructConstraintSyntaxWrapper
 
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SyntaxToken, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "Update");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithRefKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithRefKeyword");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithStructKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithStructKeyword");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SyntaxToken, RefStructConstraintSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SyntaxToken, RefStructConstraintSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, RefStructConstraintSyntaxWrapper> WithRefKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, RefStructConstraintSyntaxWrapper>>(WrappedType, "WithRefKeyword");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, RefStructConstraintSyntaxWrapper> WithStructKeywordAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, RefStructConstraintSyntaxWrapper>>(WrappedType, "WithStructKeyword");
 
     private RefStructConstraintSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(RefStructConstraintSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(RefStructConstraintSyntaxWrapper left, RefStructConstraintSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(RefStructConstraintSyntaxWrapper left, RefStructConstraintSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -55,8 +73,8 @@ public readonly struct RefStructConstraintSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxToken RefKeyword => (SyntaxToken)RefKeywordAccessor(wrappedInstance);
-    public SyntaxToken StructKeyword => (SyntaxToken)StructKeywordAccessor(wrappedInstance);
+    public SyntaxToken RefKeyword => RefKeywordAccessor(wrappedInstance);
+    public SyntaxToken StructKeyword => StructKeywordAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -116,11 +134,11 @@ public readonly struct RefStructConstraintSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public RefStructConstraintSyntaxWrapper Update(SyntaxToken refKeyword, SyntaxToken structKeyword) => RefStructConstraintSyntaxWrapper.From(UpdateAccessor(wrappedInstance, refKeyword, structKeyword));
-    public RefStructConstraintSyntaxWrapper WithRefKeyword(SyntaxToken refKeyword) => RefStructConstraintSyntaxWrapper.From(WithRefKeywordAccessor(wrappedInstance, refKeyword));
-    public RefStructConstraintSyntaxWrapper WithStructKeyword(SyntaxToken structKeyword) => RefStructConstraintSyntaxWrapper.From(WithStructKeywordAccessor(wrappedInstance, structKeyword));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public RefStructConstraintSyntaxWrapper Update(SyntaxToken refKeyword, SyntaxToken structKeyword) => UpdateAccessor(wrappedInstance, refKeyword, structKeyword);
+    public RefStructConstraintSyntaxWrapper WithRefKeyword(SyntaxToken refKeyword) => WithRefKeywordAccessor(wrappedInstance, refKeyword);
+    public RefStructConstraintSyntaxWrapper WithStructKeyword(SyntaxToken structKeyword) => WithStructKeywordAccessor(wrappedInstance, structKeyword);
 
     public static explicit operator RefStructConstraintSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

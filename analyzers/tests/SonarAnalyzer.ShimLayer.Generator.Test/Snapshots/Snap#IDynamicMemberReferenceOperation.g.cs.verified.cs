@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IDynamicMemberReferenceOperationWrapper : IOperationWrapper
+public readonly struct IDynamicMemberReferenceOperationWrapper : IOperationWrapper, IWrapper, IEquatable<IDynamicMemberReferenceOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IDynamicMemberReferenceOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -41,21 +41,39 @@ public readonly struct IDynamicMemberReferenceOperationWrapper : IOperationWrapp
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IDynamicMemberReferenceOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IDynamicMemberReferenceOperationWrapper left, IDynamicMemberReferenceOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IDynamicMemberReferenceOperationWrapper left, IDynamicMemberReferenceOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
     public ITypeSymbol ContainingType => ContainingTypeAccessor(wrappedInstance);
     public IOperation Instance => InstanceAccessor(wrappedInstance);
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
-    public string MemberName => (string)MemberNameAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
+    public string MemberName => MemberNameAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
     public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
-    public ImmutableArray<ITypeSymbol> TypeArguments => (ImmutableArray<ITypeSymbol>)TypeArgumentsAccessor(wrappedInstance);
+    public ImmutableArray<ITypeSymbol> TypeArguments => TypeArgumentsAccessor(wrappedInstance);
 
     public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 

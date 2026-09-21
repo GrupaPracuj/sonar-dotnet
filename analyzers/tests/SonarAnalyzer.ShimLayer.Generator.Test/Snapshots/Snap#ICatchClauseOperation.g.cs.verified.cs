@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ICatchClauseOperationWrapper : IOperationWrapper
+public readonly struct ICatchClauseOperationWrapper : IOperationWrapper, IWrapper, IEquatable<ICatchClauseOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.ICatchClauseOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,7 +28,7 @@ public readonly struct ICatchClauseOperationWrapper : IOperationWrapper
     private static readonly Func<IOperation, IOperation> ExceptionDeclarationOrExpressionAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "ExceptionDeclarationOrExpression");
     private static readonly Func<IOperation, ITypeSymbol> ExceptionTypeAccessor = AccessorFactory.CreateProperty<Func<IOperation, ITypeSymbol>>(WrappedType, "ExceptionType");
     private static readonly Func<IOperation, IOperation> FilterAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Filter");
-    private static readonly Func<IOperation, IOperation> HandlerAccessor = AccessorFactory.CreateProperty<Func<IOperation, IOperation>>(WrappedType, "Handler");
+    private static readonly Func<IOperation, IBlockOperationWrapper> HandlerAccessor = AccessorFactory.CreateProperty<Func<IOperation, IBlockOperationWrapper>>(WrappedType, "Handler");
     private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
     private static readonly Func<IOperation, string> LanguageAccessor = AccessorFactory.CreateProperty<Func<IOperation, string>>(WrappedType, "Language");
     private static readonly Func<IOperation, ImmutableArray<ILocalSymbol>> LocalsAccessor = AccessorFactory.CreateProperty<Func<IOperation, ImmutableArray<ILocalSymbol>>>(WrappedType, "Locals");
@@ -42,20 +42,38 @@ public readonly struct ICatchClauseOperationWrapper : IOperationWrapper
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ICatchClauseOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ICatchClauseOperationWrapper left, ICatchClauseOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ICatchClauseOperationWrapper left, ICatchClauseOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
     public IOperation ExceptionDeclarationOrExpression => ExceptionDeclarationOrExpressionAccessor(wrappedInstance);
     public ITypeSymbol ExceptionType => ExceptionTypeAccessor(wrappedInstance);
     public IOperation Filter => FilterAccessor(wrappedInstance);
-    public IBlockOperationWrapper Handler => IBlockOperationWrapper.From(HandlerAccessor(wrappedInstance));
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
-    public ImmutableArray<ILocalSymbol> Locals => (ImmutableArray<ILocalSymbol>)LocalsAccessor(wrappedInstance);
+    public IBlockOperationWrapper Handler => HandlerAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
+    public ImmutableArray<ILocalSymbol> Locals => LocalsAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
     public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);
 

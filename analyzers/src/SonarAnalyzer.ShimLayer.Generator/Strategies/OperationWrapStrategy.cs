@@ -19,7 +19,7 @@ namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
 public class OperationWrapStrategy : InterfaceWrapStrategy
 {
-    protected override string BaseTypeSnippet => "IOperationWrapper";
+    protected override string BaseTypeSnippet => $"IOperationWrapper, {base.BaseTypeSnippet}";
     protected override string FromTypeName => "IOperation";
 
     protected override string ConversionSnippet => $"""

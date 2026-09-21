@@ -18,22 +18,40 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct AnalyzerConfigWrapper
+public readonly struct AnalyzerConfigWrapper : IWrapper, IEquatable<AnalyzerConfigWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.AnalyzerConfig");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
-    private static readonly Func<Object, SourceText, string, Object> ParseAccessor = AccessorFactory.CreateMethod<Func<Object, SourceText, string, Object>>(WrappedType, "Parse");
-    private static readonly Func<Object, string, string, Object> ParseAccessor_Overload2 = AccessorFactory.CreateMethod<Func<Object, string, string, Object>>(WrappedType, "Parse");
+    private static readonly Func<SourceText, string, AnalyzerConfigWrapper> ParseAccessor = AccessorFactory.CreateStaticMethod<Func<SourceText, string, AnalyzerConfigWrapper>>(WrappedType, "Parse");
+    private static readonly Func<string, string, AnalyzerConfigWrapper> ParseAccessor_Overload2 = AccessorFactory.CreateStaticMethod<Func<string, string, AnalyzerConfigWrapper>>(WrappedType, "Parse");
 
     private AnalyzerConfigWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public AnalyzerConfigWrapper Parse(SourceText text, string pathToFile) => AnalyzerConfigWrapper.From(ParseAccessor(wrappedInstance, text, pathToFile));
-    public AnalyzerConfigWrapper Parse(string text, string pathToFile) => AnalyzerConfigWrapper.From(ParseAccessor_Overload2(wrappedInstance, text, pathToFile));
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(AnalyzerConfigWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(AnalyzerConfigWrapper left, AnalyzerConfigWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(AnalyzerConfigWrapper left, AnalyzerConfigWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static AnalyzerConfigWrapper Parse(SourceText text, string pathToFile) => ParseAccessor(text, pathToFile);
+    public static AnalyzerConfigWrapper Parse(string text, string pathToFile) => ParseAccessor_Overload2(text, pathToFile);
 
     public static AnalyzerConfigWrapper From(Object instance)
     {

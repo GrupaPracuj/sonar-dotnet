@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class EnumMemberDeclarationSyntaxShimExtensions
+public static class EnumMemberDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(EnumMemberDeclarationSyntax);
 
@@ -34,11 +32,11 @@ public static partial class EnumMemberDeclarationSyntaxShimExtensions
 
     extension(EnumMemberDeclarationSyntax wrappedInstance)
     {
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => ModifiersAccessor(wrappedInstance);
 
         public EnumMemberDeclarationSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public EnumMemberDeclarationSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxTokenList modifiers, SyntaxToken identifier, EqualsValueClauseSyntax equalsValue) => UpdateAccessor_Overload2(wrappedInstance, attributeLists, modifiers, identifier, equalsValue);
         public EnumMemberDeclarationSyntax WithModifiers(SyntaxTokenList modifiers) => WithModifiersAccessor(wrappedInstance, modifiers);
     }

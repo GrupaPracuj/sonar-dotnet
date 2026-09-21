@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ITupleBinaryOperationWrapper : IOperationWrapper
+public readonly struct ITupleBinaryOperationWrapper : IOperationWrapper, IWrapper, IEquatable<ITupleBinaryOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.ITupleBinaryOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -40,17 +40,35 @@ public readonly struct ITupleBinaryOperationWrapper : IOperationWrapper
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ITupleBinaryOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ITupleBinaryOperationWrapper left, ITupleBinaryOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ITupleBinaryOperationWrapper left, ITupleBinaryOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
     public IOperation LeftOperand => LeftOperandAccessor(wrappedInstance);
-    public BinaryOperatorKind OperatorKind => (BinaryOperatorKind)OperatorKindAccessor(wrappedInstance);
+    public BinaryOperatorKind OperatorKind => OperatorKindAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);
     public IOperation RightOperand => RightOperandAccessor(wrappedInstance);
     public SemanticModel SemanticModel => SemanticModelAccessor(wrappedInstance);

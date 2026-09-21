@@ -19,20 +19,17 @@ namespace SonarAnalyzer.ShimLayer.Generator.Strategies;
 
 public class ExtendStrategy : MemberStrategy
 {
-    public override string ReturnTypeSnippet => Latest.Name;
+    public override string TypeSnippet => Latest.Name;
 
     public ExtendStrategy(Type latest, MemberDescriptor[] members) : base(latest, members) { }
-
-    public override string ToConversionSnippet(string from) =>
-        from;
 
     protected override string GenerateCore(StrategyModel model)
     {
         var wrap = WrapMembers(model);
         return wrap.Properties.Any() || wrap.Methods.Any()
             ? $$"""
-                {{Preamble($"using {Latest.Namespace};")}}
-                public static partial class {{Latest.Name}}ShimExtensions
+                {{Preamble()}}
+                public static class {{Latest.Name}}ShimExtensions
                 {
                     private static readonly Type WrappedType = typeof({{CompiletimeTypeSnippet}});
 

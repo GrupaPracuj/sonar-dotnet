@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class UsingDirectiveSyntaxShimExtensions
+public static class UsingDirectiveSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(UsingDirectiveSyntax);
 
@@ -38,12 +36,12 @@ public static partial class UsingDirectiveSyntaxShimExtensions
 
     extension(UsingDirectiveSyntax wrappedInstance)
     {
-        public SyntaxToken GlobalKeyword => (SyntaxToken)GlobalKeywordAccessor(wrappedInstance);
+        public SyntaxToken GlobalKeyword => GlobalKeywordAccessor(wrappedInstance);
         public TypeSyntax NamespaceOrType => NamespaceOrTypeAccessor(wrappedInstance);
-        public SyntaxToken UnsafeKeyword => (SyntaxToken)UnsafeKeywordAccessor(wrappedInstance);
+        public SyntaxToken UnsafeKeyword => UnsafeKeywordAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public UsingDirectiveSyntax Update(SyntaxToken globalKeyword, SyntaxToken usingKeyword, SyntaxToken staticKeyword, NameEqualsSyntax alias, NameSyntax name, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, globalKeyword, usingKeyword, staticKeyword, alias, name, semicolonToken);
         public UsingDirectiveSyntax Update(SyntaxToken globalKeyword, SyntaxToken usingKeyword, SyntaxToken staticKeyword, SyntaxToken unsafeKeyword, NameEqualsSyntax alias, TypeSyntax namespaceOrType, SyntaxToken semicolonToken) => UpdateAccessor_Overload3(wrappedInstance, globalKeyword, usingKeyword, staticKeyword, unsafeKeyword, alias, namespaceOrType, semicolonToken);
         public UsingDirectiveSyntax WithGlobalKeyword(SyntaxToken globalKeyword) => WithGlobalKeywordAccessor(wrappedInstance, globalKeyword);

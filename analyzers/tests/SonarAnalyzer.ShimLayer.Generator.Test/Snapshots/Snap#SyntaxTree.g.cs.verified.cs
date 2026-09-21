@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class SyntaxTreeShimExtensions
+public static class SyntaxTreeShimExtensions
 {
     private static readonly Type WrappedType = typeof(SyntaxTree);
 
@@ -31,7 +29,7 @@ public static partial class SyntaxTreeShimExtensions
     extension(SyntaxTree wrappedInstance)
     {
         [System.ObsoleteAttribute("Obsolete due to performance problems, use CompilationOptions.SyntaxTreeOptionsProvider instead", false)]
-        public ImmutableDictionary<string, ReportDiagnostic> DiagnosticOptions => (ImmutableDictionary<string, ReportDiagnostic>)DiagnosticOptionsAccessor(wrappedInstance);
+        public ImmutableDictionary<string, ReportDiagnostic> DiagnosticOptions => DiagnosticOptionsAccessor(wrappedInstance);
 
         [System.ObsoleteAttribute("Obsolete due to performance problems, use CompilationOptions.SyntaxTreeOptionsProvider instead", false)]
         public SyntaxTree WithDiagnosticOptions(ImmutableDictionary<string, ReportDiagnostic> options) => WithDiagnosticOptionsAccessor(wrappedInstance, options);

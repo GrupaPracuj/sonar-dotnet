@@ -15,6 +15,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
+using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace SonarAnalyzer.ShimLayer.Generator.Snippets;
@@ -32,10 +33,15 @@ public abstract class MethodSnippet : Snippet<MethodInfo>
         parameters = this.member.GetParameters();
     }
 
-    public sealed override string MemberDeclaration(int indentSize) =>
-        $"""
-        {Indent(indentSize)}{SerializeAttributes(member.GetCustomAttributesData(), indentSize)}public {returnType.ReturnTypeSnippet} {member.Name}({parameters.JoinStr(", ", SerializeParameter)}) => {InvocationSnippet()};
-        """;
+    public sealed override string MemberDeclaration(int indentSize)
+    {
+        var attributes = member.GetCustomAttributesData();
+        var staticSnippet = member.IsStatic ? "static " : null;
+        var thisSnippet = attributes.Any(x => x.AttributeType.Name == nameof(ExtensionAttribute)) ? "this " : null;
+        return $"""
+            {Indent(indentSize)}{SerializeAttributes(attributes, indentSize)}public {staticSnippet}{returnType.ReturnTypeSnippet} {member.Name}({thisSnippet}{parameters.JoinStr(", ", SerializeParameter)}) => {InvocationSnippet()};
+            """;
+    }
 
     protected static string SerializeParameterArgument(ParameterInfo parameter)
     {
@@ -47,7 +53,7 @@ public abstract class MethodSnippet : Snippet<MethodInfo>
     {
         var prefix = parameter.IsOut ? "out " : null;
         var underlyingType = parameter.IsOut ? parameter.ParameterType.GetElementType() : parameter.ParameterType;
-        return $"{prefix}{model[underlyingType].ReturnTypeSnippet} {SerializeParameterName(parameter)}";
+        return $"{prefix}{model[underlyingType].TypeSnippet} {SerializeParameterName(parameter)}";
     }
 
     private static string SerializeParameterName(ParameterInfo parameter) =>

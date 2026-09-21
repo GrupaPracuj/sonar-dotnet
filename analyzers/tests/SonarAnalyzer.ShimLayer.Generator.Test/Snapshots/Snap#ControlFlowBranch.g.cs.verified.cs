@@ -18,26 +18,50 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ControlFlowBranchWrapper
+public readonly struct ControlFlowBranchWrapper : IWrapper, IEquatable<ControlFlowBranchWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.FlowAnalysis.ControlFlowBranch");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
-    private static readonly Func<Object, Object> DestinationAccessor = AccessorFactory.CreateProperty<Func<Object, Object>>(WrappedType, "Destination");
+    private static readonly Func<Object, BasicBlockWrapper> DestinationAccessor = AccessorFactory.CreateProperty<Func<Object, BasicBlockWrapper>>(WrappedType, "Destination");
+    private static readonly Func<Object, ImmutableArray<ControlFlowRegionWrapper>> EnteringRegionsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ControlFlowRegionWrapper>>>(WrappedType, "EnteringRegions");
+    private static readonly Func<Object, ImmutableArray<ControlFlowRegionWrapper>> FinallyRegionsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ControlFlowRegionWrapper>>>(WrappedType, "FinallyRegions");
     private static readonly Func<Object, bool> IsConditionalSuccessorAccessor = AccessorFactory.CreateProperty<Func<Object, bool>>(WrappedType, "IsConditionalSuccessor");
+    private static readonly Func<Object, ImmutableArray<ControlFlowRegionWrapper>> LeavingRegionsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ControlFlowRegionWrapper>>>(WrappedType, "LeavingRegions");
     private static readonly Func<Object, ControlFlowBranchSemantics> SemanticsAccessor = AccessorFactory.CreateProperty<Func<Object, ControlFlowBranchSemantics>>(WrappedType, "Semantics");
-    private static readonly Func<Object, Object> SourceAccessor = AccessorFactory.CreateProperty<Func<Object, Object>>(WrappedType, "Source");
+    private static readonly Func<Object, BasicBlockWrapper> SourceAccessor = AccessorFactory.CreateProperty<Func<Object, BasicBlockWrapper>>(WrappedType, "Source");
 
     private ControlFlowBranchWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public BasicBlockWrapper Destination => BasicBlockWrapper.From(DestinationAccessor(wrappedInstance));
-    public bool IsConditionalSuccessor => (bool)IsConditionalSuccessorAccessor(wrappedInstance);
-    public ControlFlowBranchSemantics Semantics => (ControlFlowBranchSemantics)SemanticsAccessor(wrappedInstance);
-    public BasicBlockWrapper Source => BasicBlockWrapper.From(SourceAccessor(wrappedInstance));
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ControlFlowBranchWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ControlFlowBranchWrapper left, ControlFlowBranchWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ControlFlowBranchWrapper left, ControlFlowBranchWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public BasicBlockWrapper Destination => DestinationAccessor(wrappedInstance);
+    public ImmutableArray<ControlFlowRegionWrapper> EnteringRegions => EnteringRegionsAccessor(wrappedInstance);
+    public ImmutableArray<ControlFlowRegionWrapper> FinallyRegions => FinallyRegionsAccessor(wrappedInstance);
+    public bool IsConditionalSuccessor => IsConditionalSuccessorAccessor(wrappedInstance);
+    public ImmutableArray<ControlFlowRegionWrapper> LeavingRegions => LeavingRegionsAccessor(wrappedInstance);
+    public ControlFlowBranchSemantics Semantics => SemanticsAccessor(wrappedInstance);
+    public BasicBlockWrapper Source => SourceAccessor(wrappedInstance);
 
     public static ControlFlowBranchWrapper From(Object instance)
     {

@@ -38,7 +38,7 @@ public class IOperationStrategyTest
         {
             { typeof(IInvocationOperation), new OperationWrapStrategy(typeof(IInvocationOperation), []) },
             { typeof(IPropertyReferenceOperation), new OperationWrapStrategy(typeof(IPropertyReferenceOperation), []) },
-            { typeof(OperationVisitor), new ClassWrapStrategy(typeof(OperationVisitor), null, []) }
+            { typeof(OperationVisitor), new TypeWrapStrategy(typeof(OperationVisitor), null, []) }
         };
         var result = sut.Generate(new(model));
         result.Should().BeIgnoringLineEndings(
@@ -61,11 +61,9 @@ public class IOperationStrategyTest
              * along with this program; if not, see https://sonarsource.com/license/ssal/
              */
 
-            using Microsoft.CodeAnalysis;
-
             namespace SonarAnalyzer.ShimLayer;
 
-            public static partial class IOperationShimExtensions
+            public static class IOperationShimExtensions
             {
                 private static readonly Type WrappedType = typeof(IOperation);
 
@@ -76,9 +74,9 @@ public class IOperationStrategyTest
 
                 extension(IOperation wrappedInstance)
                 {
-                    public IOperation Parent => (IOperation)ParentAccessor(wrappedInstance);
+                    public IOperation Parent => ParentAccessor(wrappedInstance);
                     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-                    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
+                    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
 
                     public void Accept(OperationVisitorWrapper visitor) => AcceptAccessor(wrappedInstance, visitor);
 

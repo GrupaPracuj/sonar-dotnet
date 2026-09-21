@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ShebangDirectiveTriviaSyntaxShimExtensions
+public static class ShebangDirectiveTriviaSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ShebangDirectiveTriviaSyntax);
 
@@ -32,10 +30,10 @@ public static partial class ShebangDirectiveTriviaSyntaxShimExtensions
 
     extension(ShebangDirectiveTriviaSyntax wrappedInstance)
     {
-        public SyntaxToken Content => (SyntaxToken)ContentAccessor(wrappedInstance);
+        public SyntaxToken Content => ContentAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public ShebangDirectiveTriviaSyntax WithContent(SyntaxToken content) => WithContentAccessor(wrappedInstance, content);
     }
 }

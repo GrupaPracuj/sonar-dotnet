@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct SingleVariableDesignationSyntaxWrapper
+public readonly struct SingleVariableDesignationSyntaxWrapper : IWrapper, IEquatable<SingleVariableDesignationSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.SingleVariableDesignationSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,13 +28,31 @@ public readonly struct SingleVariableDesignationSyntaxWrapper
 
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "Update");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode> WithIdentifierAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, CSharpSyntaxNode>>(WrappedType, "WithIdentifier");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SingleVariableDesignationSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SingleVariableDesignationSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken, SingleVariableDesignationSyntaxWrapper> WithIdentifierAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken, SingleVariableDesignationSyntaxWrapper>>(WrappedType, "WithIdentifier");
 
     private SingleVariableDesignationSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(SingleVariableDesignationSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(SingleVariableDesignationSyntaxWrapper left, SingleVariableDesignationSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(SingleVariableDesignationSyntaxWrapper left, SingleVariableDesignationSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -53,7 +71,7 @@ public readonly struct SingleVariableDesignationSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxToken Identifier => (SyntaxToken)IdentifierAccessor(wrappedInstance);
+    public SyntaxToken Identifier => IdentifierAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
     public IEnumerable<SyntaxNode> Ancestors(bool ascendOutOfTrivia) => wrappedInstance.Ancestors(ascendOutOfTrivia);
@@ -113,10 +131,10 @@ public readonly struct SingleVariableDesignationSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public SingleVariableDesignationSyntaxWrapper Update(SyntaxToken identifier) => SingleVariableDesignationSyntaxWrapper.From(UpdateAccessor(wrappedInstance, identifier));
-    public SingleVariableDesignationSyntaxWrapper WithIdentifier(SyntaxToken identifier) => SingleVariableDesignationSyntaxWrapper.From(WithIdentifierAccessor(wrappedInstance, identifier));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public SingleVariableDesignationSyntaxWrapper Update(SyntaxToken identifier) => UpdateAccessor(wrappedInstance, identifier);
+    public SingleVariableDesignationSyntaxWrapper WithIdentifier(SyntaxToken identifier) => WithIdentifierAccessor(wrappedInstance, identifier);
 
     public static explicit operator SingleVariableDesignationSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

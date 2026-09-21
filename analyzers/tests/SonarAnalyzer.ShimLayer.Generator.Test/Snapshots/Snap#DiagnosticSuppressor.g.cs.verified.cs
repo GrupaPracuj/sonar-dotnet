@@ -18,20 +18,46 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct DiagnosticSuppressorWrapper
+public readonly struct DiagnosticSuppressorWrapper : IWrapper, IEquatable<DiagnosticSuppressorWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Diagnostics.DiagnosticSuppressor");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly DiagnosticAnalyzer wrappedInstance;
+
+    private static readonly Func<DiagnosticAnalyzer, ImmutableArray<SuppressionDescriptorWrapper>> SupportedSuppressionsAccessor = AccessorFactory.CreateProperty<Func<DiagnosticAnalyzer, ImmutableArray<SuppressionDescriptorWrapper>>>(WrappedType, "SupportedSuppressions");
+
+    private static readonly Action<DiagnosticAnalyzer, SuppressionAnalysisContextWrapper> ReportSuppressionsAccessor = AccessorFactory.CreateMethod<Action<DiagnosticAnalyzer, SuppressionAnalysisContextWrapper>>(WrappedType, "ReportSuppressions");
 
     private DiagnosticSuppressorWrapper(DiagnosticAnalyzer wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public DiagnosticAnalyzer WrappedInstance => wrappedInstance;
 
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(DiagnosticSuppressorWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(DiagnosticSuppressorWrapper left, DiagnosticSuppressorWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(DiagnosticSuppressorWrapper left, DiagnosticSuppressorWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
     public ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => wrappedInstance.SupportedDiagnostics;
 
+    public ImmutableArray<SuppressionDescriptorWrapper> SupportedSuppressions => SupportedSuppressionsAccessor(wrappedInstance);
+
     public void Initialize(AnalysisContext context) => wrappedInstance.Initialize(context);
+
+    public void ReportSuppressions(SuppressionAnalysisContextWrapper context) => ReportSuppressionsAccessor(wrappedInstance, context);
 
     public static DiagnosticSuppressorWrapper From(DiagnosticAnalyzer instance)
     {

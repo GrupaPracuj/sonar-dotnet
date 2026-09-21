@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class BasePropertyDeclarationSyntaxShimExtensions
+public static class BasePropertyDeclarationSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(BasePropertyDeclarationSyntax);
 
@@ -40,8 +38,8 @@ public static partial class BasePropertyDeclarationSyntaxShimExtensions
         public BasePropertyDeclarationSyntax AddAccessorListAccessors(AccessorDeclarationSyntax[] items) => AddAccessorListAccessorsAccessor(wrappedInstance, items);
         public BasePropertyDeclarationSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
         public BasePropertyDeclarationSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public BasePropertyDeclarationSyntax WithAccessorList(AccessorListSyntax accessorList) => WithAccessorListAccessor(wrappedInstance, accessorList);
         public BasePropertyDeclarationSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
         public BasePropertyDeclarationSyntax WithExplicitInterfaceSpecifier(ExplicitInterfaceSpecifierSyntax explicitInterfaceSpecifier) => WithExplicitInterfaceSpecifierAccessor(wrappedInstance, explicitInterfaceSpecifier);

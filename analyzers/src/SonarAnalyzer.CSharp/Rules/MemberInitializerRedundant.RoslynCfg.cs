@@ -35,14 +35,14 @@ namespace SonarAnalyzer.CSharp.Rules
             }
 
             // Returns true if the block contains assignment before access
-            protected override bool IsValid(BasicBlock block) =>
+            protected override bool IsValid(BasicBlockWrapper block) =>
                 ProcessBlock(block, cfg, false);
 
             // Returns true if the block contains access before assignment
-            protected override bool IsInvalid(BasicBlock block) =>
+            protected override bool IsInvalid(BasicBlockWrapper block) =>
                 ProcessBlock(block, cfg, true);
 
-            private bool ProcessBlock(BasicBlock block, ControlFlowGraph controlFlowGraph, bool checkReadBeforeWrite)
+            private bool ProcessBlock(BasicBlockWrapper block, ControlFlowGraph controlFlowGraph, bool checkReadBeforeWrite)
             {
                 foreach (var operation in block.OperationsAndBranchValue.Reverse().ToReversedExecutionOrder())
                 {
@@ -65,7 +65,7 @@ namespace SonarAnalyzer.CSharp.Rules
 
             private bool IsReadOrWrite(IOperation child, bool checkReadBeforeWrite)
             {
-                if (child.IsOutArgumentReference())
+                if (child.IsOutArgumentReference)
                 {
                     // it is out argument - that means that this is write
                     return !checkReadBeforeWrite;

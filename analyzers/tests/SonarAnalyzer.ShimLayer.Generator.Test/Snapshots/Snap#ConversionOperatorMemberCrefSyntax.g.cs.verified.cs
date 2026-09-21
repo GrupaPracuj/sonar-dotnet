@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ConversionOperatorMemberCrefSyntaxShimExtensions
+public static class ConversionOperatorMemberCrefSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ConversionOperatorMemberCrefSyntax);
 
@@ -33,10 +31,10 @@ public static partial class ConversionOperatorMemberCrefSyntaxShimExtensions
 
     extension(ConversionOperatorMemberCrefSyntax wrappedInstance)
     {
-        public SyntaxToken CheckedKeyword => (SyntaxToken)CheckedKeywordAccessor(wrappedInstance);
+        public SyntaxToken CheckedKeyword => CheckedKeywordAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public ConversionOperatorMemberCrefSyntax Update(SyntaxToken implicitOrExplicitKeyword, SyntaxToken operatorKeyword, SyntaxToken checkedKeyword, TypeSyntax type, CrefParameterListSyntax parameters) => UpdateAccessor_Overload2(wrappedInstance, implicitOrExplicitKeyword, operatorKeyword, checkedKeyword, type, parameters);
         public ConversionOperatorMemberCrefSyntax WithCheckedKeyword(SyntaxToken checkedKeyword) => WithCheckedKeywordAccessor(wrappedInstance, checkedKeyword);
     }

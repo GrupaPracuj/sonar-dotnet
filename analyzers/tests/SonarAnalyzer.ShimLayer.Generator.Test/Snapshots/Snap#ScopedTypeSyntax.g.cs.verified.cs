@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ScopedTypeSyntaxWrapper
+public readonly struct ScopedTypeSyntaxWrapper : IWrapper, IEquatable<ScopedTypeSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.ScopedTypeSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -33,14 +33,32 @@ public readonly struct ScopedTypeSyntaxWrapper
 
     private static readonly Func<TypeSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<TypeSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<TypeSyntax, SyntaxToken, TypeSyntax, TypeSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxToken, TypeSyntax, TypeSyntax>>(WrappedType, "Update");
-    private static readonly Func<TypeSyntax, SyntaxToken, TypeSyntax> WithScopedKeywordAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxToken, TypeSyntax>>(WrappedType, "WithScopedKeyword");
-    private static readonly Func<TypeSyntax, TypeSyntax, TypeSyntax> WithTypeAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, TypeSyntax, TypeSyntax>>(WrappedType, "WithType");
+    private static readonly Func<TypeSyntax, SyntaxToken, TypeSyntax, ScopedTypeSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxToken, TypeSyntax, ScopedTypeSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<TypeSyntax, SyntaxToken, ScopedTypeSyntaxWrapper> WithScopedKeywordAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, SyntaxToken, ScopedTypeSyntaxWrapper>>(WrappedType, "WithScopedKeyword");
+    private static readonly Func<TypeSyntax, TypeSyntax, ScopedTypeSyntaxWrapper> WithTypeAccessor = AccessorFactory.CreateMethod<Func<TypeSyntax, TypeSyntax, ScopedTypeSyntaxWrapper>>(WrappedType, "WithType");
 
     private ScopedTypeSyntaxWrapper(TypeSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public TypeSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ScopedTypeSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ScopedTypeSyntaxWrapper left, ScopedTypeSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ScopedTypeSyntaxWrapper left, ScopedTypeSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -60,11 +78,11 @@ public readonly struct ScopedTypeSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public bool IsNint => (bool)IsNintAccessor(wrappedInstance);
-    public bool IsNotNull => (bool)IsNotNullAccessor(wrappedInstance);
-    public bool IsNuint => (bool)IsNuintAccessor(wrappedInstance);
-    public bool IsUnmanaged => (bool)IsUnmanagedAccessor(wrappedInstance);
-    public SyntaxToken ScopedKeyword => (SyntaxToken)ScopedKeywordAccessor(wrappedInstance);
+    public bool IsNint => IsNintAccessor(wrappedInstance);
+    public bool IsNotNull => IsNotNullAccessor(wrappedInstance);
+    public bool IsNuint => IsNuintAccessor(wrappedInstance);
+    public bool IsUnmanaged => IsUnmanagedAccessor(wrappedInstance);
+    public SyntaxToken ScopedKeyword => ScopedKeywordAccessor(wrappedInstance);
     public TypeSyntax Type => TypeAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
@@ -125,11 +143,11 @@ public readonly struct ScopedTypeSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public ScopedTypeSyntaxWrapper Update(SyntaxToken scopedKeyword, TypeSyntax type) => ScopedTypeSyntaxWrapper.From(UpdateAccessor(wrappedInstance, scopedKeyword, type));
-    public ScopedTypeSyntaxWrapper WithScopedKeyword(SyntaxToken scopedKeyword) => ScopedTypeSyntaxWrapper.From(WithScopedKeywordAccessor(wrappedInstance, scopedKeyword));
-    public ScopedTypeSyntaxWrapper WithType(TypeSyntax type) => ScopedTypeSyntaxWrapper.From(WithTypeAccessor(wrappedInstance, type));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public ScopedTypeSyntaxWrapper Update(SyntaxToken scopedKeyword, TypeSyntax type) => UpdateAccessor(wrappedInstance, scopedKeyword, type);
+    public ScopedTypeSyntaxWrapper WithScopedKeyword(SyntaxToken scopedKeyword) => WithScopedKeywordAccessor(wrappedInstance, scopedKeyword);
+    public ScopedTypeSyntaxWrapper WithType(TypeSyntax type) => WithTypeAccessor(wrappedInstance, type);
 
     public static explicit operator ScopedTypeSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

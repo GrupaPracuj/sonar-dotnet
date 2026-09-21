@@ -18,16 +18,38 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IIncrementalGeneratorWrapper
+public readonly struct IIncrementalGeneratorWrapper : IWrapper, IEquatable<IIncrementalGeneratorWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.IIncrementalGenerator");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
+    private static readonly Action<Object, IncrementalGeneratorInitializationContextWrapper> InitializeAccessor = AccessorFactory.CreateMethod<Action<Object, IncrementalGeneratorInitializationContextWrapper>>(WrappedType, "Initialize");
+
     private IIncrementalGeneratorWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IIncrementalGeneratorWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IIncrementalGeneratorWrapper left, IIncrementalGeneratorWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IIncrementalGeneratorWrapper left, IIncrementalGeneratorWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public void Initialize(IncrementalGeneratorInitializationContextWrapper context) => InitializeAccessor(wrappedInstance, context);
 
     public static IIncrementalGeneratorWrapper From(object instance)
     {

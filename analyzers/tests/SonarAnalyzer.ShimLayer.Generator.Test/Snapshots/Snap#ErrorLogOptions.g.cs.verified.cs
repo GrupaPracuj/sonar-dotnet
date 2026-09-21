@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct ErrorLogOptionsWrapper
+public readonly struct ErrorLogOptionsWrapper : IWrapper, IEquatable<ErrorLogOptionsWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.ErrorLogOptions");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -32,8 +32,26 @@ public readonly struct ErrorLogOptionsWrapper
 
     public Object WrappedInstance => wrappedInstance;
 
-    public string Path => (string)PathAccessor(wrappedInstance);
-    public SarifVersion SarifVersion => (SarifVersion)SarifVersionAccessor(wrappedInstance);
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(ErrorLogOptionsWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(ErrorLogOptionsWrapper left, ErrorLogOptionsWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(ErrorLogOptionsWrapper left, ErrorLogOptionsWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public string Path => PathAccessor(wrappedInstance);
+    public SarifVersion SarifVersion => SarifVersionAccessor(wrappedInstance);
 
     public static ErrorLogOptionsWrapper From(Object instance)
     {

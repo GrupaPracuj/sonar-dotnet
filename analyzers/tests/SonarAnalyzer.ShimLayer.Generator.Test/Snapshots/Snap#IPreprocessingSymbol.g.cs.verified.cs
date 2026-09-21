@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class IPreprocessingSymbolShimExtensions
+public static class IPreprocessingSymbolShimExtensions
 {
     private static readonly Type WrappedType = typeof(IPreprocessingSymbol);
 
@@ -28,6 +26,6 @@ public static partial class IPreprocessingSymbolShimExtensions
 
     extension(IPreprocessingSymbol wrappedInstance)
     {
-        public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
+        public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
     }
 }

@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ArrayRankSpecifierSyntaxShimExtensions
+public static class ArrayRankSpecifierSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ArrayRankSpecifierSyntax);
 
@@ -29,7 +27,7 @@ public static partial class ArrayRankSpecifierSyntaxShimExtensions
 
     extension(ArrayRankSpecifierSyntax wrappedInstance)
     {
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
     }
 }

@@ -18,16 +18,42 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct AnalyzerConfigSetWrapper
+public readonly struct AnalyzerConfigSetWrapper : IWrapper, IEquatable<AnalyzerConfigSetWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.AnalyzerConfigSet");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
+    private static readonly Func<Object, AnalyzerConfigOptionsResultWrapper> GlobalConfigOptionsAccessor = AccessorFactory.CreateProperty<Func<Object, AnalyzerConfigOptionsResultWrapper>>(WrappedType, "GlobalConfigOptions");
+
+    private static readonly Func<Object, string, AnalyzerConfigOptionsResultWrapper> GetOptionsForSourcePathAccessor = AccessorFactory.CreateMethod<Func<Object, string, AnalyzerConfigOptionsResultWrapper>>(WrappedType, "GetOptionsForSourcePath");
+
     private AnalyzerConfigSetWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(AnalyzerConfigSetWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(AnalyzerConfigSetWrapper left, AnalyzerConfigSetWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(AnalyzerConfigSetWrapper left, AnalyzerConfigSetWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public AnalyzerConfigOptionsResultWrapper GlobalConfigOptions => GlobalConfigOptionsAccessor(wrappedInstance);
+
+    public AnalyzerConfigOptionsResultWrapper GetOptionsForSourcePath(string sourcePath) => GetOptionsForSourcePathAccessor(wrappedInstance, sourcePath);
 
     public static AnalyzerConfigSetWrapper From(Object instance)
     {

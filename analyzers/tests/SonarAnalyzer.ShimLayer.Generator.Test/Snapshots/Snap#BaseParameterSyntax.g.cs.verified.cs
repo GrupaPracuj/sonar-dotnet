@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct BaseParameterSyntaxWrapper
+public readonly struct BaseParameterSyntaxWrapper : IWrapper, IEquatable<BaseParameterSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.BaseParameterSyntax", "Microsoft.CodeAnalysis.CSharp.Syntax.ParameterSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -28,18 +28,36 @@ public readonly struct BaseParameterSyntaxWrapper
     private static readonly Func<CSharpSyntaxNode, SyntaxTokenList> ModifiersAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, SyntaxTokenList>>(WrappedType, "Modifiers");
     private static readonly Func<CSharpSyntaxNode, TypeSyntax> TypeAccessor = AccessorFactory.CreateProperty<Func<CSharpSyntaxNode, TypeSyntax>>(WrappedType, "Type");
 
-    private static readonly Func<CSharpSyntaxNode, AttributeListSyntax[], CSharpSyntaxNode> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, AttributeListSyntax[], CSharpSyntaxNode>>(WrappedType, "AddAttributeLists");
-    private static readonly Func<CSharpSyntaxNode, SyntaxToken[], CSharpSyntaxNode> AddModifiersAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken[], CSharpSyntaxNode>>(WrappedType, "AddModifiers");
+    private static readonly Func<CSharpSyntaxNode, AttributeListSyntax[], BaseParameterSyntaxWrapper> AddAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, AttributeListSyntax[], BaseParameterSyntaxWrapper>>(WrappedType, "AddAttributeLists");
+    private static readonly Func<CSharpSyntaxNode, SyntaxToken[], BaseParameterSyntaxWrapper> AddModifiersAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxToken[], BaseParameterSyntaxWrapper>>(WrappedType, "AddModifiers");
     private static readonly Func<CSharpSyntaxNode, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<CSharpSyntaxNode, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<CSharpSyntaxNode, SyntaxList<AttributeListSyntax>, CSharpSyntaxNode> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxList<AttributeListSyntax>, CSharpSyntaxNode>>(WrappedType, "WithAttributeLists");
-    private static readonly Func<CSharpSyntaxNode, SyntaxTokenList, CSharpSyntaxNode> WithModifiersAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxTokenList, CSharpSyntaxNode>>(WrappedType, "WithModifiers");
-    private static readonly Func<CSharpSyntaxNode, TypeSyntax, CSharpSyntaxNode> WithTypeAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, TypeSyntax, CSharpSyntaxNode>>(WrappedType, "WithType");
+    private static readonly Func<CSharpSyntaxNode, SyntaxList<AttributeListSyntax>, BaseParameterSyntaxWrapper> WithAttributeListsAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxList<AttributeListSyntax>, BaseParameterSyntaxWrapper>>(WrappedType, "WithAttributeLists");
+    private static readonly Func<CSharpSyntaxNode, SyntaxTokenList, BaseParameterSyntaxWrapper> WithModifiersAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, SyntaxTokenList, BaseParameterSyntaxWrapper>>(WrappedType, "WithModifiers");
+    private static readonly Func<CSharpSyntaxNode, TypeSyntax, BaseParameterSyntaxWrapper> WithTypeAccessor = AccessorFactory.CreateMethod<Func<CSharpSyntaxNode, TypeSyntax, BaseParameterSyntaxWrapper>>(WrappedType, "WithType");
 
     private BaseParameterSyntaxWrapper(CSharpSyntaxNode wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(BaseParameterSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(BaseParameterSyntaxWrapper left, BaseParameterSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(BaseParameterSyntaxWrapper left, BaseParameterSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -58,8 +76,8 @@ public readonly struct BaseParameterSyntaxWrapper
     public TextSpan Span => wrappedInstance.Span;
     public int SpanStart => wrappedInstance.SpanStart;
 
-    public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
-    public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+    public SyntaxList<AttributeListSyntax> AttributeLists => AttributeListsAccessor(wrappedInstance);
+    public SyntaxTokenList Modifiers => ModifiersAccessor(wrappedInstance);
     public TypeSyntax Type => TypeAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
@@ -120,13 +138,13 @@ public readonly struct BaseParameterSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public BaseParameterSyntaxWrapper AddAttributeLists(AttributeListSyntax[] items) => BaseParameterSyntaxWrapper.From(AddAttributeListsAccessor(wrappedInstance, items));
-    public BaseParameterSyntaxWrapper AddModifiers(SyntaxToken[] items) => BaseParameterSyntaxWrapper.From(AddModifiersAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public BaseParameterSyntaxWrapper WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => BaseParameterSyntaxWrapper.From(WithAttributeListsAccessor(wrappedInstance, attributeLists));
-    public BaseParameterSyntaxWrapper WithModifiers(SyntaxTokenList modifiers) => BaseParameterSyntaxWrapper.From(WithModifiersAccessor(wrappedInstance, modifiers));
-    public BaseParameterSyntaxWrapper WithType(TypeSyntax type) => BaseParameterSyntaxWrapper.From(WithTypeAccessor(wrappedInstance, type));
+    public BaseParameterSyntaxWrapper AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
+    public BaseParameterSyntaxWrapper AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public BaseParameterSyntaxWrapper WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);
+    public BaseParameterSyntaxWrapper WithModifiers(SyntaxTokenList modifiers) => WithModifiersAccessor(wrappedInstance, modifiers);
+    public BaseParameterSyntaxWrapper WithType(TypeSyntax type) => WithTypeAccessor(wrappedInstance, type);
 
     public static explicit operator BaseParameterSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class LocalDeclarationStatementSyntaxShimExtensions
+public static class LocalDeclarationStatementSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(LocalDeclarationStatementSyntax);
 
@@ -39,13 +37,13 @@ public static partial class LocalDeclarationStatementSyntaxShimExtensions
 
     extension(LocalDeclarationStatementSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
-        public SyntaxToken AwaitKeyword => (SyntaxToken)AwaitKeywordAccessor(wrappedInstance);
-        public SyntaxToken UsingKeyword => (SyntaxToken)UsingKeywordAccessor(wrappedInstance);
+        public SyntaxList<AttributeListSyntax> AttributeLists => AttributeListsAccessor(wrappedInstance);
+        public SyntaxToken AwaitKeyword => AwaitKeywordAccessor(wrappedInstance);
+        public SyntaxToken UsingKeyword => UsingKeywordAccessor(wrappedInstance);
 
         public LocalDeclarationStatementSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public LocalDeclarationStatementSyntax Update(SyntaxList<AttributeListSyntax> attributeLists, SyntaxToken awaitKeyword, SyntaxToken usingKeyword, SyntaxTokenList modifiers, VariableDeclarationSyntax declaration, SyntaxToken semicolonToken) => UpdateAccessor(wrappedInstance, attributeLists, awaitKeyword, usingKeyword, modifiers, declaration, semicolonToken);
         public LocalDeclarationStatementSyntax Update(SyntaxToken awaitKeyword, SyntaxToken usingKeyword, SyntaxTokenList modifiers, VariableDeclarationSyntax declaration, SyntaxToken semicolonToken) => UpdateAccessor_Overload2(wrappedInstance, awaitKeyword, usingKeyword, modifiers, declaration, semicolonToken);
         public LocalDeclarationStatementSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);

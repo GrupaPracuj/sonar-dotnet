@@ -18,28 +18,46 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct GeneratorAttributeWrapper
+public readonly struct GeneratorAttributeWrapper : IWrapper, IEquatable<GeneratorAttributeWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.GeneratorAttribute");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
     private static readonly Func<Object, string[]> LanguagesAccessor = AccessorFactory.CreateProperty<Func<Object, string[]>>(WrappedType, "Languages");
-    private static readonly Func<Object, Object> TypeIdAccessor = AccessorFactory.CreateProperty<Func<Object, Object>>(WrappedType, "TypeId");
+    private static readonly Func<Object, object> TypeIdAccessor = AccessorFactory.CreateProperty<Func<Object, object>>(WrappedType, "TypeId");
 
     private static readonly Func<Object, bool> IsDefaultAttributeAccessor = AccessorFactory.CreateMethod<Func<Object, bool>>(WrappedType, "IsDefaultAttribute");
-    private static readonly Func<Object, Object, bool> MatchAccessor = AccessorFactory.CreateMethod<Func<Object, Object, bool>>(WrappedType, "Match");
+    private static readonly Func<Object, object, bool> MatchAccessor = AccessorFactory.CreateMethod<Func<Object, object, bool>>(WrappedType, "Match");
 
     private GeneratorAttributeWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public string[] Languages => (string[])LanguagesAccessor(wrappedInstance);
-    public Object TypeId => (Object)TypeIdAccessor(wrappedInstance);
+    object IWrapper.WrappedInstance => wrappedInstance;
 
-    public bool IsDefaultAttribute() => (bool)IsDefaultAttributeAccessor(wrappedInstance);
-    public bool Match(Object obj) => (bool)MatchAccessor(wrappedInstance, obj);
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(GeneratorAttributeWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(GeneratorAttributeWrapper left, GeneratorAttributeWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(GeneratorAttributeWrapper left, GeneratorAttributeWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public string[] Languages => LanguagesAccessor(wrappedInstance);
+    public object TypeId => TypeIdAccessor(wrappedInstance);
+
+    public bool IsDefaultAttribute() => IsDefaultAttributeAccessor(wrappedInstance);
+    public bool Match(object obj) => MatchAccessor(wrappedInstance, obj);
 
     public static GeneratorAttributeWrapper From(Object instance)
     {

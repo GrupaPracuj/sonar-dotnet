@@ -16,18 +16,16 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnalyzerOptionsShimExtensions
+public static class AnalyzerOptionsShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnalyzerOptions);
 
-    private static readonly Func<AnalyzerOptions, Object> AnalyzerConfigOptionsProviderAccessor = AccessorFactory.CreateProperty<Func<AnalyzerOptions, Object>>(WrappedType, "AnalyzerConfigOptionsProvider");
+    private static readonly Func<AnalyzerOptions, AnalyzerConfigOptionsProviderWrapper> AnalyzerConfigOptionsProviderAccessor = AccessorFactory.CreateProperty<Func<AnalyzerOptions, AnalyzerConfigOptionsProviderWrapper>>(WrappedType, "AnalyzerConfigOptionsProvider");
 
     extension(AnalyzerOptions wrappedInstance)
     {
-        public AnalyzerConfigOptionsProviderWrapper AnalyzerConfigOptionsProvider => AnalyzerConfigOptionsProviderWrapper.From(AnalyzerConfigOptionsProviderAccessor(wrappedInstance));
+        public AnalyzerConfigOptionsProviderWrapper AnalyzerConfigOptionsProvider => AnalyzerConfigOptionsProviderAccessor(wrappedInstance);
     }
 }

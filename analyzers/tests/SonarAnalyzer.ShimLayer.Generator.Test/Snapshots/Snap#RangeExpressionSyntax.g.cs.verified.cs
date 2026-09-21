@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct RangeExpressionSyntaxWrapper
+public readonly struct RangeExpressionSyntaxWrapper : IWrapper, IEquatable<RangeExpressionSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.RangeExpressionSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -30,15 +30,33 @@ public readonly struct RangeExpressionSyntaxWrapper
 
     private static readonly Func<ExpressionSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<ExpressionSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, ExpressionSyntax, ExpressionSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, ExpressionSyntax, ExpressionSyntax>>(WrappedType, "Update");
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax> WithLeftOperandAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax>>(WrappedType, "WithLeftOperand");
-    private static readonly Func<ExpressionSyntax, SyntaxToken, ExpressionSyntax> WithOperatorTokenAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxToken, ExpressionSyntax>>(WrappedType, "WithOperatorToken");
-    private static readonly Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax> WithRightOperandAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, ExpressionSyntax>>(WrappedType, "WithRightOperand");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, ExpressionSyntax, RangeExpressionSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, SyntaxToken, ExpressionSyntax, RangeExpressionSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax, RangeExpressionSyntaxWrapper> WithLeftOperandAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, RangeExpressionSyntaxWrapper>>(WrappedType, "WithLeftOperand");
+    private static readonly Func<ExpressionSyntax, SyntaxToken, RangeExpressionSyntaxWrapper> WithOperatorTokenAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, SyntaxToken, RangeExpressionSyntaxWrapper>>(WrappedType, "WithOperatorToken");
+    private static readonly Func<ExpressionSyntax, ExpressionSyntax, RangeExpressionSyntaxWrapper> WithRightOperandAccessor = AccessorFactory.CreateMethod<Func<ExpressionSyntax, ExpressionSyntax, RangeExpressionSyntaxWrapper>>(WrappedType, "WithRightOperand");
 
     private RangeExpressionSyntaxWrapper(ExpressionSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public ExpressionSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(RangeExpressionSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(RangeExpressionSyntaxWrapper left, RangeExpressionSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(RangeExpressionSyntaxWrapper left, RangeExpressionSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -58,7 +76,7 @@ public readonly struct RangeExpressionSyntaxWrapper
     public int SpanStart => wrappedInstance.SpanStart;
 
     public ExpressionSyntax LeftOperand => LeftOperandAccessor(wrappedInstance);
-    public SyntaxToken OperatorToken => (SyntaxToken)OperatorTokenAccessor(wrappedInstance);
+    public SyntaxToken OperatorToken => OperatorTokenAccessor(wrappedInstance);
     public ExpressionSyntax RightOperand => RightOperandAccessor(wrappedInstance);
 
     public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
@@ -119,12 +137,12 @@ public readonly struct RangeExpressionSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public RangeExpressionSyntaxWrapper Update(ExpressionSyntax leftOperand, SyntaxToken operatorToken, ExpressionSyntax rightOperand) => RangeExpressionSyntaxWrapper.From(UpdateAccessor(wrappedInstance, leftOperand, operatorToken, rightOperand));
-    public RangeExpressionSyntaxWrapper WithLeftOperand(ExpressionSyntax leftOperand) => RangeExpressionSyntaxWrapper.From(WithLeftOperandAccessor(wrappedInstance, leftOperand));
-    public RangeExpressionSyntaxWrapper WithOperatorToken(SyntaxToken operatorToken) => RangeExpressionSyntaxWrapper.From(WithOperatorTokenAccessor(wrappedInstance, operatorToken));
-    public RangeExpressionSyntaxWrapper WithRightOperand(ExpressionSyntax rightOperand) => RangeExpressionSyntaxWrapper.From(WithRightOperandAccessor(wrappedInstance, rightOperand));
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public RangeExpressionSyntaxWrapper Update(ExpressionSyntax leftOperand, SyntaxToken operatorToken, ExpressionSyntax rightOperand) => UpdateAccessor(wrappedInstance, leftOperand, operatorToken, rightOperand);
+    public RangeExpressionSyntaxWrapper WithLeftOperand(ExpressionSyntax leftOperand) => WithLeftOperandAccessor(wrappedInstance, leftOperand);
+    public RangeExpressionSyntaxWrapper WithOperatorToken(SyntaxToken operatorToken) => WithOperatorTokenAccessor(wrappedInstance, operatorToken);
+    public RangeExpressionSyntaxWrapper WithRightOperand(ExpressionSyntax rightOperand) => WithRightOperandAccessor(wrappedInstance, rightOperand);
 
     public static explicit operator RangeExpressionSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

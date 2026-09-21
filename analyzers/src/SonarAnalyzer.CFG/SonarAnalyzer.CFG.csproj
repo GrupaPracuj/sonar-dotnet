@@ -16,7 +16,7 @@
       <NoWarn>NU1605, NU1701</NoWarn>
     </PackageReference>
 
-    <ProjectReference Include="..\SonarAnalyzer.ShimLayer.Lightup\SonarAnalyzer.ShimLayer.Lightup.csproj" />
+    <ProjectReference Include="..\SonarAnalyzer.ShimLayer\SonarAnalyzer.ShimLayer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,16 +24,10 @@
     <Using Include="Microsoft.CodeAnalysis.Diagnostics" />
     <Using Include="SonarAnalyzer.CFG.Extensions" />
     <Using Include="SonarAnalyzer.ShimLayer" />
-    <Using Include="StyleCop.Analyzers.Lightup" />
   </ItemGroup>
 
   <Target Name="CopyBinaries" AfterTargets="Build">
-    <ItemGroup>
-      <BinariesToCopy Include="$(OutputPath)SonarAnalyzer.CFG.dll" />
-      <BinariesToCopy Include="$(OutputPath)SonarAnalyzer.ShimLayer.dll" />
-      <BinariesToCopy Include="$(OutputPath)SonarAnalyzer.ShimLayer.Lightup.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(BinariesToCopy)" DestinationFolder="$(BinariesFolder)" />
+    <Copy SourceFiles="$(OutputPath)SonarAnalyzer.CFG.dll" DestinationFolder="$(BinariesFolder)" />
   </Target>
 
 </Project>

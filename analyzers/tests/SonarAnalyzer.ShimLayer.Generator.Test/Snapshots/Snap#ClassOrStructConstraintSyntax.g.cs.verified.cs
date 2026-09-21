@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ClassOrStructConstraintSyntaxShimExtensions
+public static class ClassOrStructConstraintSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(ClassOrStructConstraintSyntax);
 
@@ -33,10 +31,10 @@ public static partial class ClassOrStructConstraintSyntaxShimExtensions
 
     extension(ClassOrStructConstraintSyntax wrappedInstance)
     {
-        public SyntaxToken QuestionToken => (SyntaxToken)QuestionTokenAccessor(wrappedInstance);
+        public SyntaxToken QuestionToken => QuestionTokenAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public ClassOrStructConstraintSyntax Update(SyntaxToken classOrStructKeyword, SyntaxToken questionToken) => UpdateAccessor_Overload2(wrappedInstance, classOrStructKeyword, questionToken);
         public ClassOrStructConstraintSyntax WithQuestionToken(SyntaxToken questionToken) => WithQuestionTokenAccessor(wrappedInstance, questionToken);
     }

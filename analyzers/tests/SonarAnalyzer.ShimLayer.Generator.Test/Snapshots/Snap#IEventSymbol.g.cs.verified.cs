@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class IEventSymbolShimExtensions
+public static class IEventSymbolShimExtensions
 {
     private static readonly Type WrappedType = typeof(IEventSymbol);
 
@@ -32,9 +30,9 @@ public static partial class IEventSymbolShimExtensions
 
     extension(IEventSymbol wrappedInstance)
     {
-        public bool IsPartialDefinition => (bool)IsPartialDefinitionAccessor(wrappedInstance);
-        public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
-        public NullableAnnotation NullableAnnotation => (NullableAnnotation)NullableAnnotationAccessor(wrappedInstance);
+        public bool IsPartialDefinition => IsPartialDefinitionAccessor(wrappedInstance);
+        public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
+        public NullableAnnotation NullableAnnotation => NullableAnnotationAccessor(wrappedInstance);
         public IEventSymbol PartialDefinitionPart => PartialDefinitionPartAccessor(wrappedInstance);
         public IEventSymbol PartialImplementationPart => PartialImplementationPartAccessor(wrappedInstance);
     }

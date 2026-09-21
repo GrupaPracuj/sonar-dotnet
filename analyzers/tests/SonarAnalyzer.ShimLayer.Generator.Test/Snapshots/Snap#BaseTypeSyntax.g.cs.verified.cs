@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class BaseTypeSyntaxShimExtensions
+public static class BaseTypeSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(BaseTypeSyntax);
 
@@ -30,8 +28,8 @@ public static partial class BaseTypeSyntaxShimExtensions
 
     extension(BaseTypeSyntax wrappedInstance)
     {
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public BaseTypeSyntax WithType(TypeSyntax type) => WithTypeAccessor(wrappedInstance, type);
     }
 }

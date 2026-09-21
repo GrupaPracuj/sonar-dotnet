@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class LambdaExpressionSyntaxShimExtensions
+public static class LambdaExpressionSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(LambdaExpressionSyntax);
 
@@ -45,17 +43,17 @@ public static partial class LambdaExpressionSyntaxShimExtensions
 
     extension(LambdaExpressionSyntax wrappedInstance)
     {
-        public SyntaxList<AttributeListSyntax> AttributeLists => (SyntaxList<AttributeListSyntax>)AttributeListsAccessor(wrappedInstance);
+        public SyntaxList<AttributeListSyntax> AttributeLists => AttributeListsAccessor(wrappedInstance);
         public BlockSyntax Block => BlockAccessor(wrappedInstance);
         public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => ModifiersAccessor(wrappedInstance);
 
         public LambdaExpressionSyntax AddAttributeLists(AttributeListSyntax[] items) => AddAttributeListsAccessor(wrappedInstance, items);
         public AnonymousFunctionExpressionSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
         public AnonymousFunctionExpressionSyntax AddBlockStatements(StatementSyntax[] items) => AddBlockStatementsAccessor(wrappedInstance, items);
         public LambdaExpressionSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public LambdaExpressionSyntax WithArrowToken(SyntaxToken arrowToken) => WithArrowTokenAccessor(wrappedInstance, arrowToken);
         public LambdaExpressionSyntax WithAsyncKeyword(SyntaxToken asyncKeyword) => WithAsyncKeywordAccessor(wrappedInstance, asyncKeyword);
         public LambdaExpressionSyntax WithAttributeLists(SyntaxList<AttributeListSyntax> attributeLists) => WithAttributeListsAccessor(wrappedInstance, attributeLists);

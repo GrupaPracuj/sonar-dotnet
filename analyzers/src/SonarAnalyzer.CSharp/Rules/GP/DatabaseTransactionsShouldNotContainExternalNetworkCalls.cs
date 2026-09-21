@@ -213,10 +213,10 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
     private static bool DoesNotBelongToANestedFunction(SyntaxNode node) =>
         node.Kind() != SyntaxKindEx.LocalFunctionStatement && node is not AnonymousFunctionExpressionSyntax;
 
-    private static Dictionary<BasicBlock, List<int>> InvocationSites(ControlFlowGraph cfg, IEnumerable<InvocationExpressionSyntax> invocations)
+    private static Dictionary<BasicBlockWrapper, List<int>> InvocationSites(ControlFlowGraph cfg, IEnumerable<InvocationExpressionSyntax> invocations)
     {
         var spans = invocations.Select(x => x.Span).ToHashSet();
-        var result = new Dictionary<BasicBlock, List<int>>();
+        var result = new Dictionary<BasicBlockWrapper, List<int>>();
         foreach (var block in cfg.Blocks)
         {
             var index = 0;
@@ -239,7 +239,7 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
         return result;
     }
 
-    private static (BasicBlock Block, int Index)? InvocationSite(ControlFlowGraph cfg, InvocationExpressionSyntax invocation)
+    private static (BasicBlockWrapper Block, int Index)? InvocationSite(ControlFlowGraph cfg, InvocationExpressionSyntax invocation)
     {
         foreach (var block in cfg.Blocks)
         {
@@ -257,11 +257,11 @@ public sealed class DatabaseTransactionsShouldNotContainExternalNetworkCalls : S
     }
 
     private static bool IsReachableWithoutCommit(ControlFlowGraph cfg,
-                                                 (BasicBlock Block, int Index) networkSite,
-                                                 Dictionary<BasicBlock, List<int>> commitSites)
+                                                 (BasicBlockWrapper Block, int Index) networkSite,
+                                                 Dictionary<BasicBlockWrapper, List<int>> commitSites)
     {
-        var pending = new Stack<BasicBlock>();
-        var visited = new HashSet<BasicBlock>();
+        var pending = new Stack<BasicBlockWrapper>();
+        var visited = new HashSet<BasicBlockWrapper>();
         pending.Push(cfg.EntryBlock);
         while (pending.Count > 0)
         {

@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnonymousFunctionExpressionSyntaxShimExtensions
+public static class AnonymousFunctionExpressionSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnonymousFunctionExpressionSyntax);
 
@@ -43,13 +41,13 @@ public static partial class AnonymousFunctionExpressionSyntaxShimExtensions
     {
         public BlockSyntax Block => BlockAccessor(wrappedInstance);
         public ExpressionSyntax ExpressionBody => ExpressionBodyAccessor(wrappedInstance);
-        public SyntaxTokenList Modifiers => (SyntaxTokenList)ModifiersAccessor(wrappedInstance);
+        public SyntaxTokenList Modifiers => ModifiersAccessor(wrappedInstance);
 
         public AnonymousFunctionExpressionSyntax AddBlockAttributeLists(AttributeListSyntax[] items) => AddBlockAttributeListsAccessor(wrappedInstance, items);
         public AnonymousFunctionExpressionSyntax AddBlockStatements(StatementSyntax[] items) => AddBlockStatementsAccessor(wrappedInstance, items);
         public AnonymousFunctionExpressionSyntax AddModifiers(SyntaxToken[] items) => AddModifiersAccessor(wrappedInstance, items);
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
         public AnonymousFunctionExpressionSyntax WithAsyncKeyword(SyntaxToken asyncKeyword) => WithAsyncKeywordAccessor(wrappedInstance, asyncKeyword);
         public AnonymousFunctionExpressionSyntax WithBlock(BlockSyntax block) => WithBlockAccessor(wrappedInstance, block);
         public AnonymousFunctionExpressionSyntax WithBody(CSharpSyntaxNode body) => WithBodyAccessor(wrappedInstance, body);

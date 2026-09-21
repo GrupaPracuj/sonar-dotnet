@@ -39,11 +39,6 @@
       <groupId>org.sonarsource.api.plugin</groupId>
       <artifactId>sonar-plugin-api</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-api</artifactId>
-      <scope>provided</scope>
-    </dependency>
 
     <!-- compiled -->
     <dependency>
@@ -198,6 +193,7 @@
             </goals>
             <phase>verify</phase>
             <configuration>
+              <skip>${enforcer.pluginSize.skip}</skip>
               <rules>
                 <!-- The window is not the upstream plugin's: this fork registers a much smaller set of Java
                      extensions (GpCSharpRulesDefinition in place of the upstream rules definition), so maven-shade's

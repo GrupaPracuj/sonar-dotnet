@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IConversionOperationWrapper : IOperationWrapper
+public readonly struct IConversionOperationWrapper : IOperationWrapper, IWrapper, IEquatable<IConversionOperationWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.Operations.IConversionOperation");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -26,6 +26,7 @@ public readonly struct IConversionOperationWrapper : IOperationWrapper
 
     private static readonly Func<IOperation, IEnumerable<IOperation>> ChildrenAccessor = AccessorFactory.CreateProperty<Func<IOperation, IEnumerable<IOperation>>>(WrappedType, "Children");
     private static readonly Func<IOperation, ITypeSymbol> ConstrainedToTypeAccessor = AccessorFactory.CreateProperty<Func<IOperation, ITypeSymbol>>(WrappedType, "ConstrainedToType");
+    private static readonly Func<IOperation, CommonConversionWrapper> ConversionAccessor = AccessorFactory.CreateProperty<Func<IOperation, CommonConversionWrapper>>(WrappedType, "Conversion");
     private static readonly Func<IOperation, bool> IsCheckedAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsChecked");
     private static readonly Func<IOperation, bool> IsImplicitAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsImplicit");
     private static readonly Func<IOperation, bool> IsTryCastAccessor = AccessorFactory.CreateProperty<Func<IOperation, bool>>(WrappedType, "IsTryCast");
@@ -42,18 +43,37 @@ public readonly struct IConversionOperationWrapper : IOperationWrapper
 
     public IOperation WrappedInstance => wrappedInstance;
 
-    public Optional<Object> ConstantValue => wrappedInstance.ConstantValue;
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IConversionOperationWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IConversionOperationWrapper left, IConversionOperationWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IConversionOperationWrapper left, IConversionOperationWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public Optional<object> ConstantValue => wrappedInstance.ConstantValue;
     public OperationKind Kind => wrappedInstance.Kind;
     public SyntaxNode Syntax => wrappedInstance.Syntax;
     public ITypeSymbol Type => wrappedInstance.Type;
 
     [System.ObsoleteAttribute("This API has performance penalties, please use ChildOperations instead.", false)]
-    public IEnumerable<IOperation> Children => (IEnumerable<IOperation>)ChildrenAccessor(wrappedInstance);
+    public IEnumerable<IOperation> Children => ChildrenAccessor(wrappedInstance);
     public ITypeSymbol ConstrainedToType => ConstrainedToTypeAccessor(wrappedInstance);
-    public bool IsChecked => (bool)IsCheckedAccessor(wrappedInstance);
-    public bool IsImplicit => (bool)IsImplicitAccessor(wrappedInstance);
-    public bool IsTryCast => (bool)IsTryCastAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
+    public CommonConversionWrapper Conversion => ConversionAccessor(wrappedInstance);
+    public bool IsChecked => IsCheckedAccessor(wrappedInstance);
+    public bool IsImplicit => IsImplicitAccessor(wrappedInstance);
+    public bool IsTryCast => IsTryCastAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
     public IOperation Operand => OperandAccessor(wrappedInstance);
     public IMethodSymbol OperatorMethod => OperatorMethodAccessor(wrappedInstance);
     public IOperation Parent => ParentAccessor(wrappedInstance);

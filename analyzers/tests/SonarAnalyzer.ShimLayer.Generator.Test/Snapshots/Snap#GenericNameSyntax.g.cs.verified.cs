@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class GenericNameSyntaxShimExtensions
+public static class GenericNameSyntaxShimExtensions
 {
     private static readonly Type WrappedType = typeof(GenericNameSyntax);
 
@@ -34,12 +32,12 @@ public static partial class GenericNameSyntaxShimExtensions
 
     extension(GenericNameSyntax wrappedInstance)
     {
-        public bool IsNint => (bool)IsNintAccessor(wrappedInstance);
-        public bool IsNotNull => (bool)IsNotNullAccessor(wrappedInstance);
-        public bool IsNuint => (bool)IsNuintAccessor(wrappedInstance);
-        public bool IsUnmanaged => (bool)IsUnmanagedAccessor(wrappedInstance);
+        public bool IsNint => IsNintAccessor(wrappedInstance);
+        public bool IsNotNull => IsNotNullAccessor(wrappedInstance);
+        public bool IsNuint => IsNuintAccessor(wrappedInstance);
+        public bool IsUnmanaged => IsUnmanagedAccessor(wrappedInstance);
 
-        public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+        public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+        public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
     }
 }

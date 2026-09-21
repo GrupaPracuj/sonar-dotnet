@@ -22,21 +22,21 @@ namespace SonarAnalyzer.CSharp.Rules
 {
     public partial class DeadStores : SonarDiagnosticAnalyzer
     {
-        private sealed class RoslynChecker : CheckerBase<ControlFlowGraph, BasicBlock>
+        private sealed class RoslynChecker : CheckerBase<ControlFlowGraph, BasicBlockWrapper>
         {
             private readonly RoslynLiveVariableAnalysis lva;
 
             public RoslynChecker(SonarSyntaxNodeReportingContext context, RoslynLiveVariableAnalysis lva) : base(context, lva) =>
                 this.lva = lva;
 
-            protected override State CreateState(BasicBlock block) =>
+            protected override State CreateState(BasicBlockWrapper block) =>
                 new RoslynState(this, block);
 
             private sealed class RoslynState : State
             {
                 private readonly RoslynChecker owner;
 
-                public RoslynState(RoslynChecker owner, BasicBlock block) : base(owner, block) =>
+                public RoslynState(RoslynChecker owner, BasicBlockWrapper block) : base(owner, block) =>
                     this.owner = owner;
 
                 public override void AnalyzeBlock()
@@ -71,11 +71,11 @@ namespace SonarAnalyzer.CSharp.Rules
                 private void ProcessParameterOrLocalReference(IOperationWrapper reference)
                 {
                     var symbols = owner.lva.ParameterOrLocalSymbols(reference.WrappedInstance).Where(x => IsSymbolRelevant(x));
-                    if (reference.IsOutArgument())
+                    if (reference.IsOutArgument)
                     {
                         liveOut.ExceptWith(symbols);
                     }
-                    else if (!reference.IsAssignmentTarget() && !reference.IsCompoundAssignmentTarget())
+                    else if (reference is { IsAssignmentTarget: false, IsCompoundAssignmentTarget: false })
                     {
                         liveOut.UnionWith(symbols);
                     }

@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IncrementalGeneratorRunStepWrapper
+public readonly struct IncrementalGeneratorRunStepWrapper : IWrapper, IEquatable<IncrementalGeneratorRunStepWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.IncrementalGeneratorRunStep");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -26,16 +26,34 @@ public readonly struct IncrementalGeneratorRunStepWrapper
 
     private static readonly Func<Object, TimeSpan> ElapsedTimeAccessor = AccessorFactory.CreateProperty<Func<Object, TimeSpan>>(WrappedType, "ElapsedTime");
     private static readonly Func<Object, string> NameAccessor = AccessorFactory.CreateProperty<Func<Object, string>>(WrappedType, "Name");
-    private static readonly Func<Object, ImmutableArray<ValueTuple<Object, IncrementalStepRunReason>>> OutputsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ValueTuple<Object, IncrementalStepRunReason>>>>(WrappedType, "Outputs");
+    private static readonly Func<Object, ImmutableArray<ValueTuple<object, IncrementalStepRunReason>>> OutputsAccessor = AccessorFactory.CreateProperty<Func<Object, ImmutableArray<ValueTuple<object, IncrementalStepRunReason>>>>(WrappedType, "Outputs");
 
     private IncrementalGeneratorRunStepWrapper(Object wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public Object WrappedInstance => wrappedInstance;
 
-    public TimeSpan ElapsedTime => (TimeSpan)ElapsedTimeAccessor(wrappedInstance);
-    public string Name => (string)NameAccessor(wrappedInstance);
-    public ImmutableArray<ValueTuple<Object, IncrementalStepRunReason>> Outputs => (ImmutableArray<ValueTuple<Object, IncrementalStepRunReason>>)OutputsAccessor(wrappedInstance);
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IncrementalGeneratorRunStepWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IncrementalGeneratorRunStepWrapper left, IncrementalGeneratorRunStepWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IncrementalGeneratorRunStepWrapper left, IncrementalGeneratorRunStepWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public TimeSpan ElapsedTime => ElapsedTimeAccessor(wrappedInstance);
+    public string Name => NameAccessor(wrappedInstance);
+    public ImmutableArray<ValueTuple<object, IncrementalStepRunReason>> Outputs => OutputsAccessor(wrappedInstance);
 
     public static IncrementalGeneratorRunStepWrapper From(Object instance)
     {

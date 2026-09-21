@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>SonarAnalyzer.ShimLayer</id>
+    <version>$Version$</version>
+    <title>ShimLayer library for SonarAnalyzer</title>
+    <authors>SonarSource</authors>
+    <owners>SonarSource</owners>
+    <license type="file">licenses\LICENSE.txt</license>
+    <repository type="git" url="https://github.com/SonarSource/sonar-dotnet" />
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>SonarSource ShimLayer library</description>
+    <releaseNotes>https://github.com/SonarSource/sonar-dotnet/releases/tag/$Version$</releaseNotes>
+    <language>en-US</language>
+    <copyright>Copyright © SonarSource Sàrl</copyright>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="" />
+    </frameworkAssemblies>
+    <dependencies>
+      <group targetFramework="netstandard2.0">
+        <dependency id="Microsoft.CodeAnalysis.CSharp.Workspaces" version="1.3.2" />
+        <dependency id="System.Collections.Immutable" version="1.1.37" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="binaries\SonarAnalyzer.ShimLayer\*.dll" target="lib\netstandard2.0" />
+    <file src="..\..\LICENSE.txt" target="licenses\" />
+  </files>
+</package>

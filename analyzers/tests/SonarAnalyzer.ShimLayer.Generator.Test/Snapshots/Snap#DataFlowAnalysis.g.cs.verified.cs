@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class DataFlowAnalysisShimExtensions
+public static class DataFlowAnalysisShimExtensions
 {
     private static readonly Type WrappedType = typeof(DataFlowAnalysis);
 
@@ -32,10 +30,10 @@ public static partial class DataFlowAnalysisShimExtensions
 
     extension(DataFlowAnalysis wrappedInstance)
     {
-        public ImmutableArray<ISymbol> CapturedInside => (ImmutableArray<ISymbol>)CapturedInsideAccessor(wrappedInstance);
-        public ImmutableArray<ISymbol> CapturedOutside => (ImmutableArray<ISymbol>)CapturedOutsideAccessor(wrappedInstance);
-        public ImmutableArray<ISymbol> DefinitelyAssignedOnEntry => (ImmutableArray<ISymbol>)DefinitelyAssignedOnEntryAccessor(wrappedInstance);
-        public ImmutableArray<ISymbol> DefinitelyAssignedOnExit => (ImmutableArray<ISymbol>)DefinitelyAssignedOnExitAccessor(wrappedInstance);
-        public ImmutableArray<IMethodSymbol> UsedLocalFunctions => (ImmutableArray<IMethodSymbol>)UsedLocalFunctionsAccessor(wrappedInstance);
+        public ImmutableArray<ISymbol> CapturedInside => CapturedInsideAccessor(wrappedInstance);
+        public ImmutableArray<ISymbol> CapturedOutside => CapturedOutsideAccessor(wrappedInstance);
+        public ImmutableArray<ISymbol> DefinitelyAssignedOnEntry => DefinitelyAssignedOnEntryAccessor(wrappedInstance);
+        public ImmutableArray<ISymbol> DefinitelyAssignedOnExit => DefinitelyAssignedOnExitAccessor(wrappedInstance);
+        public ImmutableArray<IMethodSymbol> UsedLocalFunctions => UsedLocalFunctionsAccessor(wrappedInstance);
     }
 }

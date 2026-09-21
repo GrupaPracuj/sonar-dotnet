@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct PrimaryConstructorBaseTypeSyntaxWrapper
+public readonly struct PrimaryConstructorBaseTypeSyntaxWrapper : IWrapper, IEquatable<PrimaryConstructorBaseTypeSyntaxWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.PrimaryConstructorBaseTypeSyntax");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -26,17 +26,35 @@ public readonly struct PrimaryConstructorBaseTypeSyntaxWrapper
 
     private static readonly Func<BaseTypeSyntax, ArgumentListSyntax> ArgumentListAccessor = AccessorFactory.CreateProperty<Func<BaseTypeSyntax, ArgumentListSyntax>>(WrappedType, "ArgumentList");
 
-    private static readonly Func<BaseTypeSyntax, ArgumentSyntax[], BaseTypeSyntax> AddArgumentListArgumentsAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, ArgumentSyntax[], BaseTypeSyntax>>(WrappedType, "AddArgumentListArguments");
+    private static readonly Func<BaseTypeSyntax, ArgumentSyntax[], PrimaryConstructorBaseTypeSyntaxWrapper> AddArgumentListArgumentsAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, ArgumentSyntax[], PrimaryConstructorBaseTypeSyntaxWrapper>>(WrappedType, "AddArgumentListArguments");
     private static readonly Func<BaseTypeSyntax, int, bool> ContainsDirectiveAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, int, bool>>(WrappedType, "ContainsDirective");
     private static readonly Func<BaseTypeSyntax, SyntaxNode, bool> IsIncrementallyIdenticalToAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, SyntaxNode, bool>>(WrappedType, "IsIncrementallyIdenticalTo");
-    private static readonly Func<BaseTypeSyntax, TypeSyntax, ArgumentListSyntax, BaseTypeSyntax> UpdateAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, TypeSyntax, ArgumentListSyntax, BaseTypeSyntax>>(WrappedType, "Update");
-    private static readonly Func<BaseTypeSyntax, ArgumentListSyntax, BaseTypeSyntax> WithArgumentListAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, ArgumentListSyntax, BaseTypeSyntax>>(WrappedType, "WithArgumentList");
-    private static readonly Func<BaseTypeSyntax, TypeSyntax, BaseTypeSyntax> WithTypeAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, TypeSyntax, BaseTypeSyntax>>(WrappedType, "WithType");
+    private static readonly Func<BaseTypeSyntax, TypeSyntax, ArgumentListSyntax, PrimaryConstructorBaseTypeSyntaxWrapper> UpdateAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, TypeSyntax, ArgumentListSyntax, PrimaryConstructorBaseTypeSyntaxWrapper>>(WrappedType, "Update");
+    private static readonly Func<BaseTypeSyntax, ArgumentListSyntax, PrimaryConstructorBaseTypeSyntaxWrapper> WithArgumentListAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, ArgumentListSyntax, PrimaryConstructorBaseTypeSyntaxWrapper>>(WrappedType, "WithArgumentList");
+    private static readonly Func<BaseTypeSyntax, TypeSyntax, PrimaryConstructorBaseTypeSyntaxWrapper> WithTypeAccessor = AccessorFactory.CreateMethod<Func<BaseTypeSyntax, TypeSyntax, PrimaryConstructorBaseTypeSyntaxWrapper>>(WrappedType, "WithType");
 
     private PrimaryConstructorBaseTypeSyntaxWrapper(BaseTypeSyntax wrappedInstance) =>
         this.wrappedInstance = wrappedInstance;
 
     public BaseTypeSyntax WrappedInstance => wrappedInstance;
+
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(PrimaryConstructorBaseTypeSyntaxWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(PrimaryConstructorBaseTypeSyntaxWrapper left, PrimaryConstructorBaseTypeSyntaxWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(PrimaryConstructorBaseTypeSyntaxWrapper left, PrimaryConstructorBaseTypeSyntaxWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
 
     public bool ContainsAnnotations => wrappedInstance.ContainsAnnotations;
     public bool ContainsDiagnostics => wrappedInstance.ContainsDiagnostics;
@@ -116,12 +134,12 @@ public readonly struct PrimaryConstructorBaseTypeSyntaxWrapper
     public string ToFullString() => wrappedInstance.ToFullString();
     public void WriteTo(TextWriter writer) => wrappedInstance.WriteTo(writer);
 
-    public PrimaryConstructorBaseTypeSyntaxWrapper AddArgumentListArguments(ArgumentSyntax[] items) => PrimaryConstructorBaseTypeSyntaxWrapper.From(AddArgumentListArgumentsAccessor(wrappedInstance, items));
-    public bool ContainsDirective(int rawKind) => (bool)ContainsDirectiveAccessor(wrappedInstance, rawKind);
-    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => (bool)IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
-    public PrimaryConstructorBaseTypeSyntaxWrapper Update(TypeSyntax type, ArgumentListSyntax argumentList) => PrimaryConstructorBaseTypeSyntaxWrapper.From(UpdateAccessor(wrappedInstance, type, argumentList));
-    public PrimaryConstructorBaseTypeSyntaxWrapper WithArgumentList(ArgumentListSyntax argumentList) => PrimaryConstructorBaseTypeSyntaxWrapper.From(WithArgumentListAccessor(wrappedInstance, argumentList));
-    public PrimaryConstructorBaseTypeSyntaxWrapper WithType(TypeSyntax type) => PrimaryConstructorBaseTypeSyntaxWrapper.From(WithTypeAccessor(wrappedInstance, type));
+    public PrimaryConstructorBaseTypeSyntaxWrapper AddArgumentListArguments(ArgumentSyntax[] items) => AddArgumentListArgumentsAccessor(wrappedInstance, items);
+    public bool ContainsDirective(int rawKind) => ContainsDirectiveAccessor(wrappedInstance, rawKind);
+    public bool IsIncrementallyIdenticalTo(SyntaxNode other) => IsIncrementallyIdenticalToAccessor(wrappedInstance, other);
+    public PrimaryConstructorBaseTypeSyntaxWrapper Update(TypeSyntax type, ArgumentListSyntax argumentList) => UpdateAccessor(wrappedInstance, type, argumentList);
+    public PrimaryConstructorBaseTypeSyntaxWrapper WithArgumentList(ArgumentListSyntax argumentList) => WithArgumentListAccessor(wrappedInstance, argumentList);
+    public PrimaryConstructorBaseTypeSyntaxWrapper WithType(TypeSyntax type) => WithTypeAccessor(wrappedInstance, type);
 
     public static explicit operator PrimaryConstructorBaseTypeSyntaxWrapper(SyntaxNode instance) =>
         From(instance);

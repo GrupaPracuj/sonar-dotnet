@@ -18,7 +18,7 @@
 
 namespace SonarAnalyzer.ShimLayer;
 
-public readonly struct IDiscardSymbolWrapper
+public readonly struct IDiscardSymbolWrapper : IWrapper, IEquatable<IDiscardSymbolWrapper>
 {
     private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.IDiscardSymbol");
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -65,41 +65,59 @@ public readonly struct IDiscardSymbolWrapper
 
     public Object WrappedInstance => wrappedInstance;
 
-    public bool CanBeReferencedByName => (bool)CanBeReferencedByNameAccessor(wrappedInstance);
+    object IWrapper.WrappedInstance => wrappedInstance;
+
+    public override int GetHashCode() =>
+        wrappedInstance?.GetHashCode() ?? 0;
+
+    public override bool Equals(object obj) =>
+        (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+        || Equals(wrappedInstance, obj);
+
+    public bool Equals(IDiscardSymbolWrapper other) =>
+        Equals(wrappedInstance, other.wrappedInstance);
+
+    public static bool operator ==(IDiscardSymbolWrapper left, IDiscardSymbolWrapper right) =>
+        Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public static bool operator !=(IDiscardSymbolWrapper left, IDiscardSymbolWrapper right) =>
+        !Equals(left.wrappedInstance, right.wrappedInstance);
+
+    public bool CanBeReferencedByName => CanBeReferencedByNameAccessor(wrappedInstance);
     public IAssemblySymbol ContainingAssembly => ContainingAssemblyAccessor(wrappedInstance);
     public IModuleSymbol ContainingModule => ContainingModuleAccessor(wrappedInstance);
     public INamespaceSymbol ContainingNamespace => ContainingNamespaceAccessor(wrappedInstance);
     public ISymbol ContainingSymbol => ContainingSymbolAccessor(wrappedInstance);
     public INamedTypeSymbol ContainingType => ContainingTypeAccessor(wrappedInstance);
-    public Accessibility DeclaredAccessibility => (Accessibility)DeclaredAccessibilityAccessor(wrappedInstance);
-    public ImmutableArray<SyntaxReference> DeclaringSyntaxReferences => (ImmutableArray<SyntaxReference>)DeclaringSyntaxReferencesAccessor(wrappedInstance);
-    public bool HasUnsupportedMetadata => (bool)HasUnsupportedMetadataAccessor(wrappedInstance);
-    public bool IsAbstract => (bool)IsAbstractAccessor(wrappedInstance);
-    public bool IsDefinition => (bool)IsDefinitionAccessor(wrappedInstance);
-    public bool IsExtern => (bool)IsExternAccessor(wrappedInstance);
-    public bool IsImplicitlyDeclared => (bool)IsImplicitlyDeclaredAccessor(wrappedInstance);
-    public bool IsOverride => (bool)IsOverrideAccessor(wrappedInstance);
-    public bool IsSealed => (bool)IsSealedAccessor(wrappedInstance);
-    public bool IsStatic => (bool)IsStaticAccessor(wrappedInstance);
-    public bool IsVirtual => (bool)IsVirtualAccessor(wrappedInstance);
-    public SymbolKind Kind => (SymbolKind)KindAccessor(wrappedInstance);
-    public string Language => (string)LanguageAccessor(wrappedInstance);
-    public ImmutableArray<Location> Locations => (ImmutableArray<Location>)LocationsAccessor(wrappedInstance);
-    public string MetadataName => (string)MetadataNameAccessor(wrappedInstance);
-    public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
-    public string Name => (string)NameAccessor(wrappedInstance);
-    public NullableAnnotation NullableAnnotation => (NullableAnnotation)NullableAnnotationAccessor(wrappedInstance);
+    public Accessibility DeclaredAccessibility => DeclaredAccessibilityAccessor(wrappedInstance);
+    public ImmutableArray<SyntaxReference> DeclaringSyntaxReferences => DeclaringSyntaxReferencesAccessor(wrappedInstance);
+    public bool HasUnsupportedMetadata => HasUnsupportedMetadataAccessor(wrappedInstance);
+    public bool IsAbstract => IsAbstractAccessor(wrappedInstance);
+    public bool IsDefinition => IsDefinitionAccessor(wrappedInstance);
+    public bool IsExtern => IsExternAccessor(wrappedInstance);
+    public bool IsImplicitlyDeclared => IsImplicitlyDeclaredAccessor(wrappedInstance);
+    public bool IsOverride => IsOverrideAccessor(wrappedInstance);
+    public bool IsSealed => IsSealedAccessor(wrappedInstance);
+    public bool IsStatic => IsStaticAccessor(wrappedInstance);
+    public bool IsVirtual => IsVirtualAccessor(wrappedInstance);
+    public SymbolKind Kind => KindAccessor(wrappedInstance);
+    public string Language => LanguageAccessor(wrappedInstance);
+    public ImmutableArray<Location> Locations => LocationsAccessor(wrappedInstance);
+    public string MetadataName => MetadataNameAccessor(wrappedInstance);
+    public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
+    public string Name => NameAccessor(wrappedInstance);
+    public NullableAnnotation NullableAnnotation => NullableAnnotationAccessor(wrappedInstance);
     public ISymbol OriginalDefinition => OriginalDefinitionAccessor(wrappedInstance);
     public ITypeSymbol Type => TypeAccessor(wrappedInstance);
 
     public void Accept(SymbolVisitor visitor) => AcceptAccessor(wrappedInstance, visitor);
-    public ImmutableArray<AttributeData> GetAttributes() => (ImmutableArray<AttributeData>)GetAttributesAccessor(wrappedInstance);
-    public string GetDocumentationCommentId() => (string)GetDocumentationCommentIdAccessor(wrappedInstance);
-    public string GetDocumentationCommentXml(CultureInfo preferredCulture, bool expandIncludes, CancellationToken cancellationToken) => (string)GetDocumentationCommentXmlAccessor(wrappedInstance, preferredCulture, expandIncludes, cancellationToken);
-    public ImmutableArray<SymbolDisplayPart> ToDisplayParts(SymbolDisplayFormat format) => (ImmutableArray<SymbolDisplayPart>)ToDisplayPartsAccessor(wrappedInstance, format);
-    public string ToDisplayString(SymbolDisplayFormat format) => (string)ToDisplayStringAccessor(wrappedInstance, format);
-    public ImmutableArray<SymbolDisplayPart> ToMinimalDisplayParts(SemanticModel semanticModel, int position, SymbolDisplayFormat format) => (ImmutableArray<SymbolDisplayPart>)ToMinimalDisplayPartsAccessor(wrappedInstance, semanticModel, position, format);
-    public string ToMinimalDisplayString(SemanticModel semanticModel, int position, SymbolDisplayFormat format) => (string)ToMinimalDisplayStringAccessor(wrappedInstance, semanticModel, position, format);
+    public ImmutableArray<AttributeData> GetAttributes() => GetAttributesAccessor(wrappedInstance);
+    public string GetDocumentationCommentId() => GetDocumentationCommentIdAccessor(wrappedInstance);
+    public string GetDocumentationCommentXml(CultureInfo preferredCulture, bool expandIncludes, CancellationToken cancellationToken) => GetDocumentationCommentXmlAccessor(wrappedInstance, preferredCulture, expandIncludes, cancellationToken);
+    public ImmutableArray<SymbolDisplayPart> ToDisplayParts(SymbolDisplayFormat format) => ToDisplayPartsAccessor(wrappedInstance, format);
+    public string ToDisplayString(SymbolDisplayFormat format) => ToDisplayStringAccessor(wrappedInstance, format);
+    public ImmutableArray<SymbolDisplayPart> ToMinimalDisplayParts(SemanticModel semanticModel, int position, SymbolDisplayFormat format) => ToMinimalDisplayPartsAccessor(wrappedInstance, semanticModel, position, format);
+    public string ToMinimalDisplayString(SemanticModel semanticModel, int position, SymbolDisplayFormat format) => ToMinimalDisplayStringAccessor(wrappedInstance, semanticModel, position, format);
 
     public static IDiscardSymbolWrapper From(object instance)
     {

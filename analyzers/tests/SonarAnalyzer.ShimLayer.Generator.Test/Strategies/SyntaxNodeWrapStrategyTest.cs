@@ -55,7 +55,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct RecordDeclarationSyntaxWrapper
+            public readonly struct RecordDeclarationSyntaxWrapper : IWrapper, IEquatable<RecordDeclarationSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.RecordDeclarationSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -65,6 +65,24 @@ public class SyntaxNodeWrapStrategyTest
                     this.wrappedInstance = wrappedInstance;
 
                 public TypeDeclarationSyntax WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(RecordDeclarationSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
                 public static explicit operator RecordDeclarationSyntaxWrapper(SyntaxNode instance) =>
                     From(instance);
@@ -111,7 +129,11 @@ public class SyntaxNodeWrapStrategyTest
                 new(typeof(RecordDeclarationSyntax).GetMember(nameof(RecordDeclarationSyntax.FindTrivia))[1], true, "AcceptAccessor_Overload2"),    // Passthrough method - normal
                 new(typeof(RecordDeclarationSyntax).GetMember(nameof(RecordDeclarationSyntax.WithParameterList))[0], false, "WithParameterListAccessor"),   // Wrapped method
             ]);
-        var model = new StrategyModel(new() { { skippedPropertyTypeMember.PropertyType, new SkipStrategy(skippedPropertyTypeMember.PropertyType) } });
+        var model = new StrategyModel(new()
+        {
+            { skippedPropertyTypeMember.PropertyType, new SkipStrategy(skippedPropertyTypeMember.PropertyType) },
+            { typeof(RecordDeclarationSyntax), sut },
+        });
 
         sut.Generate(model).Should().BeIgnoringLineEndings(
             """
@@ -135,7 +157,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct RecordDeclarationSyntaxWrapper
+            public readonly struct RecordDeclarationSyntaxWrapper : IWrapper, IEquatable<RecordDeclarationSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.RecordDeclarationSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -143,22 +165,40 @@ public class SyntaxNodeWrapStrategyTest
 
                 private static readonly Func<TypeDeclarationSyntax, SyntaxToken> ClassOrStructKeywordAccessor = AccessorFactory.CreateProperty<Func<TypeDeclarationSyntax, SyntaxToken>>(WrappedType, "ClassOrStructKeyword");
 
-                private static readonly Func<TypeDeclarationSyntax, ParameterListSyntax, RecordDeclarationSyntax> WithParameterListAccessor = AccessorFactory.CreateMethod<Func<TypeDeclarationSyntax, ParameterListSyntax, RecordDeclarationSyntax>>(WrappedType, "WithParameterList");
+                private static readonly Func<TypeDeclarationSyntax, ParameterListSyntax, RecordDeclarationSyntaxWrapper> WithParameterListAccessor = AccessorFactory.CreateMethod<Func<TypeDeclarationSyntax, ParameterListSyntax, RecordDeclarationSyntaxWrapper>>(WrappedType, "WithParameterList");
 
                 private RecordDeclarationSyntaxWrapper(TypeDeclarationSyntax wrappedInstance) =>
                     this.wrappedInstance = wrappedInstance;
 
                 public TypeDeclarationSyntax WrappedInstance => wrappedInstance;
 
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(RecordDeclarationSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
+
                 public TextSpan Span => wrappedInstance.Span;
 
-                public SyntaxToken ClassOrStructKeyword => (SyntaxToken)ClassOrStructKeywordAccessor(wrappedInstance);
+                public SyntaxToken ClassOrStructKeyword => ClassOrStructKeywordAccessor(wrappedInstance);
 
                 public void Accept(CSharpSyntaxVisitor visitor) => wrappedInstance.Accept(visitor);
                 public SyntaxTrivia FindTrivia(int position, Func<SyntaxTrivia, bool> stepInto) => wrappedInstance.FindTrivia(position, stepInto);
                 public SyntaxTrivia FindTrivia(int position, bool findInsideTrivia) => wrappedInstance.FindTrivia(position, findInsideTrivia);
 
-                public RecordDeclarationSyntax WithParameterList(ParameterListSyntax parameterList) => (RecordDeclarationSyntax)WithParameterListAccessor(wrappedInstance, parameterList);
+                public RecordDeclarationSyntaxWrapper WithParameterList(ParameterListSyntax parameterList) => WithParameterListAccessor(wrappedInstance, parameterList);
 
                 public static explicit operator RecordDeclarationSyntaxWrapper(SyntaxNode instance) =>
                     From(instance);
@@ -223,20 +263,38 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct IsPatternExpressionSyntaxWrapper
+            public readonly struct IsPatternExpressionSyntaxWrapper : IWrapper, IEquatable<IsPatternExpressionSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.IsPatternExpressionSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
                 private readonly ExpressionSyntax wrappedInstance;
 
-                private static readonly Func<ExpressionSyntax, CSharpSyntaxNode> PatternAccessor = AccessorFactory.CreateProperty<Func<ExpressionSyntax, CSharpSyntaxNode>>(WrappedType, "Pattern");
+                private static readonly Func<ExpressionSyntax, PatternSyntaxWrapper> PatternAccessor = AccessorFactory.CreateProperty<Func<ExpressionSyntax, PatternSyntaxWrapper>>(WrappedType, "Pattern");
 
                 private IsPatternExpressionSyntaxWrapper(ExpressionSyntax wrappedInstance) =>
                     this.wrappedInstance = wrappedInstance;
 
                 public ExpressionSyntax WrappedInstance => wrappedInstance;
 
-                public PatternSyntaxWrapper Pattern => PatternSyntaxWrapper.From(PatternAccessor(wrappedInstance));
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(IsPatternExpressionSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(IsPatternExpressionSyntaxWrapper left, IsPatternExpressionSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(IsPatternExpressionSyntaxWrapper left, IsPatternExpressionSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public PatternSyntaxWrapper Pattern => PatternAccessor(wrappedInstance);
 
                 public static explicit operator IsPatternExpressionSyntaxWrapper(SyntaxNode instance) =>
                     From(instance);
@@ -299,7 +357,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct ConstantPatternSyntaxWrapper
+            public readonly struct ConstantPatternSyntaxWrapper : IWrapper, IEquatable<ConstantPatternSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.ConstantPatternSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -309,6 +367,24 @@ public class SyntaxNodeWrapStrategyTest
                     this.wrappedInstance = wrappedInstance;
 
                 public CSharpSyntaxNode WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(ConstantPatternSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(ConstantPatternSyntaxWrapper left, ConstantPatternSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(ConstantPatternSyntaxWrapper left, ConstantPatternSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
                 public static explicit operator ConstantPatternSyntaxWrapper(SyntaxNode instance) =>
                     From(instance);
@@ -377,7 +453,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct SyntaxNodeWrapper
+            public readonly struct SyntaxNodeWrapper : IWrapper, IEquatable<SyntaxNodeWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.SyntaxNode");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -387,6 +463,24 @@ public class SyntaxNodeWrapStrategyTest
                     this.wrappedInstance = wrappedInstance;
 
                 public SyntaxNode WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(SyntaxNodeWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(SyntaxNodeWrapper left, SyntaxNodeWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(SyntaxNodeWrapper left, SyntaxNodeWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
                 public static explicit operator SyntaxNodeWrapper(SyntaxNode instance) =>
                     From(instance);
@@ -451,7 +545,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct IndexerDeclarationSyntaxWrapper
+            public readonly struct IndexerDeclarationSyntaxWrapper : IWrapper, IEquatable<IndexerDeclarationSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.IndexerDeclarationSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -461,6 +555,24 @@ public class SyntaxNodeWrapStrategyTest
                     this.wrappedInstance = wrappedInstance;
 
                 public SyntaxNode WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(IndexerDeclarationSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(IndexerDeclarationSyntaxWrapper left, IndexerDeclarationSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(IndexerDeclarationSyntaxWrapper left, IndexerDeclarationSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
                 [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
                 [System.ObsoleteAttribute("This member is obsolete.", true)]
@@ -535,7 +647,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct RecordDeclarationSyntaxWrapper
+            public readonly struct RecordDeclarationSyntaxWrapper : IWrapper, IEquatable<RecordDeclarationSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.RecordDeclarationSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -550,10 +662,28 @@ public class SyntaxNodeWrapStrategyTest
 
                 public TypeDeclarationSyntax WrappedInstance => wrappedInstance;
 
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(RecordDeclarationSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(RecordDeclarationSyntaxWrapper left, RecordDeclarationSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
+
                 public SyntaxList<AttributeListSyntax> AttributeLists => wrappedInstance.AttributeLists;
 
-                public SyntaxList<MemberDeclarationSyntax> Members => (SyntaxList<MemberDeclarationSyntax>)MembersAccessor(wrappedInstance);
-                public SeparatedSyntaxList<ArgumentSyntax> Arguments => (SeparatedSyntaxList<ArgumentSyntax>)ArgumentsAccessor(wrappedInstance);
+                public SyntaxList<MemberDeclarationSyntax> Members => MembersAccessor(wrappedInstance);
+                public SeparatedSyntaxList<ArgumentSyntax> Arguments => ArgumentsAccessor(wrappedInstance);
                 public SeparatedSyntaxListWrapper<SwitchExpressionArmSyntaxWrapper> Arms => ArmsAccessor(wrappedInstance);
 
                 public static explicit operator RecordDeclarationSyntaxWrapper(SyntaxNode instance) =>
@@ -615,7 +745,7 @@ public class SyntaxNodeWrapStrategyTest
 
             namespace SonarAnalyzer.ShimLayer;
 
-            public readonly struct BaseNamespaceDeclarationSyntaxWrapper
+            public readonly struct BaseNamespaceDeclarationSyntaxWrapper : IWrapper, IEquatable<BaseNamespaceDeclarationSyntaxWrapper>
             {
                 private static readonly Type WrappedType = TypeRegister.LatestType("Microsoft.CodeAnalysis.CSharp.Syntax.BaseNamespaceDeclarationSyntax", "Microsoft.CodeAnalysis.CSharp.Syntax.NamespaceDeclarationSyntax");
                 private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
@@ -625,6 +755,24 @@ public class SyntaxNodeWrapStrategyTest
                     this.wrappedInstance = wrappedInstance;
 
                 public MemberDeclarationSyntax WrappedInstance => wrappedInstance;
+
+                object IWrapper.WrappedInstance => wrappedInstance;
+
+                public override int GetHashCode() =>
+                    wrappedInstance?.GetHashCode() ?? 0;
+
+                public override bool Equals(object obj) =>
+                    (obj is IWrapper wrapper && Equals(wrappedInstance, wrapper.WrappedInstance))
+                    || Equals(wrappedInstance, obj);
+
+                public bool Equals(BaseNamespaceDeclarationSyntaxWrapper other) =>
+                    Equals(wrappedInstance, other.wrappedInstance);
+
+                public static bool operator ==(BaseNamespaceDeclarationSyntaxWrapper left, BaseNamespaceDeclarationSyntaxWrapper right) =>
+                    Equals(left.wrappedInstance, right.wrappedInstance);
+
+                public static bool operator !=(BaseNamespaceDeclarationSyntaxWrapper left, BaseNamespaceDeclarationSyntaxWrapper right) =>
+                    !Equals(left.wrappedInstance, right.wrappedInstance);
 
                 public static explicit operator BaseNamespaceDeclarationSyntaxWrapper(SyntaxNode instance) =>
                     From(instance);

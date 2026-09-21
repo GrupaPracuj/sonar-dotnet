@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class IFieldSymbolShimExtensions
+public static class IFieldSymbolShimExtensions
 {
     private static readonly Type WrappedType = typeof(IFieldSymbol);
 
@@ -37,13 +35,13 @@ public static partial class IFieldSymbolShimExtensions
     extension(IFieldSymbol wrappedInstance)
     {
         public IFieldSymbol CorrespondingTupleField => CorrespondingTupleFieldAccessor(wrappedInstance);
-        public int FixedSize => (int)FixedSizeAccessor(wrappedInstance);
-        public bool IsExplicitlyNamedTupleElement => (bool)IsExplicitlyNamedTupleElementAccessor(wrappedInstance);
-        public bool IsFixedSizeBuffer => (bool)IsFixedSizeBufferAccessor(wrappedInstance);
-        public bool IsRequired => (bool)IsRequiredAccessor(wrappedInstance);
-        public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
-        public NullableAnnotation NullableAnnotation => (NullableAnnotation)NullableAnnotationAccessor(wrappedInstance);
-        public ImmutableArray<CustomModifier> RefCustomModifiers => (ImmutableArray<CustomModifier>)RefCustomModifiersAccessor(wrappedInstance);
-        public RefKind RefKind => (RefKind)RefKindAccessor(wrappedInstance);
+        public int FixedSize => FixedSizeAccessor(wrappedInstance);
+        public bool IsExplicitlyNamedTupleElement => IsExplicitlyNamedTupleElementAccessor(wrappedInstance);
+        public bool IsFixedSizeBuffer => IsFixedSizeBufferAccessor(wrappedInstance);
+        public bool IsRequired => IsRequiredAccessor(wrappedInstance);
+        public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
+        public NullableAnnotation NullableAnnotation => NullableAnnotationAccessor(wrappedInstance);
+        public ImmutableArray<CustomModifier> RefCustomModifiers => RefCustomModifiersAccessor(wrappedInstance);
+        public RefKind RefKind => RefKindAccessor(wrappedInstance);
     }
 }

@@ -23,7 +23,7 @@ public class GenericTypeStrategy : Strategy
     private readonly string type;
 
     public override bool IsSupported => typeArguments.All(x => x is not WrapStrategy && x.IsSupported);
-    public override string ReturnTypeSnippet => type;
+    public override string TypeSnippet => type;
     public override string CompiletimeTypeSnippet => type;
 
     public GenericTypeStrategy(Type latest, Strategy[] typeArguments) : base(latest)
@@ -31,9 +31,6 @@ public class GenericTypeStrategy : Strategy
         this.typeArguments = typeArguments;
         type = latest.Name.Split('`')[0] + "<" + typeArguments.JoinStr(", ", x => x.CompiletimeTypeSnippet) + ">";
     }
-
-    public override string ToConversionSnippet(string from) =>
-        $"({type}){from}";
 
     protected override string GenerateCore(StrategyModel model) => null;
 }

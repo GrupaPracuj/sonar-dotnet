@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis.Diagnostics;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class AnalysisResultShimExtensions
+public static class AnalysisResultShimExtensions
 {
     private static readonly Type WrappedType = typeof(AnalysisResult);
 
@@ -28,6 +26,6 @@ public static partial class AnalysisResultShimExtensions
 
     extension(AnalysisResult wrappedInstance)
     {
-        public ImmutableDictionary<AdditionalText, ImmutableDictionary<DiagnosticAnalyzer, ImmutableArray<Diagnostic>>> AdditionalFileDiagnostics => (ImmutableDictionary<AdditionalText, ImmutableDictionary<DiagnosticAnalyzer, ImmutableArray<Diagnostic>>>)AdditionalFileDiagnosticsAccessor(wrappedInstance);
+        public ImmutableDictionary<AdditionalText, ImmutableDictionary<DiagnosticAnalyzer, ImmutableArray<Diagnostic>>> AdditionalFileDiagnostics => AdditionalFileDiagnosticsAccessor(wrappedInstance);
     }
 }

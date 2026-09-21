@@ -16,11 +16,9 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
-using Microsoft.CodeAnalysis;
-
 namespace SonarAnalyzer.ShimLayer;
 
-public static partial class ILocalSymbolShimExtensions
+public static class ILocalSymbolShimExtensions
 {
     private static readonly Type WrappedType = typeof(ILocalSymbol);
 
@@ -35,13 +33,13 @@ public static partial class ILocalSymbolShimExtensions
 
     extension(ILocalSymbol wrappedInstance)
     {
-        public bool IsFixed => (bool)IsFixedAccessor(wrappedInstance);
-        public bool IsForEach => (bool)IsForEachAccessor(wrappedInstance);
-        public bool IsRef => (bool)IsRefAccessor(wrappedInstance);
-        public bool IsUsing => (bool)IsUsingAccessor(wrappedInstance);
-        public int MetadataToken => (int)MetadataTokenAccessor(wrappedInstance);
-        public NullableAnnotation NullableAnnotation => (NullableAnnotation)NullableAnnotationAccessor(wrappedInstance);
-        public RefKind RefKind => (RefKind)RefKindAccessor(wrappedInstance);
-        public ScopedKind ScopedKind => (ScopedKind)ScopedKindAccessor(wrappedInstance);
+        public bool IsFixed => IsFixedAccessor(wrappedInstance);
+        public bool IsForEach => IsForEachAccessor(wrappedInstance);
+        public bool IsRef => IsRefAccessor(wrappedInstance);
+        public bool IsUsing => IsUsingAccessor(wrappedInstance);
+        public int MetadataToken => MetadataTokenAccessor(wrappedInstance);
+        public NullableAnnotation NullableAnnotation => NullableAnnotationAccessor(wrappedInstance);
+        public RefKind RefKind => RefKindAccessor(wrappedInstance);
+        public ScopedKind ScopedKind => ScopedKindAccessor(wrappedInstance);
     }
 }
