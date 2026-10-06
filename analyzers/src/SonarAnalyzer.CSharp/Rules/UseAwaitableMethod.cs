@@ -108,6 +108,7 @@ public sealed class UseAwaitableMethod : SonarDiagnosticAnalyzer
         {
             exclusions.Add(x => x.IsImplementingInterfaceMember(KnownType.FluentValidation_IValidator, "Validate"));   // https://github.com/SonarSource/sonar-dotnet/issues/9339
             exclusions.Add(x => x.IsImplementingInterfaceMember(KnownType.FluentValidation_IValidator_T, "Validate")); // https://github.com/SonarSource/sonar-dotnet/issues/9339
+            exclusions.Add(x => x.IsAny(KnownType.FluentValidation_DefaultValidatorExtensions, "Validate", "ValidateAndThrow")); // https://sonarsource.atlassian.net/browse/NET-1559
         }
         if (compilation.GetTypeByMetadataName(KnownType.MongoDB_Driver_IMongoCollectionExtensions) is not null)
         {
@@ -130,7 +131,7 @@ public sealed class UseAwaitableMethod : SonarDiagnosticAnalyzer
         CancellationToken cancel)
     {
         var awaitableRoot = FetchAwaitableRootOfInvocation(invocationExpression);
-        if (awaitableRoot is not { Parent: AwaitExpressionSyntax } // Invocation result is already awaited.
+        if (!IsAwaited(invocationExpression)
             && invocationExpression.EnclosingScope() is { } scope
             && IsAsyncCodeBlock(scope)
             && invocationExpression.Ancestors().TakeWhile(x => x != scope).All(x => x is not LockStatementSyntax) // Awaiting inside a lock produces CS1996.
@@ -145,9 +146,8 @@ public sealed class UseAwaitableMethod : SonarDiagnosticAnalyzer
                 : containingSymbol.ContainingType; // If not dotted, than the scope is the current type. Local function support is missing here.
             var members = FetchMethodSymbolsInScope($"{methodSymbol.Name}Async", wellKnownExtensionMethodContainer, invokedType, methodSymbol.ContainingType);
             var awaitableCandidates = members.Where(x => x.IsAwaitableNonDynamic());
-            // Get the method alternatives and exclude candidates that would resolve to the containing method (endless loop)
             var awaitableAlternatives = SpeculativeBindCandidates(model, awaitableRoot, invocationExpression, awaitableCandidates)
-                .Where(x => !containingSymbol.Equals(x))
+                .Where(x => !containingSymbol.Equals(x) && x.IsAwaitableNonDynamic())
                 .ToImmutableArray();
             return awaitableAlternatives;
         }
@@ -236,9 +236,21 @@ public sealed class UseAwaitableMethod : SonarDiagnosticAnalyzer
         {
             { Parent: ConditionalAccessExpressionSyntax conditional } => conditional.GetRootConditionalAccessExpression(),
             { Parent: MemberAccessExpressionSyntax memberAccess } => memberAccess.GetRootConditionalAccessExpression() ?? FetchAwaitableRootOfInvocation(memberAccess),
+            { Parent: ElementAccessExpressionSyntax elementAccess } => elementAccess.GetRootConditionalAccessExpression() ?? expression,
+            { Parent: InvocationExpressionSyntax invocation } => invocation.GetRootConditionalAccessExpression() ?? expression,
             { Parent: PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKindEx.SuppressNullableWarningExpression } parent } => FetchAwaitableRootOfInvocation(parent),
             { Parent: ParenthesizedExpressionSyntax parent } => FetchAwaitableRootOfInvocation(parent),
             { } self => self,
+        };
+
+    private static bool IsAwaited(ExpressionSyntax expression) =>
+        expression.Parent switch
+        {
+            AwaitExpressionSyntax => true,
+            ConditionalAccessExpressionSyntax conditional when conditional.WhenNotNull == expression => IsAwaited(conditional),
+            ParenthesizedExpressionSyntax parent => IsAwaited(parent),
+            PostfixUnaryExpressionSyntax { RawKind: (int)SyntaxKindEx.SuppressNullableWarningExpression } parent => IsAwaited(parent),
+            _ => false,
         };
 
     private static bool IsAsyncCodeBlock(SyntaxNode codeBlock) =>

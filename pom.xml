@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.sonarsource.parent</groupId>
     <artifactId>parent</artifactId>
-    <version>87.0.0.3057</version>
+    <version>88.0.0.3367</version>
   </parent>
 
   <groupId>org.sonarsource.dotnet</groupId>
@@ -53,20 +53,18 @@
   </issueManagement>
 
   <properties>
-    <revision>10.34-SNAPSHOT</revision>
+    <revision>10.36-SNAPSHOT</revision>
     <!-- Release: enable publication to Bintray -->
     <artifactsToPublish>${project.groupId}:sonar-csharp-plugin:jar,${project.groupId}:sonar-vbnet-plugin:jar</artifactsToPublish>
     <artifactsToDownload>${project.groupId}:SonarAnalyzer.CSharp:nupkg,${project.groupId}:SonarAnalyzer.VisualBasic:nupkg</artifactsToDownload>
     <!-- We are ignoring java doc warnings - this is because we are using JDK 11. Ideally we should not do that. -->
     <doclint>none</doclint>
     
-    <sonar.analyzer.commons.version>2.32.0.5319</sonar.analyzer.commons.version>
-    <sonar.plugin.api.version>14.0.0.4498</sonar.plugin.api.version>
-    <sonar.scanner.version>13.13.0.6016</sonar.scanner.version>
+    <sonar.analyzer.commons.version>2.33.0.5369</sonar.analyzer.commons.version>
+    <sonar.plugin.api.version>14.1.0.5543</sonar.plugin.api.version>
+    <sonar.scanner.version>13.14.0.6149</sonar.scanner.version>
     <jdk.min.version>21</jdk.min.version>
     <maven.compiler.release>${jdk.min.version}</maven.compiler.release>
-    <!-- See: https://github.com/SonarSource/sonar-plugin-api#compatibility -->
-    <plugin.api.min.version>9.14.0.375</plugin.api.min.version>
 
     <!-- Test dependencies -->
     <junit.version>6.1.3</junit.version>
@@ -152,13 +150,13 @@
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-core</artifactId>
-        <version>5.23.0</version>
+        <version>5.24.0</version>
         <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>org.codehaus.woodstox</groupId>
         <artifactId>stax2-api</artifactId>
-        <version>4.3.0</version>
+        <version>4.3.1</version>
         <exclusions>
           <exclusion>
             <groupId>stax</groupId>

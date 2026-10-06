@@ -258,6 +258,34 @@ public class NarrowedThenAwaited
     }
 }
 
+public class DeconstructedNullForgivingReceiverGenerator
+{
+    public (string Token, long ExpiryMs) Generate() => ("token", 0);
+}
+
+public class DeconstructedNullForgivingReceiver
+{
+    private readonly DeconstructedNullForgivingReceiverGenerator? generator;
+
+    // "generator" is never narrowed, the compiler still requires the "!" here.
+    public void Method()
+    {
+        var (token, expiryMs) = generator!.Generate(); // Compliant, see https://sonarsource.atlassian.net/browse/NET-4618
+    }
+}
+
+public class NarrowedThenDeconstructed
+{
+    // FN: narrowing before the deconstruction still leaves the re-speculation unable to replay flow analysis, so it yields FlowState.None, which is now treated as a contradiction.
+    public void Method(DeconstructedNullForgivingReceiverGenerator? generator)
+    {
+        if (generator != null)
+        {
+            var (token, expiryMs) = generator!.Generate(); // FN, see https://sonarsource.atlassian.net/browse/NET-4618
+        }
+    }
+}
+
 public class PropertyInitializer
 {
     public string NameWarningsEnabled { get; set; } = default!; // Compliant, "default" for a non-nullable reference type is genuinely null
@@ -285,6 +313,47 @@ public class PragmaInsideExpression
             ? a
 #nullable enable
             : "fallback")!; // Noncompliant, warnings are enabled again and the compiler already knows this is not null
+    }
+}
+
+public class NullableConversionOperand
+{
+    public static implicit operator string?(NullableConversionOperand value) => value.ToString();
+}
+
+public class NarrowedThenConvertedByNullableOperator
+{
+    // The compiler doesn't propagate "operand proven not-null" through a user-defined conversion whose own return type is independently
+    // nullable-annotated, so removing "!" here produces a real CS8604 even though "a" itself is correctly narrowed by the guard clause.
+    public int Method(NullableConversionOperand? a)
+    {
+        if (a is null)
+        {
+            return 0;
+        }
+
+        return int.Parse(a!); // Compliant, see https://sonarsource.atlassian.net/browse/NET-4710
+    }
+}
+
+public class NotNullIfNotNullConversionOperand
+{
+    [return: NotNullIfNotNull(nameof(value))]
+    public static implicit operator string?(NotNullIfNotNullConversionOperand? value) => value?.ToString();
+}
+
+public class NarrowedThenConvertedByNotNullIfNotNullOperator
+{
+    // Unlike NarrowedThenConvertedByNullableOperator above, this conversion operator is annotated [NotNullIfNotNull], so the compiler
+    // does prove the converted result is non-null when the operand is, and the "!" really is redundant here.
+    public int Method(NotNullIfNotNullConversionOperand? a)
+    {
+        if (a is null)
+        {
+            return 0;
+        }
+
+        return int.Parse(a!); // Noncompliant, see https://sonarsource.atlassian.net/browse/NET-4710
     }
 }
 

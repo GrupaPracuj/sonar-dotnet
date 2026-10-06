@@ -106,10 +106,71 @@ public class C
     }
 }
 
+public class IndexedNode
+{
+    public IndexedNode Child() => this;
+    public Task<IndexedNode> ChildAsync() => Task.FromResult(this);
+    public IndexedNode this[string key] => this;
+    public IndexedNode Property => this;
+
+    public IndexedNode WithoutAlternative() => this;
+    public IndexedNode WithParameter(int value) => this;
+    public Task<IndexedNode> WithParameterAsync(string value) => Task.FromResult(this);
+    public Task[] Tasks() => new[] { Task.CompletedTask };
+    public Task<Task[]> TasksAsync() => Task.FromResult(Tasks());
+    public IndexedNode[] Array() => new[] { this };
+    public Task<IndexedNode[]> ArrayAsync() => Task.FromResult(Array());
+    public IndexedNode[,] Matrix() => new IndexedNode[2, 2];
+    public Task<IndexedNode[,]> MatrixAsync() => Task.FromResult(Matrix());
+    public T Generic<T>() => default(T);
+    public Task<T> GenericAsync<T>() => Task.FromResult(default(T));
+
+    public async Task IndexedInvocations(IndexedNode node)
+    {
+        _ = node.Child()["k"]; // Noncompliant {{Await ChildAsync instead.}}
+        _ = node?.Child()["k"]; // Noncompliant {{Await ChildAsync instead.}}
+        _ = (node?.Child())["k"]; // Noncompliant
+        _ = (node?.Child()["k"]); // Noncompliant
+        _ = node?.Child()["k"]["nested"]; // Noncompliant
+        _ = node?.Child()["k"].Property; // Noncompliant
+        _ = node?.Child()["k"]?.Property; // Noncompliant
+        _ = node?.Property.Child()["k"]; // Noncompliant
+        _ = node.Child()?["k"]; // Noncompliant
+        _ = node?.Child()?["k"]; // Noncompliant
+        _ = node?["k"].Child()["nested"]; // Noncompliant
+        _ = node?["k"]?.Child()["nested"]; // Noncompliant
+        _ = node?.Array()[0]; // Noncompliant {{Await ArrayAsync instead.}}
+        _ = node?.Matrix()[0, 1]; // Noncompliant {{Await MatrixAsync instead.}}
+        _ = node?.Generic<IndexedNode>()["k"]; // Noncompliant {{Await GenericAsync instead.}}
+        await node.Tasks()[0]; // Noncompliant {{Await TasksAsync instead.}}
+        await (node.Tasks())[0]; // Noncompliant
+        await node?.Tasks()[0]; // Noncompliant {{Await TasksAsync instead.}}
+        await (node?.Tasks()[0]); // Noncompliant
+        await (node?.Tasks())[0]; // Noncompliant
+        await node.Tasks()?[0]; // Noncompliant
+        await node?.Tasks()?[0]; // Noncompliant
+        await node?.Property?.Tasks()[0]; // Noncompliant
+        _ = node?.WithoutAlternative()["k"]; // Compliant
+        _ = node?.WithParameter(42)["k"]; // Compliant: The async overload is not applicable.
+    }
+
+    public async Task AlreadyAwaited(IndexedNode node)
+    {
+        // The arrays are awaitable via the GetAwaiter extension method.
+        await node.Tasks(); // Compliant
+        await (node.Tasks()); // Compliant
+        await node?.Tasks(); // Compliant
+        await (node?.Tasks()); // Compliant
+        await node?.Property?.Tasks(); // Compliant
+        await node?["k"].Tasks(); // Compliant
+    }
+}
+
 public static class Extensions
 {
     public static void ExtVoidMethod(this C c) { }
     public static Task ExtVoidMethodAsync(this C c) => Task.CompletedTask;
+    public static System.Runtime.CompilerServices.TaskAwaiter GetAwaiter(this Task[] tasks) => Task.WhenAll(tasks).GetAwaiter();
 }
 
 public class Overloads
@@ -129,6 +190,43 @@ public class Overloads
         int l4 = (int)ImplicitConversionsMethod((byte)i, j);    // Noncompliant Can be resolved to second overload
 
         TypeParameter(new C()); // Compliant: Adding "await" does never resolve to another overload
+    }
+}
+
+// Repro for https://sonarsource.atlassian.net/browse/NET-4466
+public class MixedAwaitableOverloads
+{
+    public long VoidOverload(int i, byte j) => 0;
+    public void VoidOverloadAsync(long i, int j) { }
+    public Task<byte> VoidOverloadAsync(byte i, byte j) => Task.FromResult((byte)0);
+
+    public long IntOverload(int i, byte j) => 0;
+    public int IntOverloadAsync(long i, int j) => 0;
+    public Task<byte> IntOverloadAsync(byte i, byte j) => Task.FromResult((byte)0);
+
+    public long DynamicOverload(int i, byte j) => 0;
+    public dynamic DynamicOverloadAsync(long i, int j) => Task.CompletedTask;
+    public Task<byte> DynamicOverloadAsync(byte i, byte j) => Task.FromResult((byte)0);
+
+    public long GenericOverload(int i, byte j) => 0;
+    public T GenericOverloadAsync<T>(T i, int j) => i;
+    public Task<byte> GenericOverloadAsync(byte i, byte j) => Task.FromResult((byte)0);
+
+    public async Task Test(int i, byte j)
+    {
+        VoidOverload(i, j);             // Compliant: The applicable Async overload returns void.
+        this.VoidOverload(i, j);        // Compliant
+        this?.VoidOverload(i, j);       // Compliant
+        IntOverload(i, j);              // Compliant: The applicable Async overload returns int.
+        DynamicOverload(i, j);          // Compliant: The applicable Async overload returns dynamic.
+        GenericOverload(i, j);          // Compliant: The applicable Async overload is generic and returns int.
+
+        VoidOverload((byte)i, j);       // Noncompliant {{Await VoidOverloadAsync instead.}}
+        this.VoidOverload((byte)i, j);  // Noncompliant
+        this?.VoidOverload((byte)i, j); // Noncompliant
+        IntOverload((byte)i, j);        // Noncompliant {{Await IntOverloadAsync instead.}}
+        DynamicOverload((byte)i, j);    // Noncompliant {{Await DynamicOverloadAsync instead.}}
+        GenericOverload((byte)i, j);    // Noncompliant {{Await GenericOverloadAsync instead.}}
     }
 }
 
