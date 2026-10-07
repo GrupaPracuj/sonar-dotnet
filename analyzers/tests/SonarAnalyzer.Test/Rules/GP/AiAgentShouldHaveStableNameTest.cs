@@ -114,4 +114,80 @@ public class AiAgentShouldHaveStableNameTest
             }
             """)
             .VerifyNoIssues();
+
+    // Options are built in the same method (the Juno AddAIAgent pattern): their Name is inspected.
+    [TestMethod]
+    public void CompliantWhenLocalOptionsHaveNameInInitializer() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing Microsoft.Agents.AI;\nusing System;\n\n" + GpAiTestStubs.All + """
+
+            public class Factory
+            {
+                public ChatClientAgent Create(IChatClient client, string key)
+                {
+                    var options = new ChatClientAgentOptions { Name = key };
+                    return new ChatClientAgent(client, options);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CompliantWhenLocalOptionsNameIsAssignedLater() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing Microsoft.Agents.AI;\nusing System;\n\n" + GpAiTestStubs.All + """
+
+            public class Factory
+            {
+                public ChatClientAgent Create(IChatClient client, string key)
+                {
+                    var options = new ChatClientAgentOptions();
+                    options.Name = key;
+                    return new ChatClientAgent(client, options);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CompliantWhenOptionsComeFromParameter() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing Microsoft.Agents.AI;\nusing System;\n\n" + GpAiTestStubs.All + """
+
+            public class Factory
+            {
+                public ChatClientAgent Create(IChatClient client, ChatClientAgentOptions options) =>
+                    new ChatClientAgent(client, options);
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void NoncompliantWhenLocalOptionsNameIsNeverSet() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing Microsoft.Agents.AI;\nusing System;\n\n" + GpAiTestStubs.All + """
+
+            public class Factory
+            {
+                public ChatClientAgent Create(IChatClient client)
+                {
+                    var options = new ChatClientAgentOptions();
+                    return new ChatClientAgent(client, options); // Noncompliant
+                }
+            }
+            """)
+            .Verify();
+
+    [TestMethod]
+    public void NoncompliantWhenInlineOptionsNameIsUnstable() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing Microsoft.Agents.AI;\nusing System;\n\n" + GpAiTestStubs.All + """
+
+            public class Factory
+            {
+                public ChatClientAgent Create(IChatClient client) =>
+                    new ChatClientAgent(client, new ChatClientAgentOptions { Name = Guid.NewGuid().ToString() }); // Noncompliant
+            }
+            """)
+            .Verify();
 }

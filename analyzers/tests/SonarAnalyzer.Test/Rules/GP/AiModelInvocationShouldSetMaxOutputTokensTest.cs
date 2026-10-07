@@ -389,4 +389,45 @@ public class AiModelInvocationShouldSetMaxOutputTokensTest
             }
             """)
             .VerifyNoIssues();
+
+    // The local escapes into a method that may configure it: the cap is not provably missing.
+    [TestMethod]
+    public void CompliantWhenOptionsAreConfiguredByAnotherMethod() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\n\n" + GpAiTestStubs.All + """
+
+            public class Summarizer
+            {
+                private readonly IChatClient _chatClient;
+
+                private static void Configure(ChatOptions options) => options.MaxOutputTokens = 100;
+
+                public System.Threading.Tasks.Task<ChatResponse> Summarize(string text)
+                {
+                    var options = new ChatOptions();
+                    Configure(options);
+                    return _chatClient.GetResponseAsync(text, options);
+                }
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void CompliantWhenOptionsAreConfiguredByDelegate() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\n\n" + GpAiTestStubs.All + """
+
+            public class Summarizer
+            {
+                private readonly IChatClient _chatClient;
+
+                public System.Threading.Tasks.Task<ChatResponse> Summarize(string text, System.Action<ChatOptions> configure)
+                {
+                    var options = new ChatOptions();
+                    configure(options);
+                    return _chatClient.GetResponseAsync(text, options);
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }

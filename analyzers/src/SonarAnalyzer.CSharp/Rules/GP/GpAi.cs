@@ -281,8 +281,58 @@ internal static class GpAi
             return false;
         }
 
+        // Nothing direct was proven, but the local may still be configured elsewhere: handed to another method or delegate.
+        if (mutatedValue is null && local is not null && MayBeConfiguredElsewhere(model, local, usageSite))
+        {
+            return false;
+        }
+
         value = mutatedValue ?? PropertyAssignmentValue(creation, propertyName);
         return true;
+    }
+
+    // True when some reference to the local - other than the usage argument, a property read or write, or a
+    // whole-variable assignment of the local itself - lets code we cannot see change it: passing it as an argument,
+    // returning it, capturing it, or calling a method on it. A property set only on a branch is deliberately not
+    // treated as an escape: the path without it is a real finding.
+    private static bool MayBeConfiguredElsewhere(SemanticModel model, ILocalSymbol local, SyntaxNode usageSite)
+    {
+        if (local.DeclaringSyntaxReferences.Select(x => x.GetSyntax()).OfType<VariableDeclaratorSyntax>().FirstOrDefault()
+                ?.FirstAncestorOrSelf<StatementSyntax>()?.Parent is not BlockSyntax block)
+        {
+            return false;
+        }
+
+        var usageSymbol = model.GetSymbolInfo(usageSite).Symbol?.OriginalDefinition;
+        foreach (var reference in block.DescendantNodes().OfType<IdentifierNameSyntax>())
+        {
+            if (reference.Identifier.ValueText != local.Name
+                || model.GetSymbolInfo(reference).Symbol?.Equals(local) != true
+                || usageSite.Span.Contains(reference.Span))
+            {
+                continue;
+            }
+
+            switch (reference.Parent)
+            {
+                case MemberAccessExpressionSyntax memberAccess when memberAccess.Expression == reference:
+                    if (model.GetSymbolInfo(memberAccess).Symbol is not IPropertySymbol)
+                    {
+                        return true; // a method call on the local, e.g. options.Clone() or an extension method
+                    }
+
+                    break;
+                case AssignmentExpressionSyntax assignment when assignment.Left == reference:
+                case VariableDeclaratorSyntax:
+                    break;
+                case ArgumentSyntax { Parent.Parent: { } call } when usageSymbol is not null && usageSymbol.Equals(model.GetSymbolInfo(call).Symbol?.OriginalDefinition):
+                    break; // another call of the very same API is just another usage, not a hand-off
+                default:
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     // The statements between the local's own declaration and the usage site that are reached along a single,

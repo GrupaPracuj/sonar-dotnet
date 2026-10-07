@@ -84,9 +84,15 @@ internal static class GpAiTestStubs
                 public virtual System.Threading.Tasks.Task<AgentRunResponse> RunStreamingAsync(string message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) => null;
             }
 
+            public class ChatClientAgentOptions
+            {
+                public string Name { get; set; }
+            }
+
             public class ChatClientAgent : AIAgent
             {
                 public ChatClientAgent(Microsoft.Extensions.AI.IChatClient chatClient, string name = null) { }
+                public ChatClientAgent(Microsoft.Extensions.AI.IChatClient chatClient, ChatClientAgentOptions options) { }
             }
         }
         """;

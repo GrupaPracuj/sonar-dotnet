@@ -41,6 +41,26 @@ public sealed class AiAgentShouldHaveStableName : SonarDiagnosticAnalyzer
             return;
         }
 
+        if (TryFindNameInOptions(context.Model, creation, out var optionsName))
+        {
+            // The name is configured through a ChatClientAgentOptions argument: report only what is provable about it.
+            if (optionsName is null)
+            {
+                context.ReportIssue(Rule, creation.Expression);
+            }
+            else if (ClassifyStability(context.Model, optionsName) == NameStability.Unstable)
+            {
+                context.ReportIssue(Rule, optionsName);
+            }
+
+            return;
+        }
+
+        if (TakesOptions(context.Model, creation))
+        {
+            return; // FN: options come from a parameter, field or method call - the name is not visible here.
+        }
+
         var nameExpression = FindNameExpression(context.Model, creation);
         if (nameExpression is null)
         {
@@ -50,6 +70,36 @@ public sealed class AiAgentShouldHaveStableName : SonarDiagnosticAnalyzer
         {
             context.ReportIssue(Rule, nameExpression);
         }
+    }
+
+    private static bool TakesOptions(SemanticModel model, IObjectCreation creation) =>
+        creation.MethodSymbol(model) is { } ctor && ctor.Parameters.Any(x => x.Type.Name == "ChatClientAgentOptions");
+
+    // True when the options argument is a local or inline object that can be inspected; 'name' is then its effective
+    // Name (initializer or a later "options.Name = ...") or null when it is provably never set.
+    private static bool TryFindNameInOptions(SemanticModel model, IObjectCreation creation, out ExpressionSyntax name)
+    {
+        name = null;
+        if (creation.MethodSymbol(model) is not { } ctor
+            || ctor.Parameters.FirstOrDefault(x => x.Type.Name == "ChatClientAgentOptions") is not { } parameter)
+        {
+            return false;
+        }
+
+        var arguments = creation.ArgumentList?.Arguments ?? default;
+        for (var i = 0; i < arguments.Count; i++)
+        {
+            var argument = arguments[i];
+            var candidate = argument.NameColon is { Name.Identifier.ValueText: var argName }
+                ? ctor.Parameters.FirstOrDefault(x => x.Name == argName)
+                : (i < ctor.Parameters.Length ? ctor.Parameters[i] : null);
+            if (candidate is not null && candidate.Equals(parameter))
+            {
+                return GpAi.TryResolveEffectivePropertyValue(model, argument.Expression, creation.Expression, NameProperty, out name);
+            }
+        }
+
+        return false;
     }
 
     private static ExpressionSyntax FindNameExpression(SemanticModel model, IObjectCreation creation)

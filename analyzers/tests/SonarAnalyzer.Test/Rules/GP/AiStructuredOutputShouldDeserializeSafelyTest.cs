@@ -386,4 +386,26 @@ public class AiStructuredOutputShouldDeserializeSafelyTest
             }
             """)
             .VerifyNoIssues();
+
+    // The local escapes into a method that may configure it: not provably permissive.
+    [TestMethod]
+    public void CompliantWhenOptionsAreConfiguredByAnotherMethod() =>
+        builder.AddSnippet(
+            "using Microsoft.Extensions.AI;\nusing System.Text.Json;\nusing System.Text.Json.Serialization;\n\n" + GpAiTestStubs.All + JsonStubs + """
+
+            public class InvoiceData { }
+
+            public class Extractor
+            {
+                private static void Configure(JsonSerializerOptions options) => options.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+
+                public InvoiceData Extract(ChatResponse response)
+                {
+                    var options = new JsonSerializerOptions();
+                    Configure(options);
+                    return JsonSerializer.Deserialize<InvoiceData>(response.Text, options);
+                }
+            }
+            """)
+            .VerifyNoIssues();
 }
