@@ -57,6 +57,12 @@ public class ClearTextProtocolsAreSensitiveTest
             .Verify();
 
     [TestMethod]
+    public void ClearTextProtocolsAreSensitive_CS_CollectionExpressionArguments() =>
+        builder.AddPaths("ClearTextProtocolsAreSensitive.CollectionExpressionArguments.Latest.cs")
+            .WithOptions(LanguageOptions.CSharpLatest)
+            .Verify();
+
+    [TestMethod]
     public void ClearTextProtocolsAreSensitive_CS_TopLevelStatements() =>
         builder.AddPaths("ClearTextProtocolsAreSensitive.TopLevelStatements.cs")
             .AddReferences(AdditionalReferences)

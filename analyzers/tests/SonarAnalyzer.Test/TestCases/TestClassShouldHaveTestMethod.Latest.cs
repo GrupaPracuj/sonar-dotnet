@@ -35,6 +35,23 @@
     }
 
     [TestClass]
+    record ConditionalTestSuite
+    {
+#if DEBUG
+        [TestMethod]
+        public void Method() { }
+#endif
+    }
+
+    [TestClass]
+    class NullableDirectiveWithoutTests // Noncompliant
+    {
+#nullable enable
+        public void Helper() { }
+#nullable restore
+    }
+
+    [TestClass]
     record PositionalRecord(string SomeProperty)
     {
         [TestMethod]
@@ -86,4 +103,15 @@ namespace NUnitTests
     //    ^^^^^^^^^^
     {
     }
+}
+
+namespace CSharp15
+{
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+    [TestClass]
+    public closed class ClosedTestBase { }      // Compliant
+
+    [TestClass]
+    public class OpenTestBase { }               // Noncompliant {{Add some tests to this class.}}
 }

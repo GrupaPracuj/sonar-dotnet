@@ -139,7 +139,7 @@ public static class MetadataReferenceFacade
 #if NETFRAMEWORK
         NuGetMetadataReference.SystemMemory();
 #else
-        [];
+        [CoreMetadataReference.SystemMemory];
 #endif
 
     public static References SystemServiceModel =>
@@ -165,6 +165,13 @@ public static class MetadataReferenceFacade
             CoreMetadataReference.SystemNetWebClient,
             CoreMetadataReference.SystemNetWebHeaderCollection
         ];
+#endif
+
+    public static References SystemRuntimeNumerics =>
+#if NETFRAMEWORK
+        FrameworkMetadataReference.SystemNumerics;
+#else
+        [CoreMetadataReference.SystemRuntimeNumerics];
 #endif
 
     public static References SystemSecurityCryptography =>

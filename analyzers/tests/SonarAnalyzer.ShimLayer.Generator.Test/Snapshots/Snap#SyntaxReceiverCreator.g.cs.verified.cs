@@ -24,6 +24,7 @@ public readonly struct SyntaxReceiverCreatorWrapper : IWrapper, IEquatable<Synta
     private static readonly ConcurrentDictionary<Type, bool> CanWrapCache = new();
     private readonly Object wrappedInstance;
 
+    private static readonly Func<Object, bool> HasSingleTargetAccessor = AccessorFactory.CreateProperty<Func<Object, bool>>(WrappedType, "HasSingleTarget");
     private static readonly Func<Object, MethodInfo> MethodAccessor = AccessorFactory.CreateProperty<Func<Object, MethodInfo>>(WrappedType, "Method");
     private static readonly Func<Object, object> TargetAccessor = AccessorFactory.CreateProperty<Func<Object, object>>(WrappedType, "Target");
 
@@ -58,12 +59,13 @@ public readonly struct SyntaxReceiverCreatorWrapper : IWrapper, IEquatable<Synta
     public static bool operator !=(SyntaxReceiverCreatorWrapper left, SyntaxReceiverCreatorWrapper right) =>
         !Equals(left.wrappedInstance, right.wrappedInstance);
 
+    public bool HasSingleTarget => HasSingleTargetAccessor(wrappedInstance);
     public MethodInfo Method => MethodAccessor(wrappedInstance);
     public object Target => TargetAccessor(wrappedInstance);
 
     public IAsyncResult BeginInvoke(AsyncCallback callback, object @object) => BeginInvokeAccessor(wrappedInstance, callback, @object);
     public object Clone() => CloneAccessor(wrappedInstance);
-    public object DynamicInvoke(object[] args) => DynamicInvokeAccessor(wrappedInstance, args);
+    public object DynamicInvoke(params object[] args) => DynamicInvokeAccessor(wrappedInstance, args);
     public ISyntaxReceiverWrapper EndInvoke(IAsyncResult result) => EndInvokeAccessor(wrappedInstance, result);
     public Delegate[] GetInvocationList() => GetInvocationListAccessor(wrappedInstance);
     [System.ObsoleteAttribute("This API supports obsolete formatter-based serialization. It should not be called or extended by application code.")]

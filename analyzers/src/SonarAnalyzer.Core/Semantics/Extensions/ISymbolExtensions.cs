@@ -15,6 +15,7 @@
  * along with this program; if not, see https://sonarsource.com/license/ssal/
  */
 
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
 namespace SonarAnalyzer.Core.Semantics.Extensions;
@@ -75,6 +76,35 @@ public static class ISymbolExtensions
         public bool IsPubliclyAccessible => symbol.EffectiveAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal;
 
         public bool IsConstructor => symbol.Kind == SymbolKind.Method && symbol.Name == ".ctor";
+
+        /// <summary>
+        /// <see langword="true"/> if the symbol is any of the members that make up the <see langword="await"/> pattern.
+        /// </summary>
+        /// <remarks>
+        /// See the <see href="https://learn.microsoft.com/dotnet/csharp/language-reference/language-specification/expressions#12992-awaitable-expressions">awaitable expressions</see> specification.
+        /// </remarks>
+        public bool IsAwaitPatternMember => symbol.IsAwaitableGetAwaiter || symbol.IsAwaiterGetResult || symbol.IsAwaiterIsCompleted;
+
+        /// <summary>
+        /// <see langword="true"/> if the symbol is the <c>GetAwaiter()</c> method that makes its containing type awaitable.
+        /// </summary>
+        public bool IsAwaitableGetAwaiter =>
+            symbol is IMethodSymbol { Name: WellKnownMemberNames.GetAwaiter, IsStatic: false, Parameters.IsEmpty: true, Arity: 0 } getAwaiter
+            && getAwaiter.ReturnType.CanBeAwaiter;
+
+        /// <summary>
+        /// <see langword="true"/> if the symbol is the <c>IsCompleted</c> property that an awaiter has to expose.
+        /// </summary>
+        public bool IsAwaiterIsCompleted =>
+            symbol is IPropertySymbol { Name: WellKnownMemberNames.IsCompleted, IsStatic: false, GetMethod: not null, Type.SpecialType: SpecialType.System_Boolean }
+            && symbol.ContainingType.CanBeAwaiter;
+
+        /// <summary>
+        /// <see langword="true"/> if the symbol is the <c>GetResult()</c> method that an awaiter has to expose.
+        /// </summary>
+        public bool IsAwaiterGetResult =>
+            symbol is IMethodSymbol { Name: WellKnownMemberNames.GetResult, IsStatic: false, Parameters.IsEmpty: true, Arity: 0 }
+            && symbol.ContainingType.CanBeAwaiter;
 
         /// <summary>
         /// Returns attributes for the symbol by also respecting <see cref="AttributeUsageAttribute.Inherited"/>.
@@ -218,6 +248,15 @@ public static class ISymbolExtensions
                 }
             }
         }
+
+        /// <summary>
+        /// <see langword="true"/> if <paramref name="symbol"/> is marked <c>[Obsolete]</c> or <c>[EditorBrowsable(EditorBrowsableState.Never)]</c> -
+        /// both signal "don't call this", even though it's public, so it's not a usable suggestion.
+        /// </summary>
+        public bool IsHiddenFromIntelliSense =>
+            symbol.HasAttribute(KnownType.System_ObsoleteAttribute)
+            || symbol.GetAttributes(KnownType.System_ComponentModel_EditorBrowsableAttribute)
+                .Any(x => x.TryGetAttributeValue<EditorBrowsableState>("state", out var state) && state == EditorBrowsableState.Never);
 
         public bool HasAnyAttribute(ImmutableArray<KnownType> types) =>
             symbol.GetAttributes(types).Any();

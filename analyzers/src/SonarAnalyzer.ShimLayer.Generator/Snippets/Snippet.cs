@@ -33,6 +33,7 @@ public abstract class Snippet
                                                                                 and not "MemberNotNullWhenAttribute"
                                                                                 and not "NullableAttribute"
                                                                                 and not "NullableContextAttribute"
+                                                                                and not "OverloadResolutionPriorityAttribute"
                                                                                 and not "TupleElementNamesAttribute"))
         {
             sb.Append("[").Append(attribute.AttributeType.FullName);
@@ -83,7 +84,7 @@ public abstract class Snippet<TMember> : Snippet where TMember : MemberInfo
     {
         this.strategy = strategy;
         this.member = (TMember)member.Member;
-        this.accessorName = member.AccessorName;
+        accessorName = member.AccessorName;
         this.returnType = returnType;
     }
 }

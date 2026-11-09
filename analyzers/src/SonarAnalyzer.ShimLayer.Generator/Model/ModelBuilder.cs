@@ -85,7 +85,7 @@ public static class ModelBuilder
         {
             return new StaticClassStrategy(latest.Type, CreateMembers(latest, baseline));
         }
-        else if (latest.Type.Name is not "SymbolStartAnalysisContext")
+        else
         {
             if (baseline is null)
             {
@@ -96,13 +96,6 @@ public static class ModelBuilder
             {
                 return new ExtendStrategy(latest.Type, CreateMembers(latest, baseline));
             }
-        }
-        else
-        {
-            // ToDo: Throw NotSupportedException instead of skip, there should be nothing left after explicitly handling all known cases
-            return baseline is null
-                ? new SkipStrategy(latest.Type)
-                : new NoChangeStrategy(latest.Type);
         }
     }
 
@@ -203,7 +196,8 @@ public static class ModelBuilder
     private static bool IsSkipped(Type type) =>
         type.IsNested
         || typeof(Delegate).IsAssignableFrom(type)
-        || type.FullName == "Microsoft.CodeAnalysis.CSharpExtensions";  // The useful one is in CSharp namespace
+        || type.FullName == "Microsoft.CodeAnalysis.CSharpExtensions"   // The useful one is in CSharp namespace
+        || type.FullName == "Microsoft.CodeAnalysis.AnalyzerConfigSet"; // Generic type constraints have IReadOnlyList<AnalyzerConfig>, and does not contain anything useful to shim
 
     private static bool IsValid(MemberInfo member) =>
         !IsExcluded(member)

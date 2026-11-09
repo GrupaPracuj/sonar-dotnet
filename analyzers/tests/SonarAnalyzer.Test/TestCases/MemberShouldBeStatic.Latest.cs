@@ -26,6 +26,23 @@ namespace Exceptions
     }
 }
 
+namespace Awaiters
+{
+    public readonly struct ThreadPoolAwaiter : System.Runtime.CompilerServices.ICriticalNotifyCompletion
+    {
+        public ThreadPoolAwaiter GetAwaiter() => this;
+        public bool IsCompleted => System.Threading.Thread.CurrentThread.IsThreadPoolThread; // Compliant https://sonarsource.atlassian.net/browse/NET-2937
+        public void GetResult() { }
+        public void OnCompleted(Action continuation) => System.Threading.ThreadPool.QueueUserWorkItem(_ => continuation());
+        public void UnsafeOnCompleted(Action continuation) => System.Threading.ThreadPool.QueueUserWorkItem(_ => continuation());
+    }
+
+    public static class Consumer
+    {
+        public static async System.Threading.Tasks.Task AwaitThreadPool() => await new ThreadPoolAwaiter();
+    }
+}
+
 namespace CSharp8
 {
     public interface IUtilities
@@ -187,5 +204,20 @@ namespace CSharp14
         {
             public int Value { get; set; }
         }
+    }
+}
+
+namespace CSharp15
+{
+    public class UnionCase1 { }
+    public class UnionCase2 { }
+
+    public union UnionSample(UnionCase1, UnionCase2)
+    {
+        public int Constant() => 42;                        // Noncompliant
+        public bool IsEmpty() => Value is null;             // Compliant, Value is instance data.
+        public bool IsSame(UnionSample other) => other.Value == Value;
+        public bool IsFirst() => this is UnionCase1;
+        public bool IsOtherFirst(UnionSample other) => other is UnionCase1;     // Noncompliant
     }
 }

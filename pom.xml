@@ -60,9 +60,9 @@
     <!-- We are ignoring java doc warnings - this is because we are using JDK 11. Ideally we should not do that. -->
     <doclint>none</doclint>
     
-    <sonar.analyzer.commons.version>2.33.0.5369</sonar.analyzer.commons.version>
-    <sonar.plugin.api.version>14.1.0.5543</sonar.plugin.api.version>
-    <sonar.scanner.version>13.14.0.6149</sonar.scanner.version>
+    <sonar.analyzer.commons.version>2.35.0.15509</sonar.analyzer.commons.version>
+    <sonar.plugin.api.version>14.2.0.5584</sonar.plugin.api.version>
+    <sonar.scanner.version>13.17.0.6738</sonar.scanner.version>
     <jdk.min.version>21</jdk.min.version>
     <maven.compiler.release>${jdk.min.version}</maven.compiler.release>
 
@@ -144,7 +144,7 @@
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
-        <version>3.20.0</version>
+        <version>3.21.0</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -156,7 +156,7 @@
       <dependency>
         <groupId>org.codehaus.woodstox</groupId>
         <artifactId>stax2-api</artifactId>
-        <version>4.3.1</version>
+        <version>4.3.2</version>
         <exclusions>
           <exclusion>
             <groupId>stax</groupId>
