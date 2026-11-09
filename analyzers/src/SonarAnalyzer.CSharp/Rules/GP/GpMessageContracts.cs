@@ -170,8 +170,12 @@ internal static class GpMessageContracts
     //
     // Grouped by name because an inherited property that a derived type overrides or hides appears once per level of
     // the hierarchy, while the serialized message has one member for it; counting it twice would overstate the shape.
+    //
+    // An interface has no BaseType, so the members it inherits from base interfaces come from AllInterfaces. They are
+    // listed last, which keeps the declaration closest to the type the one that is counted.
     internal static IEnumerable<(string Name, ITypeSymbol Type)> DataMembers(INamedTypeSymbol type) =>
         BaseTypesAndSelf(type)
+            .Concat(type.AllInterfaces)
             .SelectMany(x => x.GetMembers().OfType<IPropertySymbol>())
             .Where(x => x is { DeclaredAccessibility: Accessibility.Public, IsStatic: false, IsIndexer: false })
             .GroupBy(x => x.Name, StringComparer.Ordinal)

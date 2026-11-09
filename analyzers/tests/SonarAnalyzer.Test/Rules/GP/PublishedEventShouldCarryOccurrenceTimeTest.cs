@@ -66,6 +66,55 @@ public class PublishedEventShouldCarryOccurrenceTimeTest
             """)
             .Verify();
 
+    // The occurrence time is declared on a base interface and the derived interfaces are the ones published.
+    // Interfaces have no BaseType, so inherited interface members must be read from AllInterfaces.
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_CompliantForTimeInheritedFromBaseInterface() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface ICaseUpdated
+            {
+                string CaseId { get; set; }
+                System.DateTimeOffset OccurredAt { get; set; }
+            }
+
+            public interface ICaseEmailAdded : ICaseUpdated
+            {
+                string EmailId { get; set; }
+            }
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<ICaseEmailAdded>();
+            }
+            """)
+            .VerifyNoIssues();
+
+    [TestMethod]
+    public void PublishedEventShouldCarryOccurrenceTime_NoncompliantForDerivedInterfaceWithoutTime() =>
+        builder.AddSnippet(
+            Stubs + """
+
+            public interface ICaseUpdated
+            {
+                string CaseId { get; set; }
+            }
+
+            public interface ICaseEmailAdded : ICaseUpdated // Noncompliant {{'ICaseEmailAdded' is published as an event but does not state when it occurred - add a DateTimeOffset OccurredAt.}}
+            {
+                string EmailId { get; set; }
+            }
+
+            public static class Startup
+            {
+                public static GP.Juno.Configuration.AppConfig Register(GP.Juno.Configuration.AppConfig appConfig) =>
+                    appConfig.Publishes<ICaseEmailAdded>();
+            }
+            """)
+            .Verify();
+
     // A same-named Publishes<T> on an unrelated, non-GP.Juno registration surface is not messaging.
     [TestMethod]
     public void PublishedEventShouldCarryOccurrenceTime_CompliantForUnrelatedOwnPublishes() =>
